@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.CustomerDao">
+	<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.Customer">
+			<id column="id" property="id" />
+			<result column="phone_number"  property="phoneNumber" />
+			<result column="is_registered"  property="registered" />
+			<result column="user_name"  property="userName" />
+			<result column="password"  property="password" />
+			<result column="email"  property="email" />
+			<result column="avatar_url"  property="avatarUrl" />
+			<result column="deactivated"  property="deactivated" />
+			<result column="create_date"  property="createDate" />
+			<result column="id_card"  property="idCard" />
+			<result column="push_token"  property="pushToken" />
+			<result column="device_type"  property="deviceType" />
+			<association column="id"
+				select="com.vcat.module.ec.dao.ShopDao.select" property="shop"
+				javaType="com.vcat.module.ec.entity.Shop" />
+	</resultMap>
+	<sql id="Base_Column_List">
+		id,
+		phone_number,
+		is_registered,
+		user_name,
+		password,
+		email,
+		avatar_url,
+		deactivated,
+		create_by,
+		create_date,
+		push_token,
+		device_type,
+		id_card,
+		safe_pass
+	</sql>
+
+	<sql id="Base_Where_Clause">
+		<where>
+			1=1
+			<if test="id!=null and id!=''">
+				AND id = #{id}
+			</if>
+			<if test="phoneNumber!=null and phoneNumber!=''">
+				AND phone_number = #{phoneNumber}
+			</if>
+			<if test="userName!=null and userName!=''">
+				AND user_name = #{userName}
+			</if>
+			<if test="registered != null">
+				AND is_registered = #{registered}
+			</if>
+			<if test="registered == -1">
+				AND is_registered IN (1,2,3)
+			</if>
+			<if test="pushToken!=null and pushToken!=''">
+				AND push_token = #{pushToken}
+			</if>
+			<if test="sqlMap!=null and sqlMap.shopOrderId!=null and sqlMap.shopOrderId!=''">
+				AND id = (SELECT shop_id FROM ec_order WHERE id = #{sqlMap.shopOrderId})
+			</if>
+			<if test="sqlMap!=null and sqlMap.buyerOrderId!=null and sqlMap.buyerOrderId!=''">
+				AND id = (SELECT buyer_id FROM ec_order WHERE id = #{sqlMap.buyerOrderId})
+			</if>
+		</where>
+	</sql>
+
+	<select id="get" resultMap="BaseResultMap" parameterType="com.vcat.module.ec.entity.Customer">
+		SELECT
+		<include refid="Base_Column_List" />
+		FROM ec_customer
+		<include refid="Base_Where_Clause" />
+		LIMIT 1
+	</select>
+	<select id="select" resultMap="BaseResultMap" parameterType="java.lang.String">
+		SELECT
+		<include refid="Base_Column_List" />
+		FROM ec_customer
+		where 1=1 AND id = #{_parameter}
+	</select>
+
+	<select id="findList" resultType="Customer">
+		SELECT
+			a.id AS "id",
+			a.phone_number AS "phoneNumber",
+			a.is_registered AS "registered",
+			a.user_name AS "userName",
+			a.password AS "password",
+			a.email AS "email",
+			a.avatar_url AS "avatarUrl",
+			a.deactivated AS "deactivated",
+			a.create_by AS "createBy.id",
+			a.create_date AS "createDate",
+			a.push_token AS "pushToken",
+			a.device_type AS "deviceType",
+			a.id_card AS "idCard",
+			shopFund.load_available_fund AS "shop.fund.loadAvailableFund",
+			shopFund.sale_available_fund AS "shop.fund.saleAvailableFund",
+			shopFund.share_available_fund AS "shop.fund.shareAvailableFund",
+            shopFund.bonus_available_fund AS "shop.fund.bonusAvailableFund",
+            shopFund.invite_available_fund AS "shop.fund.inviteAvailableFund",
+			shopFund.load_processing_fund AS "shop.fund.loadProcessingFund",
+			shopFund.sale_processing_fund AS "shop.fund.saleProcessingFund",
+			shopFund.share_processing_fund AS "shop.fund.shareProcessingFund",
+            shopFund.bonus_processing_fund AS "shop.fund.bonusProcessingFund",
+            shopFund.invite_processing_fund AS "shop.fund.inviteProcessingFund",
+			shopFund.load_used_fund AS "shop.fund.loadUsedFund",
+			shopFund.sale_used_fund AS "shop.fund.saleUsedFund",
+			shopFund.share_used_fund AS "shop.fund.shareUsedFund",
+            shopFund.bonus_used_fund AS "shop.fund.bonusUsedFund",
+            shopFund.invite_used_fund AS "shop.fund.inviteUsedFund",
+			shopFund.sale_hold_fund AS "shop.fund.saleHoldFund",
+            shopFund.bonus_hold_fund AS "shop.fund.bonusHoldFund"
+			<if test="sqlMap.type != null and sqlMap.type == 'sellerList'"><!-- 查询小店列表 -->
+                ,COUNT(IFNULL(sellerOrder.id,0)) AS "orderCount"
+				,SUM(IFNULL(sellerOrder.total_price,0)) AS "shop.fund.totalSale"
+                ,(SELECT 'true' FROM ec_withdrawal withdrawal WHERE withdrawal.shop_id = a.id LIMIT 1) AS "hasWithdrawal"
+                ,CASE WHEN guru.id IS NOT NULL THEN 1 ELSE 0 END AS "shop.isRecommend"
+                ,guru.id AS "shop.guru.id"
+                ,guru.title AS "shop.guru.title"
+                ,guru.display_order AS "shop.guru.displayOrder"
+                ,request.status AS "shop.upgradeRequest.status"
+                ,shop.advanced_shop AS "shop.advancedShop"
+                ,shop.shop_num AS "shop.shopNum"
+			</if>
+			<if test="sqlMap.type != null and sqlMap.type == 'buyerList'"><!-- 查询买家列表 -->
+                ,buyerOrder.orderCount AS "orderCount"
+                ,buyerOrder.purchasesAmount AS "purchasesAmount"
+				,r.rCount AS "refundTimes"
+                ,r.rCount > 0 AS "hasReturn"
+			</if>
+            ,(SELECT 'true' FROM ec_shop WHERE parent_id = a.id LIMIT 1) AS "hasTeamMember"
+		FROM ec_customer a
+		LEFT JOIN ec_shop_fund shopFund ON shopFund.id = a.id
+        <if test="sqlMap.type != null and sqlMap.type == 'sellerList'"><!-- 查询小店列表 -->
+        LEFT JOIN ec_shop shop ON a.id = shop.id
+        LEFT JOIN ec_order_item item ON item.shop_id = a.id
+        LEFT JOIN ec_order sellerOrder ON sellerOrder.id = item.order_id AND sellerOrder.order_status = 2
+        LEFT JOIN ec_shop_guru guru ON a.id = guru.id
+        LEFT JOIN ec_upgrade_request request ON request.shop_id = shop.id
+        </if>
+        <if test="sqlMap.type != null and sqlMap.type == 'buyerList'"><!-- 查询小店列表 -->
+        LEFT JOIN (select buyer_id,count(1) 'orderCount',sum(total_price) 'purchasesAmount' from ec_order WHERE payment_status = 1 GROUP BY buyer_id) buyerOrder ON buyerOrder.buyer_id = a.id
+        LEFT JOIN (select r.customer_id,COUNT(r.id) 'rCount' from ec_return r WHERE r.refund_status = 2 GROUP BY r.customer_id) r ON r.customer_id = a.id
+        </if>
+		WHERE 1=1
+        <if test="registered != null"><!-- 查询小店列表 -->
+            AND a.is_registered = #{registered}
+        </if>
+        <if test="null != shop and shop.isRecommend != null"><!-- 查询小店列表 -->
+            AND guru.id IS NOT NULL
+        </if>
+        <if test="sqlMap.st != null and sqlMap.st != ''">
+            AND a.create_date > STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d %H:%i:%s")
+        </if>
+        <if test="sqlMap.et != null and sqlMap.et != ''">
+            AND STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d %H:%i:%s") > a.create_date
+        </if>
+		<if test="sqlMap.type != null and sqlMap.type == 'sellerList'"><!-- 查询小店列表 -->
+			AND a.id IN (SELECT cr.customer_id FROM ec_customer_role cr LEFT JOIN ec_role role ON cr.role_id = role.id WHERE role.role_name = 'seller')
+		</if>
+		<if test="sqlMap.type != null and sqlMap.type == 'buyerList'"><!-- 查询买家列表 -->
+			AND a.id IN (SELECT cr.customer_id from ec_customer_role cr LEFT JOIN ec_role role ON cr.role_id = role.id WHERE role.role_name = 'buyer')
+		</if>
+		<if test="sqlMap.keyWord != null and sqlMap.keyWord != ''">
+			AND (
+				a.user_name like "%${sqlMap.keyWord}%"
+				OR
+				a.phone_number like "%${sqlMap.keyWord}%"
+				OR
+				a.email like "%${sqlMap.keyWord}%"
+			)
+		</if>
+        <if test="sqlMap['hasUpgrade'] == 'no'">
+            AND request.id IS NULL
+        </if>
+        <if test="sqlMap['hasUpgrade'] == 'yes'">
+            AND request.status = 0
+        </if>
+        <if test="sqlMap['hasUpgrade'] == 'success'">
+            AND request.status = 1
+        </if>
+        <if test="sqlMap['hasUpgrade'] == 'fail'">
+            AND request.status = 2
+        </if>
+        <if test="null != shop and shop.advancedShop != null and shop.advancedShop == 1">
+            AND shop.advanced_shop = 1
+        </if>
+        <if test="null != shop and shop.advancedShop != null and shop.advancedShop == 0">
+            AND shop.advanced_shop IN (0,2)
+        </if>
+        <if test="null != shop and shop.shopNum != null and shop.shopNum != ''">
+            AND shop.shop_num = #{shop.shopNum}
+        </if>
+        GROUP BY a.id
+        <if test="sqlMap.type == 'sellerList' and sqlMap.orderBy != null and sqlMap.orderBy != ''">
+            ORDER BY
+            <if test="sqlMap.orderBy == 1">
+                31 DESC
+            </if>
+            <if test="sqlMap.orderBy == 2">
+                32 DESC
+            </if>
+            <if test="sqlMap.orderBy == 3">
+                (shopFund.load_available_fund + shopFund.sale_available_fund + shopFund.share_available_fund + shopFund.bonus_available_fund + shopFund.invite_available_fund) DESC
+            </if>
+            <if test="sqlMap.orderBy == 4">
+                (shopFund.load_processing_fund + shopFund.sale_processing_fund + shopFund.share_processing_fund + shopFund.bonus_processing_fund + shopFund.invite_processing_fund) DESC
+            </if>
+            <if test="sqlMap.orderBy == 5">
+                (shopFund.load_used_fund + shopFund.sale_used_fund + shopFund.share_used_fund + shopFund.bonus_used_fund + shopFund.invite_used_fund) DESC
+            </if>
+            <if test="sqlMap.orderBy == 8">
+                guru.display_order DESC
+            </if>
+            <if test="sqlMap.orderBy == 9">
+                a.create_date DESC
+            </if>
+        </if>
+        <if test="sqlMap.type == 'buyerList' and sqlMap.orderBy != null and sqlMap.orderBy != ''">
+            ORDER BY
+            <if test="sqlMap.orderBy == 1">
+                orderCount DESC
+            </if>
+            <if test="sqlMap.orderBy == 6">
+                refundTimes DESC
+            </if>
+            <if test="sqlMap.orderBy == 7">
+                purchasesAmount DESC
+            </if>
+        </if>
+	</select>
+	<select id="findCustomerPushToken" resultType="String">
+		SELECT
+			customer.push_token
+		FROM ec_customer customer
+		LEFT JOIN ec_shop shop ON customer.id = shop.id
+		LEFT JOIN ec_level lv ON lv.id = shop.level_id
+		WHERE customer.push_token IS NOT NULL
+        AND '' != customer.push_token
+        AND 'IOS_CAN_NOT_HAVE_TOKEN' != customer.push_token
+		<if test="levels != null">
+			<foreach collection="levels" open="AND(" close=")" item="level" separator=" OR ">
+				lv.id = #{level}
+			</foreach>
+		</if>
+		<if test="deviceType != null">
+			AND customer.device_type = #{deviceType}
+		</if>
+	</select>
+    <select id="findTeam" resultType="Map">
+        SELECT
+            s.name AS "name",
+            c.phone_number AS "phone",
+            (
+                SELECT SUM(IFNULL(log.fund, 0))
+                FROM ec_fund_oper_bonus_log log
+                LEFT JOIN ec_fund_field_type t ON log.fund_field_type_id = t.id
+                WHERE log.fund_type = 1
+                AND t.name = 'bonus_available_fund'
+                AND log.relate_id = s.id
+            ) AS "fund"
+        FROM ec_shop s
+        LEFT JOIN ec_customer c ON c.id = s.id
+        WHERE s.parent_id = #{id}
+        GROUP BY s.id
+    </select>
+
+	<select id="getSellerWithPhone" resultType="com.vcat.module.ec.entity.Customer">
+		SELECT
+		<include refid="Base_Column_List" />
+		FROM ec_customer WHERE  phone_number is not null and phone_number != '' and LENGTH(phone_number) = 11
+	</select>
+
+    <update id="setRecommend">
+        INSERT INTO ec_shop_guru(id,title,intro,details,img_url,display_order,create_date)
+        SELECT #{id},title,description,cad.content,a.image,0,CURRENT_TIMESTAMP
+        FROM cms_article a LEFT JOIN cms_article_data cad ON a.id = cad.id
+        WHERE a.id = #{guru.id}
+    </update>
+    <update id="updateRecommend">
+        UPDATE ec_shop_guru guru
+        LEFT JOIN cms_article a ON 1=1
+        LEFT JOIN cms_article_data cad ON a.id = cad.id
+        SET guru.title = a.title
+        ,guru.intro = a.description
+        ,guru.details = cad.content
+        ,guru.img_url = a.image
+        WHERE a.id = #{guru.id}
+        AND guru.id = #{id}
+    </update>
+    <delete id="clearRecommend">
+        DELETE FROM ec_shop_guru WHERE id = #{id}
+    </delete>
+    <update id="saveRecommendOrder">
+        UPDATE ec_shop_guru
+        SET display_order = #{recommendOrder}
+        WHERE id = #{id}
+    </update>
+    <select id="getRandomId" resultType="java.lang.String">
+        SELECT
+        id
+        FROM ec_customer
+        WHERE 1=1
+        <if test="registered != null">
+            AND is_registered = #{registered}
+        </if>
+        ORDER BY RAND() LIMIT 1
+    </select>
+	<!--导出头像-->
+	<select id="getAvatars" resultType="map" parameterType="string">
+		SELECT id,avatar_url FROM ec_customer where avatar_url like #{keyword}
+	</select>
+    <update id="updateAvatarById">
+		UPDATE ec_customer SET avatar_url = #{avatar_url} WHERE id = #{cid}
+	</update>
+    <select id="getCurrentUpgradeLimit" resultType="java.lang.Integer">
+        SELECT value FROM sys_dict WHERE type = 'ec_upgrade_sales_limit' LIMIT 1
+    </select>
+    <update id="setUpgradeLimit">
+        UPDATE sys_dict
+        SET value = (SELECT min_exp FROM ec_level WHERE id = #{id})
+        WHERE type = 'ec_upgrade_sales_limit'
+    </update>
+    <select id="getByPhone" resultType="com.vcat.module.ec.entity.Customer">
+        SELECT id,user_name AS "userName",phone_number AS "phoneNumber" FROM ec_customer WHERE phone_number = #{phone}
+    </select>
+    <select id="findListByIds" resultType="com.vcat.module.ec.entity.Customer">
+        SELECT
+            a.id AS "id",
+            a.phone_number AS "phoneNumber",
+            a.is_registered AS "registered",
+            a.user_name AS "userName",
+            a.password AS "password",
+            a.email AS "email",
+            a.avatar_url AS "avatarUrl",
+            a.deactivated AS "deactivated",
+            a.create_by AS "createBy.id",
+            a.create_date AS "createDate",
+            a.push_token AS "pushToken",
+            a.device_type AS "deviceType",
+            a.id_card AS "idCard"
+        FROM ec_customer a
+        WHERE a.id IN (''
+        <foreach collection="idArray" item="id">
+            ,#{id}
+        </foreach>
+        )
+    </select>
+</mapper>

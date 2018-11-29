@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.FarmProductDao">
+    <select id="get" resultType="com.vcat.module.ec.entity.FarmProduct">
+        SELECT
+            farm.id AS "farm.id",
+            farm.name AS "farm.name",
+            farm.farm_services_wechat_no AS "wechatNo",
+        GROUP_CONCAT(farmP.name SEPARATOR '\r\n') AS "productNames",
+        GROUP_CONCAT(farmP.id SEPARATOR '|') AS "productIds"
+        FROM ec_product farm
+        LEFT JOIN ec_product_farm epf ON epf.farm_id = farm.id
+        LEFT JOIN ec_product farmP ON epf.product_id = farmP.id
+        WHERE farm.is_virtual_product = 1
+        AND farm.id = #{farm.id}
+        GROUP BY farm.id
+    </select>
+	<select id="findList" resultType="com.vcat.module.ec.entity.FarmProduct">
+        SELECT a.* FROM (
+        SELECT
+            farm.id AS "farm.id",
+            farm.name AS "farm.name",
+            farm.farm_services_wechat_no AS "wechatNo",
+            GROUP_CONCAT(farmP.name SEPARATOR '\r\n') AS "productNames"
+        FROM ec_product farm
+        LEFT JOIN ec_product_farm epf ON epf.farm_id = farm.id
+        LEFT JOIN ec_product farmP ON epf.product_id = farmP.id
+        WHERE farm.is_virtual_product = 1
+        GROUP BY farm.id) a WHERE 1=1
+        <if test="sqlMap.keyWord != null and sqlMap.keyWord != ''">
+            AND (a.`farm.id` LIKE '%${sqlMap.keyWord}%' OR a.productNames LIKE '%${sqlMap.keyWord}%')
+        </if>
+	</select>
+    <delete id="deleteFarmProduct">
+        DELETE FROM ec_product_farm WHERE farm_id = #{farmId}
+    </delete>
+    <insert id="addFarmProduct">
+        INSERT INTO ec_product_farm SELECT #{farmId},id FROM ec_product WHERE id IN(''
+        <foreach collection="productIdArray" item="productId">
+            ,#{productId}
+        </foreach>
+        )
+    </insert>
+    <select id="checkSame" resultType="com.vcat.module.ec.entity.Product">
+        SELECT
+            p.id,
+            p.name
+        FROM ec_product_farm farm
+        LEFT JOIN ec_product p ON farm.product_id = p.id
+        WHERE farm.farm_id != #{farmId}
+        AND p.id IN (''
+          <foreach collection="productIdArray" item="productId">
+              ,#{productId}
+          </foreach>
+        )
+    </select>
+    <update id="updateWechatNo">
+        UPDATE ec_product
+        SET farm_services_wechat_no = #{wechatNo}
+        WHERE id = #{id}
+    </update>
+</mapper>

@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.RecommendDao">
+	<sql id="recommendColumns">
+		a.id AS "id",
+		a.start_time AS "startTime",
+		a.end_time AS "endTime",
+		a.discount AS "discount",
+		t.id AS "recommendType.id",
+		t.name AS "recommendType.name",
+		t.code AS "recommendType.code"
+	</sql>
+	<sql id="recommendJoins">
+		LEFT JOIN ec_recommend_type t ON t.id = a.recommend_type_id
+	</sql>
+	<select id="get" resultType="RecommendEntity">
+		SELECT 
+			<include refid="recommendColumns"/>
+		FROM ec_recommend a
+		<include refid="recommendJoins"/>
+		WHERE a.id = #{id}
+	</select>
+    <insert id="insert">
+		INSERT INTO ec_recommend(
+			id,
+			start_time,
+			end_time,
+			discount,
+			recommend_type_id,
+            is_activate
+		) VALUES (
+			#{id},
+			#{startTime},
+			#{endTime},
+			#{discount},
+			(select id from ec_recommend_type where code = #{typeCode}),
+            1
+		)
+	</insert>
+	
+	<update id="update">
+		UPDATE ec_recommend SET
+			start_time = #{startTime},
+			end_time = #{endTime},
+			discount = #{discount}
+		WHERE id = #{id}
+	</update>
+	
+	<insert id="insertProductRecommend">
+		INSERT INTO ec_product_recommend(
+			id,
+			product_id,
+			recommend_id
+		) VALUES (
+			#{sqlMap.productRecommendId},
+			#{product.id},
+			#{id}
+		)
+	</insert>
+	<delete id="deleteProductRecommend">
+		DELETE FROM ec_product_recommend
+		WHERE recommend_id = #{id}
+	</delete>
+    <select id="findReserveList" resultType="com.vcat.module.ec.entity.RecommendEntity">
+        SELECT
+            re.id,
+            re.start_time AS "startTime",
+            re.end_time AS "endTime",
+            re.discount,
+            p.id AS "product.id",
+            p.name AS "product.name"
+        FROM ec_recommend re
+        INNER JOIN ec_recommend_type rt ON re.recommend_type_id = rt.id
+        INNER JOIN ec_product_recommend pr ON re.id = pr.recommend_id
+        INNER JOIN ec_product p ON pr.product_id = p.id
+        WHERE re.is_activate = 1
+        AND re.start_time IS NOT NULL
+        AND rt.code = 'RESERVE'
+        <if test="product != null and product.name != null and product.name != ''">
+            AND p.name LIKE '%${product.name}%'
+        </if>
+    </select>
+    <select id="getReserve" resultType="com.vcat.module.ec.entity.RecommendEntity">
+        SELECT
+            re.id,
+            re.start_time AS "startTime",
+            re.end_time AS "endTime",
+            re.discount,
+            p.id AS "product.id",
+            p.name AS "product.name"
+        FROM ec_recommend re
+        INNER JOIN ec_product_recommend pr ON re.id = pr.recommend_id
+        INNER JOIN ec_product p ON pr.product_id = p.id
+        WHERE re.is_activate = 1 AND re.id = #{id}
+    </select>
+    <update id="unActivateHistoryReserve">
+        UPDATE ec_recommend re
+        LEFT JOIN ec_recommend_type rt ON re.recommend_type_id = rt.id
+        LEFT JOIN ec_product_recommend pr ON re.id = pr.recommend_id
+        SET re.is_activate = 0
+        WHERE rt.code = 'RESERVE'
+        AND re.is_activate = 1
+        AND pr.product_id IN (''
+            <foreach collection="idArray" item="id">
+                ,#{id}
+            </foreach>
+        )
+    </update>
+
+    <delete id="deleteHotRecommend">
+        DELETE FROM ec_recommend
+        WHERE id = #{hotRecommendId}
+    </delete>
+    <insert id="insertHotRecommend">
+        INSERT INTO ec_recommend(
+        id,
+        recommend_type_id,
+        is_activate
+        ) VALUES (
+        #{hotRecommendId},
+        (select id from ec_recommend_type where code = #{RECOMMEND_HOT}),
+        1
+        )
+    </insert>
+    <select id="getExistsReserve" resultType="com.vcat.module.ec.entity.Product">
+        SELECT
+          p.id,
+          p.name
+        FROM ec_recommend re
+        LEFT JOIN ec_recommend_type rt ON re.recommend_type_id = rt.id
+        LEFT JOIN ec_product_recommend pr ON re.id = pr.recommend_id
+        LEFT JOIN ec_product p ON pr.product_id = p.id
+        WHERE rt.code = 'RESERVE'
+        AND re.is_activate = 1
+        AND re.end_time > CURRENT_TIMESTAMP
+        AND CURRENT_TIMESTAMP > re.start_time
+        AND pr.product_id IN (''
+        <foreach collection="productIdArray" item="id">
+            ,#{id}
+        </foreach>
+        )
+    </select>
+    <select id="getExistsHot" resultType="com.vcat.module.ec.entity.Product">
+        SELECT
+        p.id,
+        p.name,
+        re.id AS "hotRecommendId"
+        FROM ec_recommend re
+        LEFT JOIN ec_recommend_type rt ON re.recommend_type_id = rt.id
+        LEFT JOIN ec_product_recommend pr ON re.id = pr.recommend_id
+        LEFT JOIN ec_product p ON pr.product_id = p.id
+        WHERE rt.code = 'HOT'
+        AND re.is_activate = 1
+        AND pr.product_id IN (''
+        <foreach collection="productIdArray" item="id">
+            ,#{id}
+        </foreach>
+        )
+    </select>
+</mapper>

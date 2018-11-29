@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ExpressApiDao">
+
+	<insert id="insert">
+		INSERT INTO ec_express_api(
+		id,
+		express_code,
+		shipping_no,
+		data,
+		state,
+		update_date,
+		receiving_date
+		) VALUES (
+		#{id},
+		#{code},
+		#{no},
+		#{data},
+		#{state},
+		NOW(),
+		#{receivingDate}
+		)
+	</insert>
+	
+	<select id="query" resultType="string">
+		SELECT data FROM ec_express_api WHERE express_code = #{code} AND shipping_no = #{no} ORDER BY update_date DESC LIMIT 1
+ 	</select>
+</mapper>

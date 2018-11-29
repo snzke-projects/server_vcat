@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ReviewLibraryDao">
+    <select id="get" resultType="ReviewLibrary">
+        SELECT
+        a.id,
+        a.category_id AS "category.id",
+        c.name AS "category.name",
+        a.rating,
+        a.review_text AS "reviewText"
+        FROM ec_review_library a
+        LEFT JOIN ec_category c ON a.category_id = c.id
+        WHERE a.id = #{id}
+    </select>
+    <select id="findList" resultType="ReviewLibrary">
+        SELECT
+        a.id,
+        a.category_id AS "category.id",
+        c.name AS "category.name",
+        a.rating,
+        a.review_text AS "reviewText"
+        FROM ec_review_library a
+        LEFT JOIN ec_category c ON a.category_id = c.id
+        WHERE 1=1
+        <if test="category != null and category.id != ''">
+            AND a.category_id = #{category.id}
+        </if>
+    </select>
+    <insert id="insert">
+        INSERT INTO ec_review_library(
+        id,
+        category_id,
+        rating,
+        review_text
+        ) VALUES (
+        #{id},
+        #{category.id},
+        #{rating},
+        #{reviewText}
+        )
+    </insert>
+    <update id="update">
+        UPDATE ec_review_library
+        SET category_id = #{category.id}
+        ,rating = #{rating}
+        ,review_text = #{reviewText}
+        WHERE id = #{id}
+    </update>
+    <delete id="delete">
+        DELETE FROM ec_review_library WHERE id = #{id}
+    </delete>
+</mapper>

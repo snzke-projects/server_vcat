@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.2.xsd"
+	default-lazy-init="true">
+
+    <!-- QUARTZ START -->
+    <bean id="scheduler"
+          class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+        <property name="dataSource" ref="dataSource" />
+        <property name="configLocation" value="classpath:quartz.properties" />
+        <!-- This name is persisted as SCHED_NAME in db. for local testing could
+            change to unique name to avoid collision with dev server -->
+        <property name="schedulerName" value="${scheduler.name}" />
+        <!-- Will update database cron triggers to what is in this jobs file on
+            each deploy. Replaces all previous trigger and job data that was in the database.
+            YMMV -->
+        <property name="overwriteExistingJobs" value="true" />
+        <property name="startupDelay" value="10" />
+        <property name="applicationContextSchedulerContextKey" value="applicationContext" />
+        <property name="jobFactory">
+            <bean class="com.vcat.common.quartz.AutowiringSpringBeanJobFactory" />
+        </property>
+        <property name="triggers">
+            <list>
+                <ref bean="settlementTeamBonusTrigger" />
+            </list>
+        </property>
+        <property name="taskExecutor" ref="quartzExecutor" />
+    </bean>
+
+    <!-- 增加定时器配置 -->
+    <!-- 线程执行器配置，用于任务注册 -->
+    <bean id="quartzExecutor"
+          class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+        <property name="corePoolSize" value="10" />
+        <property name="maxPoolSize" value="100" />
+        <property name="queueCapacity" value="500" />
+    </bean>
+
+    <!-- 结算团队分红job-->
+    <bean id="settlementTeamBonusTrigger"
+          class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+        <property name="jobDetail" ref="settlementTeamBonusJob" />
+        <property name="cronExpression" value="0 0 19 ? * SUN" /><!-- 每周日晚上7点 -->
+    </bean>
+    <bean name="settlementTeamBonusJob"
+          class="org.springframework.scheduling.quartz.JobDetailFactoryBean">
+        <property name="jobClass" value="com.vcat.module.ec.service.scheduled.SettlementTeamBonusJob" />
+        <property name="durability" value="true"/>
+        <property name="description" value="结算团队分红任务"/>
+    </bean>
+
+    <!-- QUARTZ END -->
+</beans>

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ShopDao">
+	<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.Shop">
+		<id column="id" property="id" />
+		<result column="confirm_receipt" property="confirmReceipt" />
+		<result column="auto_off" property="autoOff" />
+		<result column="color" property="color" />
+		<result column="bg_url" property="bgUrl" />
+		<result column="exp" property="exp" />
+		<result column="shop_num" property="shopNum" />
+		<result column="name" property="name" />
+        <result column="parent_id" property="parentId" />
+        <result column="parentName" property="parentName" />
+		<association column="level_id" 
+			select="com.vcat.module.ec.dao.LevelDao.select" property="level"
+			javaType="com.vcat.module.ec.entity.Level" />
+		<association column="id" 
+			select="com.vcat.module.ec.dao.ShopFundDao.get" property="fund"
+			javaType="com.vcat.module.ec.entity.ShopFund" />
+	</resultMap>
+	<sql id="Base_Column_List">
+		s.id,
+		s.level_id,
+		s.confirm_receipt,
+		s.auto_off,
+		s.color,
+		s.bg_url,
+		s.exp,
+		s.shop_num,
+		s.parent_id
+	</sql>
+	<sql id="Base_Where_Clause">
+		<where>
+			1=1
+			<if test="id!=null and id!=''">
+				AND s.id = #{id}
+			</if>
+			<if test="level!=null and level.id!=null and level.id!=''">
+				AND s.level_id = #{level.id}
+			</if>
+			<if test="shopNum!=null and shopNum!=''">
+				AND s.shop_num = #{shopNum}
+			</if>
+		</where>
+	</sql>
+	<select id="get" resultMap="BaseResultMap" parameterType="com.vcat.module.ec.entity.Shop">
+		SELECT
+		<include refid="Base_Column_List" />,ss.user_name AS "parentName",c.user_name AS "name"
+		FROM ec_shop AS s
+		LEFT JOIN ec_customer AS ss ON ss.id=s.parent_id
+		LEFT JOIN ec_customer AS c ON c.id=s.id
+		<include refid="Base_Where_Clause" />
+		LIMIT 1
+	</select>
+	<select id="select" resultMap="BaseResultMap" parameterType="String">
+		SELECT
+		<include refid="Base_Column_List" />,ss.user_name AS "parentName",c.user_name AS "name"
+		FROM ec_shop AS s
+		LEFT JOIN ec_customer AS ss ON ss.id=s.parent_id
+		LEFT JOIN ec_customer AS c ON c.id=s.id
+		where 1=1 AND s.id = #{_parameter}
+	</select>
+	<insert id="insert" parameterType="com.vcat.module.ec.entity.Shop">
+		INSERT INTO ec_shop(
+		id,
+		level_id,
+		name,
+		confirm_receipt,
+		auto_off,
+		color,
+		bg_url,
+		exp,
+		shop_num,
+		parent_id
+		) VALUES (
+		#{id},
+		#{level.id},
+		#{name},
+		#{confirmReceipt},
+		#{autoOff},
+		#{color},
+		#{bgUrl},
+		#{exp},
+		#{shopNum},
+		#{parentId}
+		)
+	</insert>
+	<select id="count" 
+		resultType="java.lang.Integer">
+		SELECT MAX(shop_num) FROM ec_shop
+		WHERE shop_num IS NOT NULL
+	</select>
+	<update id="update" parameterType="com.vcat.module.ec.entity.Shop">
+		UPDATE ec_shop SET
+		level_id = #{level.id},
+		name = #{name},
+		confirm_receipt = #{confirmReceipt},
+		auto_off = #{autoOff},
+		color = #{color},
+		bg_url = #{bgUrl},
+		exp = #{exp},
+		shop_num = #{shopNum},
+		parent_id=#{parentId}
+		WHERE id = #{id}
+	</update>
+	<select id="getFriendsById" parameterType="String" resultType="string">
+		SELECT c.id
+		FROM ec_shop AS ss
+		LEFT JOIN ec_customer AS c ON  ss.id=c.id
+		WHERE ss.parent_id= #{pid}
+	</select>
+	<update id="updateParentId" parameterType="string">
+		UPDATE ec_shop SET
+		parent_id=NULL
+		WHERE id = #{id}
+	</update>
+	<select id="getRankByPhone" parameterType="string" resultType="com.vcat.module.ec.entity.Rank">
+	SELECT s.id AS "shopId" ,c.user_name AS "name",ll.name AS "level",
+	(SELECT SUM(fund) FROM ec_rank_test WHERE phone_number = c.phone_number
+	AND DATE_FORMAT(NOW(),'%Y-%m-%d')>=DATE_FORMAT(create_date,'%Y-%m-%d')) AS "totalFund"
+	FROM ec_shop AS s 
+	LEFT JOIN ec_customer AS c ON c.id = s.id
+	LEFT JOIN ec_level AS ll ON ll.id = s.level_id
+	WHERE c.phone_number = #{_parameter}
+	</select>
+</mapper>

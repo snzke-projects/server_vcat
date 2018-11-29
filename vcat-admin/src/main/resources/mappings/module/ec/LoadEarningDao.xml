@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.LoadEarningDao">
+	<select id="get" resultType="LoadEarning">
+		SELECT 
+			id AS "id",
+			product_id AS "product.id",
+			fund AS "fund",
+			convert_fund AS "convertFund",
+			is_activate AS  "isActivate",
+			create_by AS "createBy",
+			create_date AS "createDate"
+		FROM ec_load_earning a
+		WHERE a.id = #{id}
+	</select>
+
+	<select id="findList" resultType="LoadEarning">
+		SELECT 
+		  id AS "id",
+		  product_id AS "product.id",
+		  fund AS "fund",
+          convert_fund AS "convertFund",
+		  is_activate AS  "isActivate",
+		  create_by AS "createBy",
+		  create_date AS "createDate"
+		FROM ec_load_earning a
+		WHERE 1=1
+		<if test="product != null and product.id != null and product.id != ''">
+			AND a.product_id = #{product.id}
+		</if>
+		ORDER BY a.id ASC
+	</select>
+	
+	<insert id="insert">
+		INSERT INTO ec_load_earning(
+			id,
+			product_id,
+			fund,
+			convert_fund,
+			is_activate,
+			create_by,
+			create_date
+		) VALUES (
+			#{id},
+			#{product.id},
+			#{fund},
+			#{convertFund},
+			#{ACTIVATED},
+			#{createBy.id},
+			NOW()
+		)
+	</insert>
+	
+	<update id="deleteLastEarning">
+		UPDATE ec_load_earning
+		SET is_activate = #{NOT_ACTIVATED}
+		WHERE product_id = #{product.id}
+	</update>
+</mapper>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.GroupBuyingDao">
+    <sql id="groupBuyingSelectSql">
+        SELECT
+            g.id,
+            g.name,
+            g.needed_people AS "neededPeople",
+            g.product_id AS "product.id",
+            g.product_item_id AS "productItem.id",
+            g.single_price AS "singlePrice",
+            g.status AS "status",
+            g.period AS "period",
+            g.start_date AS "startDate",
+            g.end_date AS "endDate",
+            g.create_date AS "createDate",
+            g.oper_by AS "operBy.id",
+            g.oper_date AS "operDate",
+            g.display_order AS "displayOrder",
+            u.name AS "operBy.name",
+            p.name AS "product.name",
+            p.archived AS "product.archived",
+            pi.retail_price AS "price",
+            pi.inventory AS "inventory",
+            pi.product_item_type AS "productItem.productItemType",
+            l.id AS "limitId",
+            l.id IS NOT NULL AS "isLimit",
+            l.times AS "times"
+        FROM ec_group_buying g
+        LEFT JOIN sys_user u ON g.oper_by = u.id
+        LEFT JOIN ec_product p ON g.product_id = p.id
+        LEFT JOIN ec_product_item pi ON (g.product_item_id = pi.id AND  pi.product_item_type = 1)
+        LEFT JOIN ec_product_limit l ON (g.product_item_id = l.product_item_id AND l.del_flag = 0)
+    </sql>
+    <select id="get" resultType="com.vcat.module.ec.entity.GroupBuying">
+        <include refid="groupBuyingSelectSql"></include>
+        WHERE g.id = #{id}
+    </select>
+    <select id="findList" resultType="com.vcat.module.ec.entity.GroupBuying">
+        <include refid="groupBuyingSelectSql"></include>
+        WHERE 1=1
+        <if test="sqlMap.keyWord != null and sqlMap.keyWord != ''">
+            AND (g.name LIKE '%${sqlMap.keyWord}%'
+            OR p.name LIKE '%${sqlMap.keyWord}%')
+        </if>
+        AND(1=1
+        <if test="status != null or status == 0">
+            AND g.status = #{status}
+        </if>
+        <if test="status != null and status == 1">
+            AND g.start_date &lt; CURRENT_TIMESTAMP
+            AND g.end_date > CURRENT_TIMESTAMP
+        </if>
+        <if test="status != null and status == 2">
+            OR g.end_date &lt; CURRENT_TIMESTAMP
+        </if>
+        )
+        ORDER BY g.display_order DESC
+    </select>
+    <insert id="insert" parameterType="com.vcat.module.ec.entity.GroupBuying">
+        INSERT INTO ec_group_buying (id, name, needed_people, product_id, product_item_id, single_price, status, period, start_date, end_date, create_date, oper_by, oper_date, display_order)
+        VALUES (#{id}, #{name}, #{neededPeople}, #{product.id}, #{productItem.id}, #{singlePrice}, 0, #{period}, #{createDate}, #{endDate}, #{createDate}, #{createBy.id}, #{createDate}, #{displayOrder})
+    </insert>
+    <update id="update"  parameterType="com.vcat.module.ec.entity.GroupBuying">
+        UPDATE ec_group_buying
+        SET name = #{name},
+            needed_people = #{neededPeople},
+            product_id = #{product.id},
+            product_item_id = #{productItem.id},
+            single_price = #{singlePrice},
+            period = #{period},
+            end_date = #{endDate},
+            oper_by = #{updateBy.id},
+            oper_date = #{updateDate},
+            display_order = #{displayOrder}
+        WHERE id = #{id}
+    </update>
+    <update id="activate">
+        UPDATE ec_group_buying
+        SET status = 1,
+            start_date = #{updateDate}
+        WHERE id = #{id}
+        AND status = 0
+    </update>
+    <select id="getAnother" resultType="com.vcat.module.ec.entity.GroupBuying">
+        <include refid="groupBuyingSelectSql"></include>
+        WHERE p.id = #{product.id}
+        AND g.status = 1
+        AND CURRENT_TIMESTAMP > g.start_date
+        AND g.end_date > CURRENT_TIMESTAMP
+        <if test="id != null and id != ''">
+            AND g.id != #{id}
+        </if>
+    </select>
+</mapper>

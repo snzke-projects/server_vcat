@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ShopInfoDao">
+    <select id="get" resultType="com.vcat.module.ec.entity.ShopInfo">
+        SELECT
+            esi.id,
+            esi.shop_id AS "shop.id",
+            es.name AS "shop.name",
+            ec.phone_number AS "shopPhone",
+            esi.product_id AS "product.id",
+            ep.name AS "product.name",
+            esi.real_name AS "realName",
+            esi.farm_name AS "farmName",
+            esi.qr_code_url AS "qrCodeUrl",
+            esi.is_default AS "isDefault",
+            esi.create_date AS "createDate",
+            esi.base_card_inventory AS "baseCardInventory",
+            esi.company_card_inventory AS "companyCardInventory",
+            esi.note AS "note"
+        FROM ec_shop_info esi
+            LEFT JOIN ec_shop es ON esi.shop_id = es.id
+            LEFT JOIN ec_customer ec ON esi.shop_id = ec.id
+            LEFT JOIN ec_product ep ON esi.product_id = ep.id
+        WHERE esi.is_activate = 1
+              AND esi.id = #{id}
+    </select>
+    <select id="findList" resultType="com.vcat.module.ec.entity.ShopInfo">
+        SELECT
+        esi.id,
+        esi.shop_id AS "shop.id",
+        es.name AS "shop.name",
+        ec.phone_number AS "shopPhone",
+        esi.product_id AS "product.id",
+        ep.name AS "product.name",
+        esi.real_name AS "realName",
+        esi.farm_name AS "farmName",
+        esi.qr_code_url AS "qrCodeUrl",
+        esi.is_default AS "isDefault",
+        esi.create_date AS "createDate",
+        esi.base_card_inventory AS "baseCardInventory",
+        esi.company_card_inventory AS "companyCardInventory",
+        esi.note AS "note"
+        FROM ec_shop_info esi
+        LEFT JOIN ec_shop es ON esi.shop_id = es.id
+        LEFT JOIN ec_customer ec ON esi.shop_id = ec.id
+        LEFT JOIN ec_product ep ON esi.product_id = ep.id
+        WHERE esi.is_activate = 1
+        <if test="sqlMap.keyWord != null and sqlMap.keyWord != ''">
+            AND (
+            esi.real_name like '%${sqlMap.keyWord}%'
+            OR esi.farm_name like '%${sqlMap.keyWord}%'
+            OR es.name like '%${sqlMap.keyWord}%'
+            OR ep.name like '%${sqlMap.keyWord}%'
+            )
+        </if>
+        ORDER BY es.name,esi.farm_name
+    </select>
+    <update id="update">
+        UPDATE ec_shop_info
+        SET product_id = #{product.id},
+            shop_id = #{shop.id},
+            qr_code_url = #{qrCodeUrl},
+            base_card_inventory = #{baseCardInventory},
+            note = #{note}
+        WHERE id = #{id}
+    </update>
+    <update id="updateCompanyInventory">
+        UPDATE ec_shop_info
+        SET company_card_inventory = #{companyCardInventory},
+        farm_name = #{farmName},
+        real_name = #{realName}
+        WHERE shop_id = #{shop.id}
+    </update>
+    <insert id="insert">
+        INSERT INTO ec_shop_info (id, shop_id, product_id, real_name, farm_name, qr_code_url, is_default, create_date, is_activate, base_card_inventory, company_card_inventory, note)
+        VALUES (#{id}, #{shop.id}, #{product.id}, #{realName}, #{farmName}, #{qrCodeUrl}, 0, #{createDate}, 1, #{baseCardInventory}, #{companyCardInventory}, #{note})
+    </insert>
+    <select id="getSame" resultType="com.vcat.module.ec.entity.ShopInfo">
+        SELECT
+        esi.id,
+        esi.shop_id AS "shop.id",
+        es.name AS "shop.name",
+        esi.product_id AS "product.id",
+        ep.name AS "product.name",
+        esi.real_name AS "realName",
+        esi.farm_name AS "farmName",
+        esi.qr_code_url AS "qrCodeUrl",
+        esi.is_default AS "isDefault",
+        esi.create_date AS "createDate",
+        esi.base_card_inventory AS "baseCardInventory",
+        esi.company_card_inventory AS "companyCardInventory"
+        FROM ec_shop_info esi
+        LEFT JOIN ec_shop es ON esi.shop_id = es.id
+        LEFT JOIN ec_product ep ON esi.product_id = ep.id
+        WHERE esi.is_activate = 1
+        AND esi.product_id = #{product.id}
+        AND esi.shop_id = #{shop.id}
+        <if test="id != null and id != ''">
+            AND esi.id != #{id}
+        </if>
+    </select>
+    <select id="getSameFarmName" resultType="java.lang.String">
+        SELECT
+        esi.farm_name AS "farmName"
+        FROM ec_shop_info esi
+        LEFT JOIN ec_shop es ON esi.shop_id = es.id
+        LEFT JOIN ec_product ep ON esi.product_id = ep.id
+        WHERE esi.is_activate = 1
+        AND esi.product_id = #{product.id}
+        AND esi.farm_name = #{farmName}
+        <if test="id != null and id != ''">
+            AND esi.id != #{id}
+        </if>
+    </select>
+    <update id="subtractInventory">
+        UPDATE ec_shop_info
+        SET base_card_inventory = base_card_inventory - 1
+        WHERE id = #{id}
+    </update>
+    <select id="getShopInfoByShopId" resultType="com.vcat.module.ec.entity.ShopInfo">
+        SELECT
+        esi.id,
+        esi.shop_id AS "shop.id",
+        es.name AS "shop.name",
+        esi.product_id AS "product.id",
+        ep.name AS "product.name",
+        esi.real_name AS "realName",
+        esi.farm_name AS "farmName",
+        esi.qr_code_url AS "qrCodeUrl",
+        esi.is_default AS "isDefault",
+        esi.create_date AS "createDate",
+        esi.base_card_inventory AS "baseCardInventory",
+        esi.company_card_inventory AS "companyCardInventory"
+        FROM ec_shop_info esi
+        LEFT JOIN ec_shop es ON esi.shop_id = es.id
+        LEFT JOIN ec_product ep ON esi.product_id = ep.id
+        WHERE esi.shop_id = #{shop.id}
+        LIMIT 1
+    </select>
+</mapper>

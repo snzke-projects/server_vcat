@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ProductItemDao">
+	<select id="get" resultType="com.vcat.module.ec.entity.ProductItem">
+		SELECT
+        a.id AS "id",
+        a.product_id AS "product.id",
+        a.item_sn AS "itemSn",
+        a.name AS "name",
+        a.purchase_price AS "purchasePrice",
+        a.retail_price AS "retailPrice",
+        a.sale_earning AS "saleEarning",
+        a.bonus_earning AS "bonusEarning",
+        a.first_bonus_earning AS "firstBonusEarning",
+        a.second_bonus_earning AS "secondBonusEarning",
+        a.point AS "point",
+        a.coupon_value AS "couponValue",
+        a.inventory AS "inventory",
+        a.coupon_all_inventory AS "couponAllInventory",
+        a.coupon_part_inventory AS "couponPartInventory",
+        a.weight AS "weight",
+        a.product_item_type AS "productItemType",
+        p.name AS "product.name"
+		FROM ec_product_item a
+		LEFT JOIN ec_product p ON a.product_id = p.id
+		WHERE a.id = #{id}
+	</select>
+    <select id="findListByIds" resultType="com.vcat.module.ec.entity.ProductItem">
+        SELECT
+        a.id AS "id",
+        a.product_id AS "product.id",
+        a.item_sn AS "itemSn",
+        a.name AS "name",
+        a.purchase_price AS "purchasePrice",
+        a.retail_price AS "retailPrice",
+        a.sale_earning AS "saleEarning",
+        a.bonus_earning AS "bonusEarning",
+        a.first_bonus_earning AS "firstBonusEarning",
+        a.second_bonus_earning AS "secondBonusEarning",
+        a.point AS "point",
+        a.coupon_value AS "couponValue",
+        a.inventory AS "inventory",
+        a.coupon_all_inventory AS "couponAllInventory",
+        a.coupon_part_inventory AS "couponPartInventory",
+        a.weight AS "weight",
+        a.product_item_type AS "productItemType",
+        p.name AS "product.name"
+        FROM ec_product_item a
+        LEFT JOIN ec_product p ON a.product_id = p.id
+        WHERE a.id IN (''
+        <if test="idArray != null">
+            <foreach collection="idArray" item="id">
+                ,#{id}
+            </foreach>
+        </if>
+        )
+    </select>
+
+	<select id="findList" resultType="ProductItem">
+		SELECT
+            a.id AS "id",
+            a.product_id AS "product.id",
+            a.item_sn AS "itemSn",
+            a.name AS "name",
+            a.purchase_price AS "purchasePrice",
+            a.retail_price AS "retailPrice",
+            a.sale_earning AS "saleEarning",
+            a.bonus_earning AS "bonusEarning",
+            a.second_bonus_earning AS "secondBonusEarning",
+            a.point AS "point",
+            a.coupon_value AS "couponValue",
+            a.inventory AS "inventory",
+            a.coupon_all_inventory AS "couponAllInventory",
+            a.coupon_part_inventory AS "couponPartInventory",
+            a.weight AS "weight",
+            a.product_item_type AS "productItemType",
+            p.name AS "product.name",
+            b.id AS "product.brand.id",
+            b.name AS "product.brand.name",
+            c.id AS "product.category.id",
+            c.name AS "product.category.name"
+		FROM ec_product_item a
+		LEFT JOIN ec_product p ON p.id = a.product_id
+        LEFT JOIN ec_category_product cp ON p.id = cp.product_id
+        LEFT JOIN ec_category c ON c.id = cp.category_id
+		LEFT JOIN ec_brand b ON b.id = p.brand_id
+        WHERE a.del_flag = 0
+        AND p.del_flag = 0
+        AND p.archived = 0
+        <if test="productItemType != null and productItemType != ''">
+            AND a.product_item_type = #{productItemType}
+        </if>
+		<if test="product != null and product.category != null and product.category.id != ''">
+            AND c.lft BETWEEN (SELECT lft FROM ec_category where id = #{product.category.id}) AND (SELECT rgt FROM ec_category where id = #{product.category.id})
+        </if>
+        <if test="product != null and product.brand != null and product.brand.id != ''">
+            AND b.id = #{product.brand.id}
+        </if>
+        <if test="sqlMap != null and sqlMap.keyWord != ''">
+            AND (a.name LIKE '%${sqlMap.keyWord}%' OR p.name LIKE '%${sqlMap.keyWord}%')
+        </if>
+        <if test="sqlMap != null and sqlMap.noReconciliation == 'true'">
+            AND a.id NOT IN (SELECT DISTINCT id FROM ec_product_reconciliation)
+        </if>
+        <if test="sqlMap != null and sqlMap.onlyTopic != null and sqlMap.onlyTopic == 'true'">
+            AND a.product_id IN (SELECT DISTINCT product_id FROM ec_topic_product)
+        </if>
+		ORDER BY a.item_sn ASC
+	</select>
+	<insert id="insert">
+		INSERT INTO ec_product_item(
+			id,
+			product_id,
+			item_sn,
+			name,
+			purchase_price,
+			retail_price,
+			sale_earning,
+			bonus_earning,
+            first_bonus_earning,
+			second_bonus_earning,
+			point,
+			coupon_value,
+			inventory,
+			coupon_all_inventory,
+			coupon_part_inventory,
+			weight,
+			del_flag,
+            product_item_type
+		) VALUES (
+			#{id},
+			#{sqlMap.productId},
+			#{itemSn},
+			#{name},
+			#{purchasePrice},
+			#{retailPrice},
+			#{saleEarning},
+			#{bonusEarning},
+            #{firstBonusEarning},
+			#{secondBonusEarning},
+			#{point},
+			0,
+			#{inventory},
+			0,
+			0,
+			#{weight},
+			#{DEL_FLAG_NORMAL},
+            #{productItemType}
+		)
+	</insert>
+    <update id="update">
+		UPDATE ec_product_item SET
+        name = #{name},
+		item_sn = #{itemSn},
+		purchase_price = #{purchasePrice},
+		retail_price = #{retailPrice},
+		sale_earning = #{saleEarning},
+		bonus_earning = #{bonusEarning},
+        first_bonus_earning = #{firstBonusEarning},
+		second_bonus_earning = #{secondBonusEarning},
+		point = #{point},
+		inventory = #{inventory},
+		weight = #{weight}
+		WHERE id = #{id}
+	</update>
+
+	<select id="findListByProduct" resultType="com.vcat.module.ec.entity.ProductItem">
+		SELECT
+            a.id AS "id",
+            a.product_id AS "product.id",
+            a.item_sn AS "itemSn",
+            a.name AS "name",
+            a.purchase_price AS "purchasePrice",
+            a.retail_price AS "retailPrice",
+            a.sale_earning AS "saleEarning",
+            a.bonus_earning AS "bonusEarning",
+            a.first_bonus_earning AS "firstBonusEarning",
+            a.second_bonus_earning AS "secondBonusEarning",
+            a.point AS "point",
+            a.coupon_value AS "couponValue",
+            a.inventory AS "inventory",
+            a.coupon_all_inventory AS "couponAllInventory",
+            a.coupon_part_inventory AS "couponPartInventory",
+            a.weight AS "weight",
+            a.product_item_type AS "productItemType",
+			product.id AS "product.id",
+			product.name AS "product.name"
+			,(SELECT GROUP_CONCAT(CONCAT(val.name,':',val.value)) FROM ec_spec_value val WHERE val.product_item_id = a.id) AS "remarks"
+		FROM ec_product_item a
+		LEFT JOIN ec_product product on a.product_id = product.id
+		WHERE a.product_id = #{id}
+		AND a.del_flag = #{DEL_FLAG_NORMAL}
+        <if test="sqlMap.productItemType != null and sqlMap.productItemType != ''">
+            AND a.product_item_type = #{sqlMap.productItemType}
+        </if>
+		ORDER BY a.item_sn ASC
+	</select>
+	<update id="delete">
+		UPDATE ec_product_item SET
+		del_flag = #{DEL_FLAG_DELETE}
+		WHERE id = #{id}
+	</update>
+	<update id="deleteByProduct">
+		UPDATE ec_product_item SET
+		del_flag = #{DEL_FLAG_DELETE}
+		WHERE product_id = #{id}
+		AND del_flag = #{DEL_FLAG_NORMAL}
+	</update>
+
+    <update id="addQuantityByRefund">
+        UPDATE ec_product_item SET inventory = inventory + #{quantity} WHERE id = #{id}
+    </update>
+</mapper>

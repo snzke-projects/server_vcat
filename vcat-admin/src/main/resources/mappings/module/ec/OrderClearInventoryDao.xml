@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.OrderClearInventoryDao">
+    <select id="findList" resultType="com.vcat.module.ec.entity.OrderClearInventory">
+        SELECT
+            eoci.id,
+            eoci.order_id AS 'orderId',
+            eoci.delivery_name AS 'deliveryName',
+            eoci.delivery_phone AS 'deliveryPhone',
+            eoci.detail_address AS 'detailAddress',
+            eoci.clear_inventory AS 'clearInventory',
+            eoci.express_id AS 'express.id',
+            e.name AS 'express.name',
+            eoci.shipping_date AS 'shippingDate',
+            eoci.shipping_number AS 'shippingNumber',
+            eoci.note,
+            eoci.oper_by AS 'operBy.id',
+            u.name AS 'operBy.name',
+            eoci.oper_date AS 'operDate'
+        FROM ec_order_clear_inventory eoci
+        LEFT JOIN ec_order o ON eoci.order_id = o.id
+        LEFT JOIN ec_express e ON eoci.express_id = e.id
+        LEFT JOIN sys_user u ON eoci.oper_by = u.id
+        WHERE eoci.order_id = #{orderId}
+    </select>
+    <insert id="insert">
+        INSERT INTO ec_order_clear_inventory(
+            id,
+            order_id,
+            delivery_name,
+            delivery_phone,
+            detail_address,
+            clear_inventory,
+            express_id,
+            shipping_date,
+            shipping_number,
+            note,
+            oper_by,
+            oper_date
+        )VALUES (
+            #{id},
+            #{orderId},
+            #{deliveryName},
+            #{deliveryPhone},
+            #{detailAddress},
+            #{clearInventory},
+            #{express.id},
+            #{shippingDate},
+            #{shippingNumber},
+            #{note},
+            #{currentUser.id},
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+</mapper>

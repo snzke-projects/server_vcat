@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.CopywriteImageDao">
+    <select id="findList" resultType="com.vcat.module.ec.entity.CopywriteImage">
+        SELECT
+            c.id,
+            c.image_url AS "imageUrl",
+            c.display_order AS "displayOrder",
+            c.create_date AS "createDate"
+        FROM ec_copywrite_image c
+        WHERE c.copywrite_id = #{copywrite.id}
+        ORDER BY c.display_order DESC
+    </select>
+    <select id="findShopList" resultType="com.vcat.module.ec.entity.CopywriteImage">
+        SELECT
+            c.id,
+            c.image_url AS "imageUrl",
+            c.display_order AS "displayOrder",
+            c.create_date AS "createDate",
+            c.shop_id AS "shop.id",
+            s.name AS "shop.name",
+            cu.phone_number AS "shop.customer.phoneNumber"
+        FROM ec_copywrite_shop_image c
+        LEFT JOIN ec_shop s ON c.shop_id = s.id
+        LEFT JOIN ec_customer cu ON s.id = cu.id
+        WHERE c.copywrite_id = #{copywrite.id}
+        ORDER BY c.display_order
+    </select>
+    <delete id="deleteByCopywrite">
+        DELETE FROM ec_copywrite_image WHERE copywrite_id = #{id}
+    </delete>
+    <delete id="deleteShopByCopywrite">
+        DELETE FROM ec_copywrite_shop_image WHERE copywrite_id = #{id}
+    </delete>
+    <insert id="insert">
+        INSERT INTO ec_copywrite_image(id,copywrite_id,image_url,display_order,create_date)VALUES (
+        #{id},
+        #{copywrite.id},
+        #{imageUrl},
+        #{displayOrder},
+        CURRENT_TIMESTAMP
+        )
+    </insert>
+    <insert id="insertShop">
+        INSERT INTO ec_copywrite_shop_image(id,copywrite_id,shop_id,image_url,display_order,create_date)VALUES (
+        #{id},
+        #{copywrite.id},
+        #{shop.id},
+        #{imageUrl},
+        #{displayOrder},
+        CURRENT_TIMESTAMP
+        )
+    </insert>
+</mapper>

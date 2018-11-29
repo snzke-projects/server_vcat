@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.PromotionDao">
+    <select id="get" resultType="com.vcat.module.ec.entity.Promotion">
+        SELECT
+            promotion.id,
+            promotion.name,
+            promotion.buy_count AS 'buyCount',
+            promotion.free_count AS 'freeCount',
+            promotion.is_activate AS 'isActivate',
+            promotion.create_date AS 'createDate',
+            promotion.oper_by AS 'operBy',
+            promotion.oper_date AS 'operDate'
+        FROM ec_promotion promotion
+        WHERE promotion.id = #{id}
+    </select>
+    <select id="findList" resultType="com.vcat.module.ec.entity.Promotion">
+        SELECT
+            promotion.id,
+            promotion.name,
+            promotion.buy_count AS 'buyCount',
+            promotion.free_count AS 'freeCount',
+            promotion.is_activate AS 'isActivate',
+            promotion.create_date AS 'createDate',
+            promotion.oper_by AS 'operBy.id',
+            operBy.name AS 'operBy.name',
+            promotion.oper_date AS 'operDate'
+        FROM ec_promotion promotion
+        LEFT JOIN sys_user operBy ON operBy.id = promotion.oper_by
+        WHERE 1=1
+        <if test="sqlMap.keyWord != null and sqlMap.keyWord != ''">
+            AND promotion.name LIKE '%${sqlMap.keyWord}%'
+        </if>
+        ORDER BY promotion.is_activate DESC,promotion.oper_date DESC
+    </select>
+    <insert id="insert">
+        INSERT ec_promotion(
+            id
+            ,name
+            ,buy_count
+            ,free_count
+            ,is_activate
+            ,create_date
+            ,oper_by
+            ,oper_date
+        )VALUES(
+            #{id}
+            ,#{name}
+            ,#{buyCount}
+            ,#{freeCount}
+            ,1
+            ,CURRENT_TIMESTAMP
+            ,#{currentUser.id}
+            ,CURRENT_TIMESTAMP
+        )
+    </insert>
+    <update id="update">
+        UPDATE ec_promotion
+        SET name = #{name}
+        ,buy_count = #{buyCount}
+        ,free_count = #{freeCount}
+        ,oper_by = #{currentUser.id}
+        ,oper_date = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+    <update id="activate">
+        UPDATE ec_promotion
+        SET is_activate = #{isActivate}
+        ,oper_by = ${currentUser.id}
+        ,oper_date = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+    <delete id="deleteProduct">
+        DELETE FROM ec_promotion_product
+        WHERE promotion_id = #{id}
+    </delete>
+    <insert id="addProduct">
+        INSERT INTO ec_promotion_product(id,promotion_id,product_id)
+        SELECT REPLACE(CAST(UUID() as char character set utf8), '-', ''),#{id},id FROM ec_product
+        WHERE id IN(''
+        <foreach collection="productList" item="product">
+            ,#{product.id}
+        </foreach>
+        )
+    </insert>
+    <select id="findProductListByPromotion" resultType="com.vcat.module.ec.entity.Product">
+        SELECT product_id AS 'id' FROM ec_promotion_product WHERE promotion_id =#{id}
+    </select>
+</mapper>

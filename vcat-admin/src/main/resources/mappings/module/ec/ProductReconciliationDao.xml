@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ProductReconciliationDao">
+	<select id="get" resultType="ProductReconciliation">
+		SELECT
+            pr.id AS "id",
+            pr.surplus_quantity AS "surplusQuantity",
+            pr.used_quantity AS "usedQuantity",
+            pr.create_by AS "createBy",
+            pr.create_date AS "createDate",
+            pi.id AS "productItem.id",
+            pi.product_id AS "productItem.product.id",
+            pi.item_sn AS "productItem.itemSn",
+            pi.name AS "productItem.name",
+            pi.purchase_price AS "productItem.purchasePrice",
+            pi.retail_price AS "productItem.retailPrice",
+            pi.sale_earning AS "productItem.saleEarning",
+            pi.bonus_earning AS "productItem.bonusEarning",
+            pi.first_bonus_earning AS "productItem.firstBonusEarning",
+            pi.second_bonus_earning AS "productItem.secondBonusEarning",
+            pi.point AS "productItem.point",
+            pi.coupon_value AS "productItem.couponValue",
+            pi.inventory AS "productItem.inventory",
+            pi.coupon_all_inventory AS "productItem.couponAllInventory",
+            pi.coupon_part_inventory AS "productItem.couponPartInventory",
+            pi.weight AS "productItem.weight",
+            p.name AS "productItem.product.name",
+            b.id AS "productItem.product.brand.id",
+            b.name AS "productItem.product.brand.name",
+            c.id AS "productItem.product.category.id",
+            c.name AS "productItem.product.category.name"
+		FROM ec_product_reconciliation pr
+        LEFT JOIN ec_product_item pi ON pr.id = pi.id
+		LEFT JOIN ec_product p ON p.id = pr.product_id
+        LEFT JOIN ec_category_product cp ON p.id = cp.product_id
+        LEFT JOIN ec_category c ON c.id = cp.category_id
+		LEFT JOIN ec_brand b ON b.id = p.brand_id
+        WHERE pr.id = #{id}
+	</select>
+	<select id="findList" resultType="ProductReconciliation">
+		SELECT
+            pr.id AS "id",
+            pr.surplus_quantity AS "surplusQuantity",
+            pr.used_quantity AS "usedQuantity",
+            pr.create_by AS "createBy",
+            pr.create_date AS "createDate",
+            pi.id AS "productItem.id",
+            pi.product_id AS "productItem.product.id",
+            pi.item_sn AS "productItem.itemSn",
+            pi.name AS "productItem.name",
+            pi.purchase_price AS "productItem.purchasePrice",
+            pi.retail_price AS "productItem.retailPrice",
+            pi.sale_earning AS "productItem.saleEarning",
+            pi.bonus_earning AS "productItem.bonusEarning",
+            pi.first_bonus_earning AS "productItem.firstBonusEarning",
+            pi.second_bonus_earning AS "productItem.secondBonusEarning",
+            pi.point AS "productItem.point",
+            pi.coupon_value AS "productItem.couponValue",
+            pi.inventory AS "productItem.inventory",
+            pi.coupon_all_inventory AS "productItem.couponAllInventory",
+            pi.coupon_part_inventory AS "productItem.couponPartInventory",
+            pi.weight AS "productItem.weight",
+            p.name AS "productItem.product.name",
+            b.id AS "productItem.product.brand.id",
+            b.name AS "productItem.product.brand.name",
+            c.id AS "productItem.product.category.id",
+            c.name AS "productItem.product.category.name"
+		FROM ec_product_reconciliation pr
+        LEFT JOIN ec_product_item pi ON pr.id = pi.id
+		LEFT JOIN ec_product p ON p.id = pr.product_id
+        LEFT JOIN ec_category_product cp ON p.id = cp.product_id
+        LEFT JOIN ec_category c ON c.id = cp.category_id
+		LEFT JOIN ec_brand b ON b.id = p.brand_id
+        WHERE 1=1
+		<if test="productItem != null and productItem.product != null and productItem.product.category != null and productItem.product.category.id != ''">
+            AND c.lft BETWEEN (SELECT lft FROM ec_category where id = #{productItem.product.category.id}) AND (SELECT rgt FROM ec_category where id = #{productItem.product.category.id})
+        </if>
+        <if test="productItem != null and productItem.product != null and productItem.product.brand != null and productItem.product.brand.id != ''">
+            AND b.id = #{productItem.product.brand.id}
+        </if>
+        <if test="sqlMap != null and sqlMap.keyWord != ''">
+            AND (pi.name LIKE '%${sqlMap.keyWord}%' OR p.name LIKE '%${sqlMap.keyWord}%')
+        </if>
+		ORDER BY pi.item_sn ASC
+	</select>
+	<insert id="insert">
+		INSERT INTO ec_product_reconciliation(
+			id,
+			product_id,
+			surplus_quantity,
+			used_quantity,
+			create_by,
+			create_date
+		) VALUES (
+			#{id},
+			#{productItem.product.id},
+			#{surplusQuantity},
+			0,
+			#{currentUser.id},
+			CURRENT_TIMESTAMP
+		)
+	</insert>
+    <insert id="insertLog">
+        INSERT INTO ec_reconciliation_quantity_log(
+        id,
+        product_reconciliation_id,
+        quantity,
+        note,
+        create_by,
+        create_date
+        ) VALUES (
+        REPLACE(CAST(UUID() as char character set utf8), '-', ''),
+        #{id},
+        #{surplusQuantity},
+        #{sqlMap.note},
+        #{currentUser.id},
+        CURRENT_TIMESTAMP
+        )
+    </insert>
+    <update id="addSurplusQuantity">
+        UPDATE ec_product_reconciliation
+        SET surplus_quantity = surplus_quantity + #{surplusQuantity}
+        WHERE id = #{id}
+    </update>
+</mapper>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ProductForecastDao">
+	<sql id="forecastColumns">
+			a.id AS "id",
+			a.product_id AS "product.id",
+			a.is_activate AS "isActivate",
+			a.title AS "title",
+			a.img_url AS "imgUrl",
+			a.activate_time AS "activateTime",
+			a.forecast_date AS "forecastDate",
+			a.intro AS "intro",
+			a.del_flag AS "delFlag",
+			p.name AS "product.name",
+			p.is_auto_load AS "product.isAutoLoad",
+			p.auto_load_date AS "product.autoLoadDate",
+			ec.id AS "product.category.id",
+			ec.name AS "product.category.name"
+	</sql>
+	<sql id="forecastJoins">
+		LEFT JOIN ec_product p ON a.product_id = p.id
+        LEFT JOIN ec_brand brand ON brand.id = p.brand_id
+		LEFT JOIN ec_supplier supplier ON brand.supplier_id = supplier.id
+		LEFT JOIN ec_category_product cp ON cp.product_id = p.id
+		LEFT JOIN ec_category ec ON ec.id = cp.category_id
+	</sql>
+	<select id="get" resultType="ProductForecast">
+		SELECT
+		<include refid="forecastColumns"/>
+		FROM ec_product_forecast a
+		<include refid="forecastJoins"/>
+		WHERE a.id = #{id}
+	</select>
+	
+	<select id="findList" resultType="ProductForecast">
+		SELECT
+		<include refid="forecastColumns"/>
+		FROM ec_product_forecast a
+		<include refid="forecastJoins"/>
+		WHERE a.del_flag = #{DEL_FLAG_NORMAL}
+		<if test="title != null and title != ''">
+			AND (
+				a.title like '%${title}%'
+			OR
+				p.name like '%${title}%'
+			OR
+				ec.name like '%${title}%'
+			)
+		</if>
+		<if test="product != null and product.category != null and product.category.id != ''">
+			AND ec.id = #{product.category.id}
+		</if>
+		<if test="sqlMap.st != null and sqlMap.st != ''">
+			AND a.forecast_date > STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d %H:%i:%s")
+		</if>
+		<if test="sqlMap.et != null and sqlMap.et != ''">
+			AND STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d %H:%i:%s") > a.forecast_date
+		</if>
+		ORDER BY a.is_activate ASC ,a.forecast_date ASC
+	</select>
+
+	<select id="checkSameProductActivated" resultType="Boolean">
+		SELECT CASE WHEN COUNT(1) > 0 THEN '1' ELSE '0' END
+		FROM ec_product_forecast forecast
+		LEFT JOIN ec_product p ON p.id = forecast.product_id
+		WHERE forecast.id NOT IN (#{id})
+		AND p.id = (SELECT product_id FROM ec_product_forecast WHERE id=#{id})
+		AND forecast.is_activate = #{ACTIVATED}
+		AND forecast.forecast_date > NOW()
+	</select>
+
+	<insert id="insert">
+		INSERT INTO ec_product_forecast(
+			id,
+			product_id,
+			is_activate,
+			forecast_date,
+			intro,
+			title,
+			img_url,
+			del_flag,
+			create_date
+		) VALUES (
+			#{id},
+			#{product.id},
+			#{NOT_ACTIVATED},
+			#{forecastDate},
+			#{intro},
+			#{title},
+			#{imgUrl},
+			#{DEL_FLAG_NORMAL},
+			CURRENT_TIMESTAMP
+		)
+	</insert>
+	<update id="update">
+		UPDATE ec_product_forecast SET
+			product_id = #{product.id},
+			title = #{title},
+			img_url = #{imgUrl},
+			forecast_date = #{forecastDate},
+			intro = #{intro}
+		WHERE id = #{id}
+	</update>
+	<update id="delete">
+		UPDATE ec_product_forecast SET
+			del_flag = #{DEL_FLAG_DELETE}
+		WHERE id = #{id}
+	</update>
+	<update id="activate">
+		UPDATE ec_product_forecast SET
+			is_activate = #{ACTIVATED},
+			activate_time = now()
+		WHERE id = #{id}
+	</update>
+</mapper>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ShippingDao">
+	<sql id="shippingColumns">
+		a.id AS "id",
+		a.order_id AS "order.id",
+		a.express_id AS "express.id",
+		express.name AS "express.name",
+		express.code AS "express.code",
+		a.shipping_number AS "number",
+		a.shipping_date AS "shippingDate",
+		a.freight_charge AS "freightCharge",
+		a.shipping_note AS "note",
+		u.name AS "operName",
+		a.oper_date AS "operDate"
+	</sql>
+	<sql id="shippingJoins">
+		LEFT JOIN ec_order ord ON ord.id = a.order_id
+		LEFT JOIN ec_express express ON express.id = a.express_id
+		LEFT JOIN sys_user u on a.oper_by = u.id
+	</sql>
+	<select id="get" resultType="Shipping">
+		SELECT
+		<include refid="shippingColumns"></include>
+		FROM ec_shipping a
+		<include refid="shippingJoins"></include>
+		WHERE a.id = #{id}
+	</select>
+
+	<select id="findList" resultType="Shipping">
+		SELECT
+		<include refid="shippingColumns"></include>
+		FROM ec_shipping a
+		<include refid="shippingJoins"></include>
+		WHERE 1=1
+		<if test="express.id != null and '' != express.id">
+			AND a.express_id = #{express.id}
+		</if>
+		ORDER BY a.id ASC
+	</select>
+	<insert id="insert">
+		INSERT INTO ec_shipping(
+			id,
+			order_id,
+			express_id,
+			shipping_number,
+			shipping_date,
+			shipping_note,
+			freight_charge,
+			oper_by,
+			oper_date
+		)VALUES (
+			#{id},
+			#{order.id},
+			#{express.id},
+			#{number},
+			#{shippingDate},
+			#{note},
+			#{freightCharge},
+			#{currentUser.id},
+			NOW()
+		)
+	</insert>
+    <update id="update">
+        UPDATE ec_shipping SET
+        express_id = #{express.id}
+        ,shipping_number = #{number}
+        WHERE id = #{id}
+    </update>
+</mapper>

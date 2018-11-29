@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.InviteEarningDao">
+    <sql id="Base_Column_List">
+            id,
+            inviter_earning AS "inviterEarning",
+            invitee_earning AS "inviteeEarning",
+            available_invite AS "availableInvite",
+            start_time AS "startTime",
+            end_time AS "endTime",
+            is_activate AS "isActivate",
+            del_flag AS "delFlag",
+            (SELECT COUNT(1) FROM ec_invite_earning_log iel WHERE iel.invite_earning_id = a.id) AS "invitedCount"
+    </sql>
+    <select id="get" resultType="InviteEarning">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM
+        ec_invite_earning a
+        WHERE id = #{id}
+    </select>
+    <select id="findList" resultType="InviteEarning">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM ec_invite_earning a
+        WHERE a.del_flag = #{DEL_FLAG_NORMAL}
+        <if test="sqlMap.st != null and sqlMap.st != ''">
+            AND a.start_time > STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d %H:%i:%s")
+        </if>
+        <if test="sqlMap.et != null and sqlMap.et != ''">
+            AND STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d %H:%i:%s") > a.end_time
+        </if>
+        ORDER BY a.is_activate ASC ,a.end_time ASC
+    </select>
+
+    <select id="checkCaneBeActivated" resultType="Boolean">
+        SELECT CASE WHEN COUNT(1) > 0 THEN '1' ELSE '0' END
+        FROM ec_invite_earning inviteEarning
+        WHERE inviteEarning.id NOT IN (#{id})
+        AND inviteEarning.is_activate = #{ACTIVATED}
+        AND inviteEarning.del_flag = #{DEL_FLAG_NORMAL}
+        AND (
+            (inviteEarning.end_time > STR_TO_DATE(#{startTime},"%Y-%m-%d %H:%i:%s") AND STR_TO_DATE(#{startTime},"%Y-%m-%d %H:%i:%s") > inviteEarning.start_time)
+        OR
+            (inviteEarning.end_time > STR_TO_DATE(#{endTime},"%Y-%m-%d %H:%i:%s") AND STR_TO_DATE(#{endTime},"%Y-%m-%d %H:%i:%s") > inviteEarning.start_time)
+        OR
+            (STR_TO_DATE(#{endTime},"%Y-%m-%d %H:%i:%s") > inviteEarning.start_time AND inviteEarning.start_time > STR_TO_DATE(#{startTime},"%Y-%m-%d %H:%i:%s"))
+        OR
+            (STR_TO_DATE(#{endTime},"%Y-%m-%d %H:%i:%s") > inviteEarning.end_time AND inviteEarning.end_time > STR_TO_DATE(#{startTime},"%Y-%m-%d %H:%i:%s"))
+        )
+    </select>
+
+    <insert id="insert">
+        INSERT INTO ec_invite_earning(
+        id,
+        inviter_earning,
+        invitee_earning,
+        available_invite,
+        start_time,
+        end_time,
+        is_activate,
+        del_flag
+        ) VALUES (
+        #{id},
+        #{inviterEarning},
+        #{inviteeEarning},
+        #{availableInvite},
+        #{startTime},
+        #{endTime},
+        #{isActivate},
+        #{DEL_FLAG_NORMAL}
+        )
+    </insert>
+    <update id="update">
+        UPDATE ec_invite_earning SET
+        inviter_earning = #{inviterEarning},
+        invitee_earning = #{inviteeEarning},
+        available_invite = #{availableInvite},
+        start_time = #{startTime},
+        end_time = #{endTime}
+        WHERE id = #{id}
+    </update>
+    <update id="delete">
+        UPDATE ec_invite_earning SET
+        del_flag = #{DEL_FLAG_DELETE}
+        WHERE id = #{id}
+    </update>
+    <update id="activate">
+        UPDATE ec_invite_earning SET
+        is_activate = #{ACTIVATED}
+        WHERE id = #{id}
+    </update>
+    <select id="getPieChartList" resultType="java.util.LinkedHashMap">
+        SELECT
+        shop.name AS "name",
+        count(1) AS "y"
+        FROM
+        ec_invite_earning_log log
+        LEFT JOIN ec_invite_earning i ON i.id = log.invite_earning_id
+        LEFT JOIN ec_shop shop ON shop.id = log.inviter
+        WHERE i.id = #{id}
+        GROUP BY log.inviter
+        UNION
+        SELECT
+            '尚未使用',
+            (
+            SELECT
+              i.available_invite - count(1)
+            FROM ec_invite_earning_log log
+            LEFT JOIN ec_invite_earning i ON i.id = log.invite_earning_id
+            WHERE i.id = #{id}
+            )
+    </select>
+</mapper>

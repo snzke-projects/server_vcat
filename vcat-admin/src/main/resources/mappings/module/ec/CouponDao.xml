@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.CouponDao">
+    <sql id="Base_Column_List">
+        a.id,
+        a.name,
+        a.fund,
+        a.is_activate AS 'isActivate',
+        a.total,
+        a.type,
+        a.start_time AS 'startTime',
+        a.end_time AS 'endTime',
+        (SELECT COUNT(cs.id) FROM ec_coupon_shop AS cs WHERE coupon_id=a.id) AS "couponUsedCount"
+    </sql>
+    <select id="get" resultType="com.vcat.module.ec.entity.Coupon" parameterType="com.vcat.module.ec.entity.Coupon">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM ec_coupon a
+        WHERE 1=1
+        <if test="sqlMap.all == null or sqlMap.all == ''">
+            AND is_activate= 1
+            AND del_flag= 0
+            AND NOW() > start_time
+            AND end_time > NOW()
+        </if>
+        <if test="id!=null and id!=''">
+            AND id = #{id}
+        </if>
+        <if test="type!=null and type!=''">
+            AND type = #{type}
+        </if>
+    </select>
+
+    <select id="findList" resultType="com.vcat.module.ec.entity.Coupon">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM ec_coupon a
+        WHERE a.del_flag = 0
+        <if test="sqlMap.st != null and sqlMap.st != ''">
+            AND a.start_time > STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d %H:%i:%s")
+        </if>
+        <if test="sqlMap.et != null and sqlMap.et != ''">
+            AND STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d %H:%i:%s") > a.end_time
+        </if>
+        ORDER BY a.is_activate ASC ,a.end_time ASC
+    </select>
+
+    <select id="checkCaneBeActivated" resultType="Boolean">
+        SELECT CASE WHEN COUNT(1) > 0 THEN '1' ELSE '0' END
+        FROM ec_coupon coupon
+        WHERE coupon.id NOT IN (#{id})
+        AND coupon.type = #{type}
+        AND coupon.is_activate = #{ACTIVATED}
+        AND coupon.del_flag = #{DEL_FLAG_NORMAL}
+        AND (
+        (coupon.end_time > STR_TO_DATE(#{startTime},"%Y-%m-%d %H:%i:%s") AND STR_TO_DATE(#{startTime},"%Y-%m-%d %H:%i:%s") > coupon.start_time)
+        OR
+        (coupon.end_time > STR_TO_DATE(#{endTime},"%Y-%m-%d %H:%i:%s") AND STR_TO_DATE(#{endTime},"%Y-%m-%d %H:%i:%s") > coupon.start_time)
+        OR
+        (STR_TO_DATE(#{endTime},"%Y-%m-%d %H:%i:%s") > coupon.start_time AND coupon.start_time > STR_TO_DATE(#{startTime},"%Y-%m-%d %H:%i:%s"))
+        OR
+        (STR_TO_DATE(#{endTime},"%Y-%m-%d %H:%i:%s") > coupon.end_time AND coupon.end_time > STR_TO_DATE(#{startTime},"%Y-%m-%d %H:%i:%s"))
+        )
+    </select>
+    <insert id="insert">
+        INSERT INTO ec_coupon(
+        id,
+        name,
+        fund,
+        total,
+        type,
+        start_time,
+        end_time,
+        is_activate,
+        del_flag
+        ) VALUES (
+        #{id},
+        #{name},
+        #{fund},
+        #{total},
+        #{type},
+        #{startTime},
+        #{endTime},
+        #{NOT_ACTIVATED},
+        #{DEL_FLAG_NORMAL}
+        )
+    </insert>
+    <update id="update">
+        UPDATE ec_coupon SET
+        name = #{name},
+        fund = #{fund},
+        total = #{total},
+        type = #{type},
+        start_time = #{startTime},
+        end_time = #{endTime}
+        WHERE id = #{id}
+    </update>
+    <update id="delete">
+        UPDATE ec_coupon SET
+        del_flag = #{DEL_FLAG_DELETE}
+        WHERE id = #{id}
+    </update>
+    <update id="activate">
+        UPDATE ec_coupon SET
+        is_activate = #{ACTIVATED}
+        WHERE id = #{id}
+    </update>
+    <select id="getPieChartList" resultType="java.util.Map">
+        SELECT
+        shop.name AS "name",
+        count(1) AS "y"
+        FROM
+        ec_coupon_oper_log log
+        LEFT JOIN ec_coupon i ON i.id = log.coupon_id
+        LEFT JOIN ec_coupon_fund fund ON log.coupon_fund_id = fund.id
+        LEFT JOIN ec_shop shop ON shop.id = fund.shop_id
+        WHERE i.id = #{id}
+        GROUP BY shop.id
+    </select>
+</mapper>

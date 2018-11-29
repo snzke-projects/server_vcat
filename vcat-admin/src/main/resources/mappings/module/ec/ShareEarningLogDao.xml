@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ShareEarningLogDao">
+
+<sql id="Base_Column_List">
+	id,
+	shop_id,
+	share_id,
+	share_date,
+	3rd_type_id
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="shopId!=null and shopId!=''">
+			AND shop_id = #{shopId}
+		</if>
+		<if test="shareId!=null and shareId!=''">
+			AND share_id = #{shareId}
+		</if>
+	</where>
+</sql>
+<select id="get" resultType="com.vcat.module.ec.entity.ShareEarningLog" parameterType="com.vcat.module.ec.entity.ShareEarningLog">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_share_earning_log
+	<include refid="Base_Where_Clause" />
+	lIMIT 1
+</select>
+<select id="findLog" resultType="java.util.LinkedHashMap">
+    SELECT
+      share.title,
+      shop.name AS "shopName",
+      t.name AS "typeName",
+      log.share_date AS "shareTime"
+    FROM ec_share_earning_log log
+    LEFT JOIN ec_share_earning share ON share.id = log.share_id
+    LEFT JOIN ec_shop shop ON shop.id = log.shop_id
+    LEFT JOIN ec_3rd_type t ON t.id = log.3rd_type_id
+    WHERE share.id = #{id}
+</select>
+<insert id="insert" parameterType="com.vcat.module.ec.entity.ShareEarningLog">
+	INSERT INTO ec_share_earning_log(
+	id,
+	shop_id,
+	share_id,
+	share_date,
+	3rd_type_id
+	) VALUES (
+	#{id},
+	#{shopId},
+	#{shareId},
+	NOW(),
+	(SELECT s.id  FROM ec_3rd_type AS s WHERE s.code=#{thirdLoginType.code} LIMIT 1)
+	)
+</insert>
+</mapper>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.UpgradeRequestDao">
+    <select id="get" resultType="com.vcat.module.ec.entity.UpgradeRequest">
+        SELECT
+            request.id,
+            request.shop_id AS "shop.id",
+            shop.user_name AS "shop.customer.userName",
+            shop.phone_number AS "shop.customer.phoneNumber",
+            request.original_parent_id AS "originalParent.id",
+            originalParent.user_name AS "originalParent.customer.userName",
+            originalParent.phone_number AS "originalParent.customer.phoneNumber",
+            request.status,
+            request.create_date AS "createDate"
+        FROM ec_upgrade_request request
+        LEFT JOIN ec_customer shop ON request.shop_id = shop.id
+        LEFT JOIN ec_customer originalParent ON request.original_parent_id = originalParent.id
+        WHERE request.shop_id = #{shop.id}
+        OR request.id = #{id}
+    </select>
+    <select id="findLogs" resultType="com.vcat.module.ec.entity.UpgradeRequestLog">
+        SELECT
+            requestLog.id,
+            requestLog.note,
+            requestLog.status,
+            requestLog.oper_by AS "operBy.id",
+            user.name AS "operBy.name",
+            requestLog.oper_date AS "operDate"
+        FROM ec_upgrade_request_log requestLog
+        LEFT JOIN sys_user user ON requestLog.oper_by = user.id
+        WHERE requestLog.request_id = #{id}
+        ORDER BY requestLog.oper_date DESC
+    </select>
+    <update id="approval">
+        UPDATE ec_upgrade_request
+        SET status = #{status}
+        WHERE id = #{id}
+        AND status = 0
+    </update>
+    <update id="upgradeShop">
+        UPDATE ec_shop
+        SET advanced_shop = 1
+        WHERE id = #{shop.id}
+    </update>
+    <insert id="add">
+        INSERT ec_upgrade_request (
+          id,
+          shop_id,
+          original_parent_id,
+          status,
+          create_date
+        ) SELECT
+          #{id},
+          id,
+          parent_id,
+          '0',
+          CURRENT_TIMESTAMP
+          FROM ec_shop
+          WHERE id = #{shopId}
+          AND ID NOT IN (SELECT shop_id FROM ec_upgrade_request)
+    </insert>
+    <insert id="insertLog">
+        INSERT ec_upgrade_request_log (
+            id,
+            request_id,
+            status,
+            note,
+            oper_by,
+            oper_date
+        ) VALUES(
+            #{id},
+            #{sqlMap.upgradeRequestId},
+            #{status},
+            #{note},
+            #{createBy.id},
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+    <update id="setInvitationCode">
+        UPDATE ec_shop
+        SET my_invitation_code_id = #{invitationId}
+        WHERE id = #{shopId}
+        AND my_invitation_code_id IS NULL
+    </update>
+</mapper>

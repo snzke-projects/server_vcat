@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.GroupBuyingSponsorDao">
+    <select id="get" resultType="com.vcat.module.ec.entity.GroupBuyingSponsor">
+        SELECT
+            s.id,
+            s.group_buying_id AS "groupBuying.id",
+            s.customer_id AS "customer.id",
+            s.is_locked AS "isLocked",
+            s.status,
+            s.start_date AS "startDate",
+            s.end_date AS "endDate",
+            s.type,
+            g.name AS "groupBuying.name",
+            g.status AS "groupBuying.status",
+            c.user_name AS "sponsor.userName",
+            COUNT(gc.order_id) AS "joinCount"
+        FROM ec_group_buying_sponsor s
+        LEFT JOIN ec_group_buying g ON s.group_buying_id = g.id
+        LEFT JOIN ec_customer c ON c.id = s.customer_id
+        LEFT JOIN ec_group_buying_customer gc ON (s.id = gc.group_buying_sponsor_id AND gc.status = 1)
+        WHERE g.id = #{id}
+        GROUP BY s.id
+    </select>
+    <select id="findList" resultType="com.vcat.module.ec.entity.GroupBuyingSponsor">
+        SELECT
+            s.id,
+            s.group_buying_id AS "groupBuying.id",
+            s.customer_id AS "customer.id",
+            s.is_locked AS "isLocked",
+            s.status,
+            s.start_date AS "startDate",
+            s.end_date AS "endDate",
+            s.type,
+            g.name AS "groupBuying.name",
+            g.status AS "groupBuying.status",
+            c.user_name AS "sponsor.userName",
+            COUNT(gc.order_id) AS "joinCount"
+        FROM ec_group_buying_sponsor s
+        LEFT JOIN ec_group_buying g ON s.group_buying_id = g.id
+        LEFT JOIN ec_customer c ON c.id = s.customer_id
+        LEFT JOIN ec_group_buying_customer gc ON (s.id = gc.group_buying_sponsor_id AND gc.status = 1)
+        WHERE 1=1
+        <if test="sqlMap.keyWord != null and sqlMap.keyWord != ''">
+            AND (g.name LIKE '%${sqlMap.keyWord}%'
+            OR c.user_name LIKE '%${sqlMap.keyWord}%')
+        </if>
+        <if test="type != null">
+            AND s.type = #{type}
+        </if>
+        <if test="status != null and status == 0">
+            AND s.status IN (0,1)
+            AND s.start_date &lt; CURRENT_TIMESTAMP
+            AND s.end_date > CURRENT_TIMESTAMP
+        </if>
+        <if test="status != null and status == 1">
+            AND s.status = 2
+        </if>
+        <if test="status != null and status == 2">
+            AND (s.status IN (3,4) OR (s.status != 2 AND s.end_date &lt; CURRENT_TIMESTAMP))
+        </if>
+        GROUP BY s.id
+        ORDER BY s.start_date DESC
+    </select>
+</mapper>

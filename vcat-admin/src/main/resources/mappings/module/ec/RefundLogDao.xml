@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.RefundLogDao">
+	<sql id="refundLogColumns">
+		a.id AS "id",
+		a.return_status AS "returnStatus",
+		a.refund_status AS "refundStatus",
+		a.status_note AS "statusNote",
+		a.note AS "note",
+		a.oper_date AS "createDate",
+		u.id AS "createBy.id",
+		u.name AS "createBy.name",
+		ret.id AS "return.id",
+		ret.shipping_number AS "return.shippingNumber"
+	</sql>
+	<sql id="refundLogJoins">
+		LEFT JOIN ec_return ret ON ret.id = a.return_id
+		LEFT JOIN sys_user u ON u.id = a.oper_by
+	</sql>
+	<select id="get" resultType="RefundLog">
+		SELECT 
+			<include refid="refundLogColumns"></include>
+		FROM ec_return_log a
+		<include refid="refundLogJoins"></include>
+		WHERE a.id = #{id}
+		AND a.is_activate = #{ACTIVATED}
+	</select>
+
+	<select id="findList" resultType="RefundLog">
+		SELECT
+			<include refid="refundLogColumns"></include>
+		FROM ec_return_log a
+		<include refid="refundLogJoins"></include>
+		WHERE 1=1
+		<if test="refund != null and refund.id != null and '' != refund.id">
+			AND a.return_id = #{refund.id}
+		</if>
+		ORDER BY a.oper_date DESC
+	</select>
+
+	<insert id="insert">
+		INSERT INTO ec_return_log(
+			id,
+			return_id,
+			return_status,
+			refund_status,
+			note,
+			status_note,
+			oper_by,
+			oper_date
+	   	)VALUES (
+			#{id},
+			#{refund.id},
+			#{refund.returnStatus},
+			#{refund.refundStatus},
+			#{refund.note},
+			#{statusNote},
+			#{currentUser.id},
+			now()
+		)
+	</insert>
+</mapper>

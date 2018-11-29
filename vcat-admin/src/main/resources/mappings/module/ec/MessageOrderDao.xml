@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.MessageOrderDao">
+	<select id="findList" resultType="MessageOrder">
+		SELECT
+			message.id AS "id",
+			message.shop_id AS "shop.id",
+			message.is_read AS "isRead",
+			message.read_date AS "readDate",
+			message.create_date AS "createDate",
+			message.order_number AS "orderNumber",
+			message.product_name AS "productName",
+			message.payment_amount AS "paymentAmount",
+			message.actual_earning AS "actualEarning",
+			message.order_time AS "orderTime",
+			message.type AS "type"
+		FROM ec_message_order message
+		LEFT JOIN ec_order o ON o.order_number = message.order_number
+		WHERE message.shop_id = #{shop.id}
+		AND o.seller_del = 0
+		ORDER BY create_date DESC
+	</select>
+	<insert id="insert" parameterType="MessageOrder">
+		INSERT INTO ec_message_order(
+			id,
+			shop_id,
+			is_read,
+			create_date,
+			order_number,
+			product_name,
+			payment_amount,
+			actual_earning,
+			order_time,
+			type
+		) VALUES (
+			#{id},
+			#{shop.id},
+			0,
+			now(),
+			#{orderNumber},
+			#{productName},
+			#{paymentAmount},
+			#{actualEarning},
+			#{orderTime},
+			#{type}
+		)
+	</insert>
+</mapper>

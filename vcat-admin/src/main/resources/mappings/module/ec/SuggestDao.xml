@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.SuggestDao">
+<sql id="Base_Column_List">
+	id,
+	contact,
+	content,
+	create_date AS "createDate",
+	processed,
+	process_date AS "processDate",
+    remarks AS "remarks",
+	(SELECT name from sys_user WHERE id = a.process_user) AS processUser
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+	</where>
+</sql>
+<select id="get" resultType="com.vcat.module.ec.entity.Suggest" parameterType="com.vcat.module.ec.entity.Suggest">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_suggest a
+	<include refid="Base_Where_Clause" />
+</select>
+<select id="findList" resultType="Suggest">
+    SELECT
+    <include refid="Base_Column_List" />
+    FROM ec_suggest a
+    WHERE 1=1
+    <if test="sqlMap.keyWord != null and sqlMap.keyWord != ''">
+        AND (a.contact LIKE '%${sqlMap.keyWord}%'
+          OR a.content LIKE '%${sqlMap.keyWord}%'
+        )
+    </if>
+    ORDER BY
+    <if test="sqlMap.orderType == null or sqlMap.orderType == ''">
+        processed,create_date
+    </if>
+    <if test="sqlMap.orderType != null and sqlMap.orderType == 1">
+        processed,create_date DESC
+    </if>
+    <if test="sqlMap.orderType != null and sqlMap.orderType == 2">
+        processed DESC,create_date
+    </if>
+    <if test="sqlMap.orderType != null and sqlMap.orderType == 3">
+        processed DESC,create_date DESC
+    </if>
+</select>
+<insert id="insert" parameterType="com.vcat.module.ec.entity.Suggest">
+	INSERT INTO ec_suggest(
+	id,
+	contact,
+	content,
+	create_date,
+	processed
+	) VALUES (
+	#{id},
+	#{contact},
+	#{content},
+	NOW(),
+	0
+	)
+</insert>
+<update id="process">
+    UPDATE ec_suggest
+    SET processed = 1
+    ,process_user = #{updateBy.id}
+    ,process_date = CURRENT_TIMESTAMP
+    ,remarks = #{remarks}
+    WHERE id = #{id}
+</update>
+</mapper>

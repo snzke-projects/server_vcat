@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ProductDao">
+	<sql id="productColumns">
+		a.id AS "id",
+		a.name AS "name",
+		a.description AS "description",
+		a.clicks AS "clicks",
+		a.add_date AS "addDate",
+		a.display_order AS "displayOrder",
+		a.archived AS "archived",
+		a.is_auto_load AS "isAutoLoad",
+		a.auto_load_date AS "autoLoadDate",
+		a.retail_usable AS "retailUsable",
+		a.coupon_all_usable AS "couponAllUsable",
+		a.coupon_part_usable AS "couponPartUsable",
+		a.sales AS "saledNum",
+		a.free_shipping AS "freeShipping",
+		a.is_new AS "isNew",
+		a.del_flag AS "delFlag",
+		a.is_hot_sale AS "isHotSale",
+		a.hot_sale_set_date AS "hotSaleSetDate",
+		a.external_price AS "externalPrice",
+        a.is_virtual_product AS "isVirtualProduct",
+        a.can_refund AS "canRefund",
+		brand.id AS "brand.id",
+		brand.name AS "brand.name",
+		brand.description AS "brand.description",
+		brand.logo_url AS "brand.logoUrl",
+		supplier.id AS "brand.supplier.id",
+		supplier.name AS "brand.supplier.name",
+		distribution.id AS "distribution.id",
+		distribution.name AS "distribution.name",
+		l.id AS "needLevel.id",
+		l.name AS "needLevel.name",
+		l.min_exp AS "needLevel.minExp",
+		l.max_exp AS "needLevel.maxExp",
+		l.url AS "needLevel.url",
+		c.id AS "category.id",
+		c.name AS "category.name",
+		c.description AS "category.description",
+		(SELECT SUM(inventory)FROM ec_product_item WHERE product_id = a.id and del_flag = 0 AND product_item_type = 0) AS "inventory",
+		(SELECT	CONCAT(MIN(retail_price),'-',MAX(retail_price))FROM ec_product_item WHERE product_id = a.id and del_flag = 0 AND product_item_type = 0) AS "price",
+		(SELECT	CONCAT(MIN(sale_earning),'-',MAX(sale_earning))FROM ec_product_item WHERE product_id = a.id and del_flag = 0 AND product_item_type = 0) AS "saleEarning",
+		le.id AS "loadEarning.id",
+		le.fund AS "loadEarning.fund",
+		le.convert_fund AS "loadEarning.convertFund",
+		le.is_activate AS "loadEarning.isActivate",
+		le.create_by AS "loadEarning.createBy",
+		le.create_date AS "loadEarning.createDate",
+		(CASE WHEN hot.id is null THEN "0" ELSE "1" END) AS "isHot",
+		hot.id AS "hotRecommendId",
+		sale.id AS "saleRecommend.id",
+		sale.startTime AS "saleRecommend.startTime",
+		sale.endTime AS "saleRecommend.endTime",
+		sale.discount AS "saleRecommend.discount",
+		reserve.id AS "reserveRecommend.id",
+		reserve.startTime AS "reserveRecommend.startTime",
+		reserve.endTime AS "reserveRecommend.endTime",
+		pet.express_template_id AS "expressTemplate.id"
+	</sql>
+	<sql id="productJoins">
+        LEFT JOIN ec_brand brand ON brand.id = a.brand_id
+		LEFT JOIN ec_supplier supplier ON supplier.id = brand.supplier_id
+		LEFT JOIN ec_distribution distribution ON distribution.id = a.distribution_id
+		LEFT JOIN ec_level l ON l.id = a.need_level_id
+		LEFT JOIN ec_category_product cp ON cp.product_id = a.id
+		LEFT JOIN ec_category c ON c.id = cp.category_id
+		LEFT JOIN ec_load_earning le on (a.id = le.product_id and le.is_activate = 1)
+		LEFT JOIN view_all_recommend hot on (a.id = hot.productId and hot.typeCode = 'HOT')
+		LEFT JOIN view_all_recommend sale on (a.id = sale.productId and sale.typeCode = 'SALE')
+		LEFT JOIN view_all_recommend reserve on (a.id = reserve.productId and reserve.typeCode = 'RESERVE')
+		LEFT JOIN ec_product_express_template pet ON pet.product_id = a.id
+	</sql>
+	<select id="get" resultType="Product">
+		SELECT 
+			<include refid="productColumns"/>
+		FROM ec_product a
+		<include refid="productJoins"/>
+		WHERE a.id = #{id}
+		${sqlMap.productScope}
+	</select>
+	<select id="findListByIds" resultType="com.vcat.module.ec.entity.Product">
+		SELECT
+			a.id AS "id",
+			a.name AS "name",
+			a.description AS "description",
+			a.clicks AS "clicks",
+			a.add_date AS "addDate",
+			a.display_order AS "displayOrder",
+			a.archived AS "archived",
+			a.is_auto_load AS "isAutoLoad",
+			a.auto_load_date AS "autoLoadDate",
+            (CASE WHEN hot.id is null THEN "0" ELSE "1" END) AS "isHot",
+            brand.id AS "supplier.id",
+            brand.name AS "brand.name",
+            brand.description AS "brand.description",
+            brand.logo_url AS "brand.logoUrl",
+			c.id AS "category.id",
+			c.name AS "category.name",
+			c.description AS "category.description"
+		FROM ec_product a
+        LEFT JOIN ec_brand brand ON brand.id = a.brand_id
+		LEFT JOIN ec_supplier supplier ON supplier.id = brand.supplier_id
+		LEFT JOIN ec_level l ON l.id = a.need_level_id
+		LEFT JOIN ec_category_product cp ON cp.product_id = a.id
+		LEFT JOIN ec_category c ON c.id = cp.category_id
+        LEFT JOIN view_all_recommend hot on (a.id = hot.productId and hot.typeCode = 'HOT')
+		WHERE a.id in ('',
+		<foreach collection="array" item="id" separator=",">
+			#{id}
+		</foreach>
+		)
+		ORDER BY a.add_date DESC
+	</select>
+
+	<select id="findList" resultType="Product">
+		SELECT 
+			<include refid="productColumns"/>
+		FROM ec_product a
+		<include refid="productJoins"/>
+		WHERE 1=1
+		${sqlMap.productScope}
+        <if test="name != null and name != ''">
+            AND a.name LIKE CONCAT('%', #{name} ,'%')
+        </if>
+        <if test="sqlMap.archived != null and sqlMap.archived != ''">
+            AND a.archived = #{sqlMap.archived}
+        </if>
+        <if test="isVirtualProduct != null">
+            AND a.is_virtual_product = #{isVirtualProduct}
+        </if>
+		<if test="sqlMap.type != null and sqlMap.type == 'xj'">
+			AND a.archived = #{archived}
+		</if>
+		<if test="sqlMap.type != null and sqlMap.type == 'sj'">
+			AND a.archived = #{archived}
+		</if>
+        <if test="sqlMap.brandId != null and sqlMap.brandId != ''">
+            AND brand.id = #{sqlMap.brandId}
+        </if>
+        <if test="sqlMap.supplierId != null and sqlMap.supplierId != ''">
+            AND supplier.id = #{sqlMap.supplierId}
+        </if>
+		<if test="category != null and category.id != null and category.id != ''">
+			AND c.lft BETWEEN (SELECT lft FROM ec_category where id = #{category.id}) AND (SELECT rgt FROM ec_category where id = #{category.id})
+		</if>
+        <if test="sqlMap.isHotSale != null and sqlMap.isHotSale != ''">
+            AND a.is_hot_sale = #{sqlMap.isHotSale}
+        </if>
+		<if test="sqlMap.recommendType != null and sqlMap.recommendType == 'HOT'">
+			AND hot.id IS NOT NULL
+		</if>
+		<if test="sqlMap.recommendType != null and sqlMap.recommendType == 'SALE'">
+			AND sale.id IS NOT NULL AND sale.discount IS NOT NULL
+		</if>
+		<if test="sqlMap.recommendType != null and sqlMap.recommendType == 'RESERVE'">
+			AND reserve.id IS NOT NULL AND reserve.startTime IS NOT NULL
+		</if>
+        <if test="sqlMap.mode != null and sqlMap.mode == 'NORMAL'">
+            AND a.del_flag = #{DEL_FLAG_NORMAL}
+        </if>
+        <if test="sqlMap.mode != null and sqlMap.mode != 'NORMAL'">
+            AND a.del_flag = #{DEL_FLAG_DELETE}
+        </if>
+        <if test="sqlMap.categoryScope != null and sqlMap.categoryScope != ''">
+            ${sqlMap.categoryScope}
+        </if>
+        <if test="sqlMap.productType != null and sqlMap.productType == 2">
+            AND a.retail_usable = 1
+        </if>
+        <if test="sqlMap.productType != null and sqlMap.productType == 3">
+            AND a.coupon_all_usable = 1
+        </if>
+        <if test="sqlMap.productType != null and sqlMap.productType == 4">
+            AND a.coupon_part_usable = 1
+        </if>
+		ORDER BY a.display_order DESC,a.sales DESC
+	</select>
+	<insert id="insert">
+		INSERT INTO ec_product(
+			id,
+			name,
+			brand_id,
+			description,
+			need_level_id,
+			archived,
+			add_date,
+			display_order,
+			is_auto_load,
+			auto_load_date,
+			retail_usable,
+		    coupon_all_usable,
+		    coupon_part_usable,
+		    free_shipping,
+		    is_new,
+		    distribution_id,
+		    is_hot_sale,
+		    hot_sale_set_date,
+		    external_price,
+            is_virtual_product,
+            can_refund
+		) VALUES (
+			#{id},
+			#{name},
+			#{brand.id},
+			#{description},
+			#{needLevel.id},
+			#{DEL_FLAG_NORMAL},
+			NOW(),
+			#{displayOrder},
+			#{isAutoLoad},
+			#{autoLoadDate},
+			#{retailUsable},
+			#{couponAllUsable},
+			#{couponPartUsable},
+			#{freeShipping},
+			#{isNew},
+			#{distribution.id},
+			#{isHotSale},
+			#{hotSaleSetDate},
+			#{externalPrice},
+            #{isVirtualProduct},
+            #{canRefund}
+		)
+	</insert>
+	
+	<update id="update">
+		UPDATE ec_product SET
+			name = #{name},
+			brand_id = #{brand.id},
+			description = #{description},
+			need_level_id = #{needLevel.id},
+			display_order = #{displayOrder},
+			is_auto_load = #{isAutoLoad},
+			auto_load_date = #{autoLoadDate},
+			retail_usable = #{retailUsable},
+		    coupon_all_usable = #{couponAllUsable},
+		    coupon_part_usable = #{couponPartUsable},
+		    free_shipping = #{freeShipping},
+		    is_new = #{isNew},
+		    distribution_id = #{distribution.id},
+		    is_hot_sale = #{isHotSale},
+		    hot_sale_set_date = #{hotSaleSetDate},
+		    external_price = #{externalPrice},
+            is_virtual_product = #{isVirtualProduct},
+            can_refund = #{canRefund},
+            update_by = #{updateBy.id},
+            update_date = CURRENT_TIMESTAMP
+		WHERE id = #{id}
+	</update>
+
+    <select id="getCanBeArchived" resultType="java.lang.Boolean">
+        SELECT 'TRUE'
+        FROM ec_product p
+        LEFT JOIN ec_category_product cp ON p.id = cp.product_id
+        LEFT JOIN ec_category c ON cp.category_id = c.id
+        WHERE p.id = #{id}
+        AND c.is_activate = 1
+    </select>
+	
+	<update id="archived">
+		UPDATE ec_product SET 
+			archived = #{archived}
+			<if test="archived != null and archived == 0">
+				,is_auto_load = 0
+				,auto_load_date = null
+			</if>
+		WHERE id = #{id}
+	</update>
+	<update id="autoLoadByForecast">
+		UPDATE ec_product SET
+		is_auto_load = 1,
+		auto_load_date = #{autoLoadDate}
+		WHERE id = #{id}
+		AND archived = 1
+	</update>
+	<update id="archivedShopProduct">
+		UPDATE ec_shop_product
+		SET  archived = 1
+		,start_date = NULL
+		,end_date = NULL
+		WHERE product_id = #{productId}
+		AND shop_id = #{shopId}
+		AND end_date IS NOT NULL
+	</update>
+    <select id="hasBrandCategory" resultType="Boolean">
+        SELECT CASE WHEN COUNT(1) > 0 THEN 'true' ELSE 'false' END
+        FROM ec_category_brand cs
+        WHERE cs.brand_id = #{brandId} AND cs.category_id = #{categoryId}
+    </select>
+    <insert id="insertBrandCategory">
+        INSERT INTO ec_category_brand(
+          id,
+          brand_id,
+          category_id
+        )VALUES (
+          #{id},
+          #{brandId},
+          #{categoryId}
+        )
+    </insert>
+    <select id="needDeleteBrandCategory" resultType="Boolean">
+        SELECT IFNULL((SELECT CASE WHEN COUNT(1) = 0 THEN 'true' ELSE 'false' END
+        FROM ec_product p
+        LEFT JOIN ec_brand brand ON brand.id = p.brand_id
+        LEFT JOIN ec_supplier s ON brand.supplier_id = s.id
+        LEFT JOIN ec_category_product cp on cp.product_id = p.id
+        WHERE p.brand_id = #{brandId} AND cp.category_id = #{categoryId} AND p.archived = 0
+        GROUP BY p.brand_id,cp.category_id),'true')
+    </select>
+    <delete id="deleteBrandCategory">
+        DELETE FROM ec_category_brand
+        WHERE brand_id = #{brandId} AND category_id = #{categoryId}
+    </delete>
+    <update id="updateOrder">
+        UPDATE ec_product
+        SET display_order = #{displayOrder}
+        WHERE id = #{id}
+    </update>
+    <delete id="delete">
+        UPDATE ec_product
+        SET del_flag = #{DEL_FLAG_DELETE}
+        ,archived = 1
+        WHERE id = #{id}
+        AND del_flag = #{DEL_FLAG_NORMAL}
+    </delete>
+    <delete id="recover">
+        UPDATE ec_product
+        SET del_flag = #{DEL_FLAG_NORMAL}
+        WHERE id = #{id}
+        AND del_flag = #{DEL_FLAG_DELETE}
+    </delete>
+    <update id="stick">
+        UPDATE ec_product
+        SET display_order = (
+            SELECT
+                a.d
+            FROM
+                (
+                    SELECT
+                        MAX(display_order) AS 'd'
+                    FROM
+                        ec_product
+                    WHERE
+                        id != #{id}
+                ) a
+        ) + 1
+        WHERE id = #{id}
+    </update>
+    <update id="addPerformance">
+        UPDATE ec_product
+        SET sales = sales + #{sales}
+        ,shelves = shelves + #{shelves}
+        WHERE id = #{product.id}
+    </update>
+</mapper>

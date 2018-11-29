@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.RefundDao">
+	<sql id="refundColumns">
+		a.id AS "id",
+		a.shipping_number AS "shippingNumber",
+		a.amount AS "amount",
+		a.quantity AS "quantity",
+		a.phone AS "phone",
+		a.return_reason AS "returnReason",
+		a.return_status AS "returnStatus",
+		a.refund_status AS "refundStatus",
+		a.note AS "note",
+		a.apply_time AS "applyTime",
+		a.finish_time AS "finishTime",
+		a.is_activate AS "isActivate",
+        a.is_receipt AS "isReceipt",
+        a.oper_by AS "operBy.id",
+        a.oper_date AS "operDate",
+        operBy.name AS "operBy.name",
+		orderItem.id AS "orderItem.id",
+		orderItem.quantity AS "orderItem.quantity",
+        orderItem.promotion_quantity AS "orderItem.promotionQuantity",
+		orderItem.sale_earning AS "orderItem.saleEarning",
+		orderItem.bonus_earning AS "orderItem.bonusEarning",
+        orderItem.first_bonus_earning AS "orderItem.firstBonusEarning",
+		orderItem.second_bonus_earning AS "orderItem.secondBonusEarning",
+		ord.id AS "orderItem.order.id",
+		ord.order_number AS "orderItem.order.orderNumber",
+		productItem.id AS "orderItem.productItem.id",
+		productItem.name AS "orderItem.productItem.name",
+		productItem.sale_earning AS "orderItem.productItem.saleEarning",
+		product.id AS "product.id",
+		product.name AS "product.name",
+		category.id AS "product.category.id",
+		category.name AS "product.category.name",
+		supplier.id AS "product.brand.supplier.id",
+		supplier.name AS "product.brand.supplier.name",
+		shop.id AS "shop.id",
+		shop.name AS "shop.name",
+		customer.id AS "shop.customer.id",
+		customer.user_name AS "shop.customer.userName",
+		buyer.id AS "customer.id",
+		buyer.user_name AS "customer.userName",
+		express.id AS "express.id",
+		express.name AS "express.name",
+		express.code AS "express.code",
+		payment.amount AS "payment.amount",
+        gateway.id AS "payment.gateway.id",
+		gateway.name AS "payment.gateway.name",
+        gateway.code AS "payment.gateway.code",
+		payment.transaction_no AS "payment.transactionNo",
+		payment.payment_date AS "payment.paymentDate",
+        i.id AS "refundInterface.id",
+        i.request_success AS "refundInterface.requestSuccess",
+        i.result AS "refundInterface.result"
+	</sql>
+	<sql id="refundJoins">
+		LEFT JOIN ec_order_item orderItem ON orderItem.id = a.order_item_id
+		LEFT JOIN ec_product_item productItem ON orderItem.product_item_id = productItem.id
+		LEFT JOIN ec_product product ON product.id = a.product_id
+        LEFT JOIN ec_brand brand ON brand.id = product.brand_id
+		LEFT JOIN ec_supplier supplier ON supplier.id = brand.supplier_id
+		LEFT JOIN ec_category_product cate ON cate.product_id = product.id
+		LEFT JOIN ec_category category ON category.id = cate.category_id
+		LEFT JOIN ec_order ord ON ord.id = orderItem.order_id
+		LEFT JOIN ec_payment payment ON ord.payment_id = payment.id
+		LEFT JOIN ec_gateway_type gateway ON gateway.id = payment.gateway_type_id
+		LEFT JOIN ec_shop shop ON shop.id = a.shop_id
+		LEFT JOIN ec_customer buyer ON buyer.id = a.customer_id
+		LEFT JOIN ec_customer customer ON customer.id = a.shop_id
+		LEFT JOIN ec_express express ON express.id = a.express_id
+        LEFT JOIN ec_return_interface i ON i.refund_id = a.id AND i.is_activate = 1
+        LEFT JOIN sys_user operBy ON operBy.id = a.oper_by
+	</sql>
+	<select id="get" resultType="Refund">
+		SELECT 
+			<include refid="refundColumns"></include>
+		FROM ec_return a
+		<include refid="refundJoins"></include>
+		WHERE a.id = #{id}
+	</select>
+	<select id="findList" resultType="Refund">
+		SELECT
+			<include refid="refundColumns"></include>
+		FROM ec_return a
+		<include refid="refundJoins"></include>
+        WHERE a.is_activate = 1
+		<if test="refundStatus != null and '' != refundStatus">
+			AND a.refund_status = #{refundStatus}
+		</if>
+		<if test="product != null and product.category != null and product.category.id != null and '' != product.category.id">
+			AND category.id = #{product.category.id}
+		</if>
+		<if test="product != null and product.brand.supplier != null and product.brand.supplier.id != null and '' != product.brand.supplier.id">
+			AND supplier.id = #{product.brand.supplier.id}
+		</if>
+		<if test="sqlMap.type != null and sqlMap.type == 'financeRefundList'"><!-- 查询财务退款申请列表 -->
+			AND return_status = #{RETURN_STATUS_COMPLETED}
+			AND (refund_status = #{REFUND_STATUS_NO_REFUND}
+			OR refund_status = #{REFUND_STATUS_REFUND})
+		</if>
+		<if test="sqlMap.type != null and sqlMap.type == 'historyRefundList'"><!-- 查询财务退款历史列表 -->
+			AND (return_status = #{RETURN_STATUS_FAILURE}
+            OR refund_status = #{REFUND_STATUS_COMPLETED}
+			OR refund_status = #{REFUND_STATUS_FAILURE})
+		</if>
+		<if test="customer != null and customer.id != null and customer.id != ''"><!-- 查询财务退款历史列表 -->
+			AND a.customer_id = #{customer.id}
+		</if>
+		<if test="sqlMap.keyWord != null and sqlMap.keyWord != ''">
+			AND (
+				ord.order_number like "%${sqlMap.keyWord}%"
+				OR
+				customer.user_name like "%${sqlMap.keyWord}%"
+				OR
+				buyer.user_name like "%${sqlMap.keyWord}%"
+				OR
+				category.name like "%${sqlMap.keyWord}%"
+				OR
+				supplier.name like "%${sqlMap.keyWord}%"
+				OR
+				product.name like "%${sqlMap.keyWord}%"
+				OR
+				productItem.name like "%${sqlMap.keyWord}%"
+			)
+		</if>
+		<if test="sqlMap.st != null and sqlMap.st != ''">
+			AND a.apply_time > STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d %H:%i:%s")
+		</if>
+		<if test="sqlMap.et != null and sqlMap.et != ''">
+			AND STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d %H:%i:%s") > a.apply_time
+		</if>
+        <if test="orderItem != null and orderItem.id != null and orderItem.id != ''">
+            AND a.order_item_id = #{orderItem.id}
+        </if>
+        <if test="payment != null and payment.gateway != null and payment.gateway.id != null and payment.gateway.id != ''">
+            AND gateway.id = #{payment.gateway.id}
+        </if>
+		ORDER BY a.return_status,a.refund_status,a.apply_time
+	</select>
+    <select id="findHistory" resultType="Refund">
+        SELECT
+        <include refid="refundColumns"></include>
+        FROM ec_return a
+        <include refid="refundJoins"></include>
+        WHERE a.order_item_id = #{orderItem.id}
+        ORDER BY a.apply_time DESC
+    </select>
+	<update id="verifyReturn">
+		UPDATE ec_return
+		SET return_status = #{returnStatus}
+		    ,note = #{note}
+            ,oper_by = #{currentUser.id}
+            ,oper_date = CURRENT_TIMESTAMP
+		WHERE refund_status = #{REFUND_STATUS_NO_REFUND}
+		AND return_status = #{RETURN_STATUS_UNTREATED}
+		AND	id = #{id}
+		AND is_activate = 1
+	</update>
+	<update id="confirmReturn">
+		UPDATE ec_return
+		SET return_status = #{returnStatus}
+			,note = #{note}
+            ,oper_by = #{currentUser.id}
+            ,oper_date = CURRENT_TIMESTAMP
+		WHERE refund_status = #{REFUND_STATUS_NO_REFUND}
+		AND return_status = #{RETURN_STATUS_RETURNS_IN}
+		AND	id = #{id}
+		AND is_activate = 1
+	</update>
+	<insert id="insert" parameterType="com.vcat.module.ec.entity.Refund">
+		INSERT INTO ec_return(
+			id,
+			order_item_id,
+			product_id,
+			shop_id,
+			customer_id,
+			amount,
+			quantity,
+			note,
+			return_status,
+			return_reason,
+			refund_status,
+			oper_by,
+			oper_date,
+			phone,
+			is_activate,
+			apply_time,
+			has_freight_price
+		) VALUES (
+			#{id},
+			#{orderItem.id},
+			#{orderItem.productItem.product.id},
+			#{orderItem.shop.id},
+			#{customer.id},
+			#{amount},
+			#{quantity},
+			#{note},
+			0,
+			#{returnReason},
+			0,
+			#{currentUser.id},
+			CURRENT_TIMESTAMP,
+			(SELECT oa.delivery_phone
+			FROM ec_order_item AS oi
+            LEFT JOIN ec_order_address oa ON oi.order_id = oa.id
+			WHERE oi.id=#{orderItem.id}),
+			1,
+            CURRENT_TIMESTAMP,
+			#{hasFreightPrice}
+		)
+	</insert>
+	<update id="verify">
+		UPDATE ec_return
+		SET
+			refund_status = #{refundStatus}
+			,note = #{note}
+            ,oper_by = #{currentUser.id}
+            ,oper_date = CURRENT_TIMESTAMP
+		WHERE return_status = #{RETURN_STATUS_COMPLETED}
+		AND refund_status = #{REFUND_STATUS_NO_REFUND}
+		AND	id = #{id}
+		AND is_activate = 1
+	</update>
+	<update id="confirmRefundCompleted">
+		UPDATE ec_return
+		SET refund_status = #{refundStatus}
+			,note = #{note}
+            ,oper_by = #{currentUser.id}
+            ,oper_date = CURRENT_TIMESTAMP
+			,finish_time = NOW()
+		WHERE return_status = #{RETURN_STATUS_COMPLETED}
+		AND refund_status = #{REFUND_STATUS_REFUND}
+		AND	id = #{id}
+		AND is_activate = 1
+	</update>
+
+    <update id="updateHasFreightPriceRefundAmount">
+        UPDATE ec_return re
+        LEFT JOIN ec_order_item item ON re.order_item_id = item.id AND re.is_activate = 1
+        LEFT JOIN ec_order ord ON item.order_id = ord.id
+        SET re.amount = re.amount - IFNULL(ord.freight_price, 0)
+        ,re.has_freight_price = 0
+        WHERE re.amount > ord.freight_price
+        AND re.id = (
+            SELECT
+                a.id
+            FROM
+                (
+                    SELECT
+                        re.id AS id
+                    FROM
+                        ec_return re
+                    LEFT JOIN ec_order_item item ON re.order_item_id = item.id AND re.is_activate = 1
+                    WHERE
+                        item.order_id = (
+                            SELECT
+                                 DISTINCT item.order_id
+                            FROM
+                                ec_return re
+                            LEFT JOIN ec_order_item item ON re.order_item_id = item.id
+                            AND re.is_activate = 1
+                            WHERE re.id = #{id}
+                        )
+                    AND re.return_status !=4
+                    AND re.refund_status NOT IN (2, 3)
+                    AND re.has_freight_price = 1
+                    LIMIT 1
+                ) a
+        )
+        AND re.id != #{id}
+    </update>
+
+    <update id="cancelHistoryFailInterfaceData">
+        UPDATE ec_return_interface i
+        SET i.is_activate = 0
+        WHERE i.refund_id = #{id}
+        AND i.is_activate = 1
+    </update>
+
+    <select id="getInterfaceData" resultType="com.vcat.module.ec.entity.RefundInterface">
+        SELECT
+            i.id,
+            i.refund_id AS "refund.id",
+            i.gateway_type_id AS "gatewayType.id",
+            t.name AS "gatewayType.name",
+            i.batch_no AS "batchNo",
+            i.request_data AS "requestData",
+            i.request_success AS "requestSuccess",
+            i.response_data AS "responseData",
+            i.result AS "result",
+            i.is_activate AS "isActivate",
+            u.id AS "createBy.id",
+            u.name AS "createBy.name"
+        FROM ec_return_interface i
+        LEFT JOIN ec_gateway_type t ON i.gateway_type_id = t.id
+        LEFT JOIN sys_user u ON u.id = i.create_by
+        WHERE i.is_activate = 1
+        AND refund_id = #{id}
+    </select>
+
+    <insert id="insertInterfaceDataByAlipay">
+        INSERT INTO ec_return_interface(
+            id,
+            refund_id,
+            gateway_type_id,
+            batch_no,
+            request_data,
+            request_success,
+            is_activate,
+            create_by,
+            create_date
+        )VALUES(
+            #{id},
+            #{refund.id},
+            #{refund.payment.gateway.id},
+            #{batchNo},
+            #{requestData},
+            1,
+            1,
+            #{createBy.id},
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <select id="getRefundByBatchNo" resultType="com.vcat.module.ec.entity.Refund">
+        SELECT
+        <include refid="refundColumns"></include>
+        FROM ec_return a
+        <include refid="refundJoins"></include>
+        WHERE i.batch_no = #{batchNo}
+    </select>
+
+    <update id="updateInterfaceResult">
+        UPDATE ec_return_interface i
+        SET i.result = #{result}
+        ,response_data = #{responseData}
+        WHERE refund_id = #{refund.id}
+        AND batch_no = #{batchNo}
+    </update>
+    <update id="revocation">
+        UPDATE ec_return
+        SET is_activate = 0
+            ,note = #{note}
+            ,oper_by = #{currentUser.id}
+            ,oper_date = CURRENT_TIMESTAMP
+        WHERE is_activate = 1
+        AND id = #{id}
+    </update>
+</mapper>

@@ -1,0 +1,549 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.SupplierDao">
+	<sql id="supplierColumns">
+		a.id,
+		a.name,
+		a.logo_url AS "logoUrl",
+		a.site_url AS "siteUrl",
+		a.phone,
+		a.contact,
+		a.mobile_phone AS "mobilePhone",
+		a.address,
+        a.note,
+        a.description
+	</sql>
+	<select id="get" resultType="Supplier">
+		SELECT 
+			<include refid="supplierColumns"></include>
+		FROM ec_supplier a
+		WHERE a.id = #{id}
+	</select>
+	<select id="select" resultType="Supplier" parameterType="String">
+		SELECT 
+			<include refid="supplierColumns"></include>
+		FROM ec_supplier a
+		WHERE a.id = #{_parameter}
+	</select>
+
+	<select id="findList" resultType="Supplier">
+		SELECT
+			<include refid="supplierColumns"></include>
+		FROM ec_supplier a
+        WHERE 1=1
+        <if test="name != null and name != ''">
+            AND a.name LIKE CONCAT('%', #{name}, '%')
+        </if>
+		ORDER BY a.name ASC
+	</select>
+
+	<insert id="insert">
+		INSERT INTO ec_supplier(
+			id,
+			name,
+			logo_url,
+			site_url,
+			phone,
+			contact,
+			mobile_phone,
+			address,
+            note,
+            description
+		) VALUES (
+			#{id},
+			#{name},
+			#{logoUrl},
+			#{siteUrl},
+			#{phone},
+			#{contact},
+			#{mobilePhone},
+			#{address},
+            #{note},
+            #{description}
+		)
+	</insert>
+	
+	<update id="update">
+		UPDATE ec_supplier SET
+			name = #{name},
+			logo_url = #{logoUrl},
+			site_url = #{siteUrl},
+			phone = #{phone},
+			contact = #{contact},
+			mobile_phone = #{mobilePhone},
+			address = #{address},
+            note = #{note},
+            description = #{description}
+		WHERE id = #{id}
+	</update>
+    <select id="statementOfAccount" resultType="com.vcat.module.ec.entity.StatementOfAccount">
+        SELECT
+            ord.id AS "orderId"
+            ,orderType.label AS "orderType"
+            ,GROUP_CONCAT(supplier.name SEPARATOR '\r\n') AS "supplierName"
+            ,GROUP_CONCAT(brand.name SEPARATOR '\r\n') AS "brandName"
+            ,ord.order_number AS "orderNumber"
+            ,DATE_FORMAT(ord.add_date,'%Y-%m-%d %H:%i:%s') AS "orderTime"
+            ,GROUP_CONCAT(product.name SEPARATOR '\r\n') AS "productName"
+            ,GROUP_CONCAT(productItem.name SEPARATOR '\r\n') AS "itemName"
+            ,GROUP_CONCAT(orderItem.quantity SEPARATOR '\r\n') AS "productCount"
+            ,buyer.user_name AS "buyerName"
+            ,buyer.phone_number AS "buyerPhone"
+            ,payment.payment_no AS "paymentNumber"
+            ,DATE_FORMAT(payment.payment_date,'%Y-%m-%d %H:%i:%s') AS "paymentTime"
+            ,paymentStatus.label AS "paymentStatus"
+            ,orderStatus.label AS "orderStatus"
+            ,shippingStatus.label AS "shippingStatus"
+            ,(CASE WHEN IFNULL(ord.freight_price,0) = 0 THEN '包邮' ELSE '快递' END) AS "deliveryMethod"
+            ,express.name AS "expressName"
+            ,shipping.shipping_number AS "shippingNumber"
+            ,ord.freight_price AS "freightPrice"
+            ,ord.total_price - IFNULL(re.amount,0) AS "orderTotalPrice"
+            ,SUM(orderItem.sale_earning * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "saleEarning"
+            ,SUM(orderItem.bonus_earning * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "bonusEarning"
+            ,SUM(orderItem.first_bonus_earning * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "firstBonusEarning"
+            ,SUM(orderItem.second_bonus_earning * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "secondBonusEarning"
+            ,SUM(orderItem.single_coupon * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "singleCoupon"
+            ,SUM(orderItem.point * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "point"
+            ,SUM(orderItem.purchase_price * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "balance"
+        FROM ec_order_item orderItem
+        LEFT JOIN ec_return re ON (orderItem.id = re.order_item_id AND re.refund_status = 2 AND re.is_activate = 1)
+        LEFT JOIN ec_product_item productItem ON orderItem.product_item_id = productItem.id
+        LEFT JOIN ec_product product ON productItem.product_id = product.id
+        LEFT JOIN ec_order ord ON orderItem.order_id = ord.id
+        LEFT JOIN ec_supplier supplier ON orderItem.supplier_id = supplier.id
+        LEFT JOIN ec_brand brand ON orderItem.brand_id = brand.id
+        LEFT JOIN ec_customer buyer ON buyer.id = ord.buyer_id
+        LEFT JOIN ec_payment payment ON payment.id = ord.payment_id
+        LEFT JOIN ec_shipping shipping ON shipping.id = ord.shipping_id
+        LEFT JOIN ec_express express ON express.id = shipping.express_id
+        LEFT JOIN sys_dict orderType ON orderType.value = orderItem.order_item_type AND orderType.type = 'ec_order_type'
+        LEFT JOIN sys_dict paymentStatus ON paymentStatus.value = ord.payment_status AND paymentStatus.type = 'ec_payment_status'
+        LEFT JOIN sys_dict orderStatus ON orderStatus.value = ord.order_status AND orderStatus.type = 'ec_order_status'
+        LEFT JOIN sys_dict shippingStatus ON shippingStatus.value = ord.shipping_status AND shippingStatus.type = 'ec_shipping_status'
+        WHERE ord.order_status = 2
+        AND ord.payment_status = 1
+        AND ord.shipping_status = 2
+        AND orderItem.order_item_type NOT IN ('3','5')
+        <if test="null != id and '' != id">
+            AND supplier.id = #{id}
+        </if>
+        <if test="null != sqlMap.brandId and '' != sqlMap.brandId">
+            AND brand.id = #{sqlMap.brandId}
+        </if>
+        <if test="null != sqlMap.pst and '' != sqlMap.pst">
+            AND payment.payment_date >= STR_TO_DATE(#{sqlMap.pst},"%Y-%m-%d")
+        </if>
+        <if test="null != sqlMap.pet and '' != sqlMap.pet">
+            AND ADDDATE(STR_TO_DATE(#{sqlMap.pet},"%Y-%m-%d"),INTERVAL 1 DAY) > payment.payment_date
+        </if>
+        <if test="null != sqlMap.sst and '' != sqlMap.sst">
+            AND ord.confirm_date >= STR_TO_DATE(#{sqlMap.sst},"%Y-%m-%d")
+        </if>
+        <if test="null != sqlMap.set and '' != sqlMap.set">
+            AND ADDDATE(STR_TO_DATE(#{sqlMap.set},"%Y-%m-%d"),INTERVAL 1 DAY) > ord.confirm_date
+        </if>
+        <if test="null != sqlMap.orderType and '' != sqlMap.orderType">
+            AND orderItem.order_item_type = #{sqlMap.orderType}
+        </if>
+        <if test="null != sqlMap.keyWord and '' != sqlMap.keyWord">
+            AND ord.order_number like "%${sqlMap.keyWord}%"
+        </if>
+        GROUP BY ord.id
+        ORDER BY payment.payment_date,ord.total_price
+    </select>
+    <select id="statementOfAccountTotal" resultType="com.vcat.module.ec.entity.StatementOfAccount">
+        SELECT
+            '总计' AS "orderType"
+            ,'\\' AS "supplierName"
+            ,'\\' AS "brandName"
+            ,COUNT(DISTINCT ord.id) AS "orderNumber"
+            ,'\\' AS "orderTime"
+            ,'\\' AS "productName"
+            ,'\\' AS "itemName"
+            ,SUM(orderItem.quantity) AS "productCount"
+            ,'\\' AS "buyerName"
+            ,'\\' AS "buyerPhone"
+            ,'\\' AS "paymentNumber"
+            ,'\\' AS "paymentTime"
+            ,'\\' AS "paymentStatus"
+            ,'\\' AS "orderStatus"
+            ,'\\' AS "shippingStatus"
+            ,'\\' AS "deliveryMethod"
+            ,'\\' AS "expressName"
+            ,'\\' AS "shippingNumber"
+            ,(SELECT SUM(freight_price)
+            FROM ec_order ord
+            LEFT JOIN ec_payment payment ON payment.id = ord.payment_id
+            WHERE order_status = 2
+            AND payment_status = 1
+            AND shipping_status = 2
+            AND ord.id IN (
+                SELECT DISTINCT order_id FROM ec_order_item item WHERE item.order_item_type NOT IN ('3','5')
+                <if test="null != sqlMap.orderType and '' != sqlMap.orderType">
+                    AND item.order_item_type = #{sqlMap.orderType}
+                </if>
+            )
+            <if test="null != id and '' != id">
+                AND ord.id IN (SELECT DISTINCT order_id FROM ec_order_item item WHERE item.supplier_id = #{id})
+            </if>
+            <if test="null != sqlMap.pst and '' != sqlMap.pst">
+                AND payment.payment_date >= STR_TO_DATE(#{sqlMap.pst},"%Y-%m-%d")
+            </if>
+            <if test="null != sqlMap.pet and '' != sqlMap.pet">
+                AND ADDDATE(STR_TO_DATE(#{sqlMap.pet},"%Y-%m-%d"),INTERVAL 1 DAY) > payment.payment_date
+            </if>
+            <if test="null != sqlMap.sst and '' != sqlMap.sst">
+                AND ord.confirm_date >= STR_TO_DATE(#{sqlMap.sst},"%Y-%m-%d")
+            </if>
+            <if test="null != sqlMap.set and '' != sqlMap.set">
+                AND ADDDATE(STR_TO_DATE(#{sqlMap.set},"%Y-%m-%d"),INTERVAL 1 DAY) > ord.confirm_date
+            </if>
+            <if test="null != sqlMap.keyWord and '' != sqlMap.keyWord">
+                AND ord.order_number like "%${sqlMap.keyWord}%"
+            </if>
+            ) AS "freightPrice"
+            ,(SELECT SUM(total_price)
+            FROM ec_order ord
+            LEFT JOIN ec_payment payment ON payment.id = ord.payment_id
+            WHERE order_status = 2
+            AND payment_status = 1
+            AND shipping_status = 2
+            AND ord.id IN (
+                SELECT DISTINCT order_id FROM ec_order_item item WHERE item.order_item_type NOT IN ('3','5')
+                <if test="null != sqlMap.orderType and '' != sqlMap.orderType">
+                    AND item.order_item_type = #{sqlMap.orderType}
+                </if>
+            )
+            <if test="null != id and '' != id">
+                AND ord.id IN (SELECT DISTINCT order_id FROM ec_order_item item WHERE item.supplier_id = #{id})
+            </if>
+            <if test="null != sqlMap.pst and '' != sqlMap.pst">
+                AND payment.payment_date >= STR_TO_DATE(#{sqlMap.pst},"%Y-%m-%d")
+            </if>
+            <if test="null != sqlMap.pet and '' != sqlMap.pet">
+                AND ADDDATE(STR_TO_DATE(#{sqlMap.pet},"%Y-%m-%d"),INTERVAL 1 DAY) > payment.payment_date
+            </if>
+            <if test="null != sqlMap.sst and '' != sqlMap.sst">
+                AND ord.confirm_date >= STR_TO_DATE(#{sqlMap.sst},"%Y-%m-%d")
+            </if>
+            <if test="null != sqlMap.set and '' != sqlMap.set">
+                AND ADDDATE(STR_TO_DATE(#{sqlMap.set},"%Y-%m-%d"),INTERVAL 1 DAY) > ord.confirm_date
+            </if>
+            <if test="null != sqlMap.keyWord and '' != sqlMap.keyWord">
+                AND ord.order_number like "%${sqlMap.keyWord}%"
+            </if>
+            ) - SUM(IFNULL(re.amount,0)) AS "orderTotalPrice"
+            ,SUM(orderItem.sale_earning * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "saleEarning"
+            ,SUM(orderItem.bonus_earning * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "bonusEarning"
+            ,SUM(orderItem.first_bonus_earning * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "firstBonusEarning"
+            ,SUM(orderItem.second_bonus_earning * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "secondBonusEarning"
+            ,SUM(orderItem.single_coupon * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "singleCoupon"
+            ,SUM(orderItem.point * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "point"
+            ,SUM(orderItem.purchase_price * (orderItem.quantity - (CASE WHEN (re.quantity IS NOT NULL AND re.quantity > orderItem.promotion_quantity) THEN (re.quantity - orderItem.promotion_quantity) ELSE IFNULL(re.quantity,0) END))) AS "balance"
+        FROM ec_order_item orderItem
+        LEFT JOIN ec_order ord ON orderItem.order_id = ord.id
+        LEFT JOIN ec_payment payment ON payment.id = ord.payment_id
+        LEFT JOIN ec_return re ON (orderItem.id = re.order_item_id AND re.refund_status = 2 AND re.is_activate = 1)
+        WHERE ord.order_status = 2
+        AND ord.payment_status = 1
+        AND ord.shipping_status = 2
+        AND orderItem.order_item_type NOT IN ('3','5')
+        <if test="null != id and '' != id">
+            AND orderItem.supplier_id = #{id}
+        </if>
+        <if test="null != sqlMap  and '' != sqlMap.brandId">
+            AND orderItem.brand_id = #{sqlMap.brandId}
+        </if>
+        <if test="null != sqlMap.pst and '' != sqlMap.pst">
+            AND payment.payment_date >= STR_TO_DATE(#{sqlMap.pst},"%Y-%m-%d")
+        </if>
+        <if test="null != sqlMap.pet and '' != sqlMap.pet">
+            AND ADDDATE(STR_TO_DATE(#{sqlMap.pet},"%Y-%m-%d"),INTERVAL 1 DAY) > payment.payment_date
+        </if>
+        <if test="null != sqlMap.sst and '' != sqlMap.sst">
+            AND ord.confirm_date >= STR_TO_DATE(#{sqlMap.sst},"%Y-%m-%d")
+        </if>
+        <if test="null != sqlMap.set and '' != sqlMap.set">
+            AND ADDDATE(STR_TO_DATE(#{sqlMap.set},"%Y-%m-%d"),INTERVAL 1 DAY) > ord.confirm_date
+        </if>
+        <if test="null != sqlMap.orderType and '' != sqlMap.orderType">
+            AND orderItem.order_item_type = #{sqlMap.orderType}
+        </if>
+        <if test="null != sqlMap.keyWord and '' != sqlMap.keyWord">
+            AND ord.order_number like "%${sqlMap.keyWord}%"
+        </if>
+    </select>
+
+    <select id="statementOfFinancial" resultType="com.vcat.module.ec.entity.StatementOfFinancial">
+        SELECT
+        ord.id AS "orderId"
+        ,payment.id AS "paymentId"
+        ,payment.payment_no AS "paymentNo"
+        ,ord.order_number AS "orderNumber"
+        ,GROUP_CONCAT(supplier.name SEPARATOR ' | ') AS "supplierName"
+        ,GROUP_CONCAT(brand.name SEPARATOR ' | ') AS "brandName"
+        ,GROUP_CONCAT(product.name SEPARATOR ' | ') AS "productName"
+        ,GROUP_CONCAT(orderItem.quantity SEPARATOR ' | ') AS "productQuantity"
+        ,GROUP_CONCAT(orderType.label SEPARATOR ' | ') AS "orderType"
+        ,sender.name AS "sender"
+        ,DATE_FORMAT(payment.payment_date,'%Y-%m-%d %H:%i:%s') AS "paymentTime"
+        ,gateway.name AS "paymentType"
+        ,(ord.total_price - ord.total_coupon + ord.freight_price)AS "paymentAmount"
+        ,ord.freight_price AS "freightPrice"
+        ,SUM(orderItem.quantity * orderItem.sale_earning)AS "saleEarning"
+        ,SUM(orderItem.quantity * orderItem.bonus_earning)AS "bonusEarning"
+        ,SUM(orderItem.quantity * orderItem.first_bonus_earning)AS "firstBonusEarning"
+        ,SUM(orderItem.quantity * orderItem.second_bonus_earning)AS "secondBonusEarning"
+        ,SUM(orderItem.quantity * orderItem.purchase_price)AS "supplierBalance"
+        ,SUM(orderItem.quantity * orderItem.point)AS "terraceBalance"
+        ,SUM(IFNULL(re.amount,0)) AS "refundAmount"
+        ,GROUP_CONCAT(DATE_FORMAT(re.oper_date,'%Y-%m-%d %H:%i:%s') SEPARATOR ' | ') AS "refundOperDate"
+        ,(CASE WHEN reconciliationFreight.id IS NULL THEN '未结算' ELSE '已结算' END) AS "reconciliationFreightStatus"
+        ,reconciliationStatus.label AS "reconciliationStatus"
+        ,(CASE WHEN accounting.id IS NULL THEN '未记账' ELSE '已记账' END) AS "accountingStatus"
+        FROM ec_order_item orderItem
+        LEFT JOIN ec_product_item productItem ON orderItem.product_item_id = productItem.id
+        LEFT JOIN ec_product product ON productItem.product_id = product.id
+        LEFT JOIN ec_order ord ON orderItem.order_id = ord.id
+        LEFT JOIN ec_shipping shipping ON shipping.order_id = ord.id
+        LEFT JOIN sys_user sender ON sender.id = shipping.oper_by
+        LEFT JOIN ec_return re ON (orderItem.id = re.order_item_id AND re.refund_status = 2 AND re.is_activate = 1)
+        LEFT JOIN ec_brand brand ON orderItem.brand_id = brand.id
+        LEFT JOIN ec_supplier supplier ON orderItem.supplier_id = supplier.id
+        LEFT JOIN ec_payment payment ON payment.id = ord.payment_id
+        LEFT JOIN ec_gateway_type gateway ON payment.gateway_type_id = gateway.id
+        LEFT JOIN sys_dict orderType ON orderType.value = orderItem.order_item_type AND orderType.type = 'ec_order_type'
+        LEFT JOIN sys_dict reconciliationStatus ON reconciliationStatus.value = ord.reconciliation_status AND reconciliationStatus.type = 'ec_reconciliation_status'
+        LEFT JOIN ec_accounting accounting ON accounting.order_id = ord.id
+        LEFT JOIN ec_reconciliation_freight reconciliationFreight ON reconciliationFreight.order_id = ord.id
+        WHERE ord.payment_status = 1
+        <if test="null != sqlMap.orderStatus and 'succ' == sqlMap.orderStatus">
+            AND ord.order_status = 2 AND ord.shipping_status = 2
+        </if>
+        <if test="null != id and '' != id">
+            AND orderItem.supplier_id = #{id}
+        </if>
+        <if test="'' != sqlMap.brandId">
+            AND orderItem.brand_id = #{sqlMap.brandId}
+        </if>
+        <if test="null != sqlMap.pst and '' != sqlMap.pst">
+            AND payment.payment_date >= STR_TO_DATE(#{sqlMap.pst},"%Y-%m-%d")
+        </if>
+        <if test="null != sqlMap.pet and '' != sqlMap.pet">
+            AND ADDDATE(STR_TO_DATE(#{sqlMap.pet},"%Y-%m-%d"),INTERVAL 1 DAY) > payment.payment_date
+        </if>
+        <if test="null != sqlMap.sst and '' != sqlMap.sst">
+            AND ord.confirm_date >= STR_TO_DATE(#{sqlMap.sst},"%Y-%m-%d")
+        </if>
+        <if test="null != sqlMap.set and '' != sqlMap.set">
+            AND ADDDATE(STR_TO_DATE(#{sqlMap.set},"%Y-%m-%d"),INTERVAL 1 DAY) > ord.confirm_date
+        </if>
+        <if test="null != sqlMap.rst and '' != sqlMap.rst">
+            AND re.oper_date >= #{sqlMap.rst}
+        </if>
+        <if test="null != sqlMap.ret and '' != sqlMap.ret">
+            AND #{sqlMap.ret} > re.oper_date
+        </if>
+        <if test="null != sqlMap.orderType and '' != sqlMap.orderType">
+            AND orderItem.order_item_type = #{sqlMap.orderType}
+        </if>
+        <if test="null != sqlMap.gateway and '' != sqlMap.gateway">
+            AND gateway.id = #{sqlMap.gateway}
+        </if>
+        <if test="null != sqlMap.keyword and '' != sqlMap.keyword">
+            AND (ord.order_number like '%${sqlMap.keyword}%' OR payment.payment_no like '%${sqlMap.keyword}%')
+        </if>
+        <if test="null != sqlMap.reconciliationStatus and '' != sqlMap.reconciliationStatus">
+            AND ord.reconciliation_status = #{sqlMap.reconciliationStatus}
+        </if>
+        <if test="null != sqlMap.reconciliationFreightStatus and 'false' == sqlMap.reconciliationFreightStatus">
+            AND reconciliationFreight.id IS NULL
+        </if>
+        <if test="null != sqlMap.reconciliationFreightStatus and 'true' == sqlMap.reconciliationFreightStatus">
+            AND reconciliationFreight.id IS NOT NULL
+        </if>
+        <if test="null != sqlMap.accounting and '' != sqlMap.accounting">
+            AND accounting.id IS NOT NULL
+        </if>
+        <if test="null != sqlMap.mode and 'export' == sqlMap.mode">
+            GROUP BY orderItem.id
+        </if>
+        <if test="(null == sqlMap.mode)">
+            GROUP BY ord.id
+        </if>
+        ORDER BY ord.reconciliation_status,payment.payment_date
+    </select>
+
+    <select id="statementOfFinancialTotal" resultType="com.vcat.module.ec.entity.StatementOfFinancial">
+        SELECT
+        '\\' AS "orderId"
+        ,'\\' AS "paymentId"
+        ,'总计' AS "paymentNo"
+        ,'\\' AS "orderNumber"
+        ,'\\' AS "supplierName"
+        ,'\\' AS "brandName"
+        ,'\\' AS "productName"
+        ,'\\' AS "productQuantity"
+        ,'\\' AS "orderType"
+        ,'\\' AS "sender"
+        ,'\\' AS "paymentTime"
+        ,'\\' AS "paymentType"
+        ,(SELECT (SUM(a.total_price) - SUM(a.total_coupon) + SUM(a.freight_price)) FROM (
+                SELECT SUM(total_price) total_price,SUM(total_coupon)total_coupon,SUM(freight_price)freight_price
+                FROM ec_order_item orderItem
+                LEFT JOIN ec_return re ON (orderItem.id = re.order_item_id AND re.refund_status = 2 AND re.is_activate = 1)
+                LEFT JOIN ec_order ord ON orderItem.order_id = ord.id
+                LEFT JOIN ec_payment payment ON payment.id = ord.payment_id
+                LEFT JOIN ec_gateway_type gateway ON payment.gateway_type_id = gateway.id
+                WHERE ord.payment_status = 1
+                <if test="null != sqlMap.orderStatus and 'succ' == sqlMap.orderStatus">
+                    AND ord.order_status = 2 AND ord.shipping_status = 2
+                </if>
+                <if test="null != id and '' != id">
+                    AND ord.id IN (SELECT DISTINCT order_id FROM ec_order_item item WHERE item.supplier_id = #{id})
+                </if>
+                <if test="null != sqlMap  and '' != sqlMap.brandId">
+                    AND ord.id IN (SELECT DISTINCT order_id FROM ec_order_item item WHERE item.brand_id = #{sqlMap.brandId})
+                </if>
+                <if test="null != sqlMap.pst and '' != sqlMap.pst">
+                    AND payment.payment_date >= STR_TO_DATE(#{sqlMap.pst},"%Y-%m-%d")
+                </if>
+                <if test="null != sqlMap.pet and '' != sqlMap.pet">
+                    AND ADDDATE(STR_TO_DATE(#{sqlMap.pet},"%Y-%m-%d"),INTERVAL 1 DAY) > payment.payment_date
+                </if>
+                <if test="null != sqlMap.sst and '' != sqlMap.sst">
+                    AND ord.confirm_date >= STR_TO_DATE(#{sqlMap.sst},"%Y-%m-%d")
+                </if>
+                <if test="null != sqlMap.set and '' != sqlMap.set">
+                    AND ADDDATE(STR_TO_DATE(#{sqlMap.set},"%Y-%m-%d"),INTERVAL 1 DAY) > ord.confirm_date
+                </if>
+                <if test="null != sqlMap.rst and '' != sqlMap.rst">
+                    AND re.oper_date >= #{sqlMap.rst}
+                </if>
+                <if test="null != sqlMap.ret and '' != sqlMap.ret">
+                    AND #{sqlMap.ret} > re.oper_date
+                </if>
+                <if test="null != sqlMap.orderType and '' != sqlMap.orderType">
+                    AND orderItem.order_item_type = #{sqlMap.orderType}
+                </if>
+                <if test="null != sqlMap.gateway and '' != sqlMap.gateway">
+                    AND gateway.id = #{sqlMap.gateway}
+                </if>
+                <if test="null != sqlMap.keyword and '' != sqlMap.keyword">
+                    AND (ord.order_number like '%${sqlMap.keyword}%' OR payment.payment_no like '%${sqlMap.keyword}%')
+                </if>
+                <if test="null != sqlMap.reconciliationStatus and '' != sqlMap.reconciliationStatus">
+                    AND ord.reconciliation_status = #{sqlMap.reconciliationStatus}
+                </if>
+                GROUP BY orderItem.order_id)a
+        ) AS "paymentAmount"
+        ,(SELECT SUM(a.freight_price) FROM (
+            SELECT SUM(ord.freight_price)freight_price
+            FROM ec_order_item orderItem
+            LEFT JOIN ec_return re ON (orderItem.id = re.order_item_id AND re.refund_status = 2 AND re.is_activate = 1)
+            LEFT JOIN ec_order ord ON orderItem.order_id = ord.id
+            LEFT JOIN ec_payment payment ON payment.id = ord.payment_id
+            LEFT JOIN ec_gateway_type gateway ON payment.gateway_type_id = gateway.id
+            WHERE ord.payment_status = 1
+            <if test="null != sqlMap.orderStatus and 'succ' == sqlMap.orderStatus">
+                AND ord.order_status = 2 AND ord.shipping_status = 2
+            </if>
+            <if test="null != id and '' != id">
+                AND ord.id IN (SELECT DISTINCT order_id FROM ec_order_item item WHERE item.supplier_id = #{id})
+            </if>
+            <if test="null != sqlMap  and '' != sqlMap.brandId">
+                AND ord.id IN (SELECT DISTINCT order_id FROM ec_order_item item WHERE item.brand_id = #{sqlMap.brandId})
+            </if>
+            <if test="null != sqlMap.pst and '' != sqlMap.pst">
+                AND payment.payment_date >= STR_TO_DATE(#{sqlMap.pst},"%Y-%m-%d")
+            </if>
+            <if test="null != sqlMap.pet and '' != sqlMap.pet">
+                AND ADDDATE(STR_TO_DATE(#{sqlMap.pet},"%Y-%m-%d"),INTERVAL 1 DAY) >= payment.payment_date
+            </if>
+            <if test="null != sqlMap.sst and '' != sqlMap.sst">
+                AND ord.confirm_date >= STR_TO_DATE(#{sqlMap.sst},"%Y-%m-%d")
+            </if>
+            <if test="null != sqlMap.set and '' != sqlMap.set">
+                AND ADDDATE(STR_TO_DATE(#{sqlMap.set},"%Y-%m-%d"),INTERVAL 1 DAY) >= ord.confirm_date
+            </if>
+            <if test="null != sqlMap.rst and '' != sqlMap.rst">
+                AND re.oper_date >= #{sqlMap.rst}
+            </if>
+            <if test="null != sqlMap.ret and '' != sqlMap.ret">
+                AND #{sqlMap.ret} > re.oper_date
+            </if>
+            <if test="null != sqlMap.orderType and '' != sqlMap.orderType">
+                AND orderItem.order_item_type = #{sqlMap.orderType}
+            </if>
+            <if test="null != sqlMap.gateway and '' != sqlMap.gateway">
+                AND gateway.id = #{sqlMap.gateway}
+            </if>
+            <if test="null != sqlMap.keyword and '' != sqlMap.keyword">
+                AND (ord.order_number like '%${sqlMap.keyword}%' OR payment.payment_no like '%${sqlMap.keyword}%')
+            </if>
+            <if test="null != sqlMap.reconciliationStatus and '' != sqlMap.reconciliationStatus">
+                AND ord.reconciliation_status = #{sqlMap.reconciliationStatus}
+            </if>
+            GROUP BY orderItem.order_id)a
+        ) AS "freightPrice"
+        ,SUM(orderItem.quantity * orderItem.sale_earning)AS "saleEarning"
+        ,SUM(orderItem.quantity * orderItem.bonus_earning)AS "bonusEarning"
+        ,SUM(orderItem.quantity * orderItem.first_bonus_earning)AS "firstBonusEarning"
+        ,SUM(orderItem.quantity * orderItem.second_bonus_earning)AS "secondBonusEarning"
+        ,SUM(orderItem.quantity * orderItem.purchase_price)AS "supplierBalance"
+        ,SUM(orderItem.quantity * orderItem.point)AS "terraceBalance"
+        ,SUM(IFNULL(re.amount,0)) AS "refundAmount"
+        ,'\\' AS "refundOperDate"
+        ,'\\' AS "reconciliationFreightStatus"
+        ,'\\' AS "reconciliationStatus"
+        ,'\\' AS "accountingStatus"
+        FROM ec_order_item orderItem
+        LEFT JOIN ec_product_item productItem ON orderItem.product_item_id = productItem.id
+        LEFT JOIN ec_product product ON productItem.product_id = product.id
+        LEFT JOIN ec_order ord ON orderItem.order_id = ord.id
+        LEFT JOIN ec_return re ON (orderItem.id = re.order_item_id AND re.refund_status = 2 AND re.is_activate = 1)
+        LEFT JOIN ec_payment payment ON payment.id = ord.payment_id
+        LEFT JOIN ec_gateway_type gateway ON payment.gateway_type_id = gateway.id
+        WHERE ord.payment_status = 1
+        <if test="null != sqlMap.orderStatus and 'succ' == sqlMap.orderStatus">
+            AND ord.order_status = 2 AND ord.shipping_status = 2
+        </if>
+        <if test="null != id and '' != id">
+            AND orderItem.supplier_id = #{id}
+        </if>
+        <if test="'' != sqlMap.brandId">
+            AND orderItem.brand_id = #{sqlMap.brandId}
+        </if>
+        <if test="null != sqlMap.pst and '' != sqlMap.pst">
+            AND payment.payment_date >= STR_TO_DATE(#{sqlMap.pst},"%Y-%m-%d")
+        </if>
+        <if test="null != sqlMap.pet and '' != sqlMap.pet">
+            AND ADDDATE(STR_TO_DATE(#{sqlMap.pet},"%Y-%m-%d"),INTERVAL 1 DAY) >= payment.payment_date
+        </if>
+        <if test="null != sqlMap.sst and '' != sqlMap.sst">
+            AND ord.confirm_date >= STR_TO_DATE(#{sqlMap.sst},"%Y-%m-%d")
+        </if>
+        <if test="null != sqlMap.set and '' != sqlMap.set">
+            AND ADDDATE(STR_TO_DATE(#{sqlMap.set},"%Y-%m-%d"),INTERVAL 1 DAY) >= ord.confirm_date
+        </if>
+        <if test="null != sqlMap.rst and '' != sqlMap.rst">
+            AND re.oper_date >= #{sqlMap.rst}
+        </if>
+        <if test="null != sqlMap.ret and '' != sqlMap.ret">
+            AND #{sqlMap.ret} > re.oper_date
+        </if>
+        <if test="null != sqlMap.orderType and '' != sqlMap.orderType">
+            AND orderItem.order_item_type = #{sqlMap.orderType}
+        </if>
+        <if test="null != sqlMap.gateway and '' != sqlMap.gateway">
+            AND gateway.id = #{sqlMap.gateway}
+        </if>
+        <if test="null != sqlMap.keyword and '' != sqlMap.keyword">
+            AND (ord.order_number like '%${sqlMap.keyword}%' OR payment.payment_no like '%${sqlMap.keyword}%')
+        </if>
+        <if test="null != sqlMap.reconciliationStatus and '' != sqlMap.reconciliationStatus">
+            AND ord.reconciliation_status = #{sqlMap.reconciliationStatus}
+        </if>
+    </select>
+</mapper>

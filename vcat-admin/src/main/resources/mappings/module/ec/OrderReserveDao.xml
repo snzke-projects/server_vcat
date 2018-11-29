@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.OrderReserveDao">
+    <select id="get" resultType="com.vcat.module.ec.entity.OrderReserve">
+        SELECT
+            o.id AS 'orderId',
+            o.order_number AS 'orderNumber',
+            oi.product_id AS 'productId',
+            p.name AS 'productName',
+            (oi.quantity + oi.promotion_quantity) AS 'orderInventory',
+            IFNULL((SELECT SUM(eoi.quantity)
+             FROM ec_order_item eoi
+             LEFT JOIN ec_order eo ON eoi.order_id = eo.id
+             WHERE eo.payment_status = 1
+             AND eoi.shop_id = o.buyer_id
+             AND eoi.product_id = oi.product_id
+             AND eo.add_date BETWEEN re.start_time AND re.end_time
+            ),0) AS 'salesInventory',
+            IFNULL((SELECT SUM(clear_inventory)
+             FROM ec_order_clear_inventory
+             WHERE orderId = o.id
+            ),0) AS 'clearInventory',
+            c.user_name AS 'shopName',
+            c.phone_number AS 'shopPhone',
+            oa.delivery_name AS 'deliveryName',
+            oa.delivery_phone AS 'deliveryPhone',
+            CONCAT(oa.province,' ',oa.city,' ',oa.district,' ',oa.detail_address) AS 'detailAddress'
+        FROM ec_order o
+        LEFT JOIN ec_order_item oi ON o.id = oi.order_id
+        LEFT JOIN ec_order_reserve r ON o.id = r.order_id
+        LEFT JOIN ec_recommend re ON r.recommend_id = re.id
+        LEFT JOIN ec_product p ON oi.product_id = p.id
+        LEFT JOIN ec_customer c ON o.buyer_id = c.id
+        LEFT JOIN ec_order_address oa ON o.id = oa.id
+        WHERE o.id = #{orderId}
+    </select>
+</mapper>

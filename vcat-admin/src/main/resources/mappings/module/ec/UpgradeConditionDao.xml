@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.UpgradeConditionDao">
+    <select id="get" resultType="com.vcat.module.ec.entity.UpgradeCondition">
+        SELECT
+            uc.id,
+            uc.amount,
+            uc.period,
+            uc.oper_by AS "operBy",
+            uc.oper_date AS "operDate"
+        FROM ec_upgrade_condition uc
+        WHERE uc.id = #{id}
+    </select>
+    <select id="findList" resultType="com.vcat.module.ec.entity.UpgradeCondition">
+        SELECT
+            uc.id,
+            uc.amount,
+            uc.period,
+            uc.oper_by AS "operBy",
+            u.name AS "operBy.name",
+            uc.oper_date AS "operDate",
+            GROUP_CONCAT(p.name SEPARATOR '\r\n') AS "productShow"
+        FROM ec_upgrade_condition uc
+        LEFT JOIN ec_upgrade_condition_product eucp ON uc.id = eucp.upgrade_condition_id
+        LEFT JOIN ec_product p ON eucp.product_id = p.id
+        LEFT JOIN sys_user u ON uc.oper_by = u.id
+        GROUP BY uc.id
+    </select>
+    <update id="update">
+        UPDATE ec_upgrade_condition
+        SET amount = #{amount},period = #{period}
+        WHERE id = #{id}
+    </update>
+    <insert id="insert">
+        INSERT INTO ec_upgrade_condition(
+            id,
+            amount,
+            period,
+            oper_by,
+            oper_date
+        )VALUES (
+            #{id},
+            #{amount},
+            #{period},
+            #{currentUser.id},
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+    <select id="getProductByCondition" resultType="com.vcat.module.ec.entity.Product">
+        SELECT
+            p.id,
+            p.name
+        FROM ec_upgrade_condition_product eucp
+        LEFT JOIN ec_product p ON eucp.product_id = p.id
+        WHERE eucp.upgrade_condition_id = #{id}
+    </select>
+    <delete id="deleteProduct">
+        DELETE FROM ec_upgrade_condition_product WHERE upgrade_condition_id = #{id}
+    </delete>
+    <insert id="insertProduct">
+        INSERT INTO ec_upgrade_condition_product(
+            id,
+            upgrade_condition_id,
+            product_id
+        )SELECT
+            REPLACE(CAST(UUID() as char character set utf8), '-', ''),
+            #{id},
+            p.id
+        FROM ec_product p
+        WHERE p.id IN (''
+            <foreach collection="productIdArray" item="productId">
+                ,#{productId}
+            </foreach>
+        )
+    </insert>
+</mapper>

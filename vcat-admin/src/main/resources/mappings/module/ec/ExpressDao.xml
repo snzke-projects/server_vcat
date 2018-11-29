@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ExpressDao">
+	<select id="get" resultType="Express">
+		SELECT 
+			a.id AS "id",
+			a.name AS "name",
+			a.code AS "code",
+			a.logo_url AS "logoUrl"
+		FROM ec_express a
+		WHERE a.id = #{id}
+	</select>
+	
+	<select id="findList" resultType="Express">
+		SELECT 
+			a.id AS "id",
+			a.name AS "name",
+			a.code AS "code",
+			a.logo_url AS "logoUrl"
+		FROM ec_express a
+		ORDER BY a.id ASC
+	</select>
+	<select id="getExpressList" resultType="Express">
+			SELECT 
+			a.name AS "name",
+			a.code AS "code"
+		FROM ec_express a
+		ORDER BY a.id ASC
+	</select>
+	<insert id="insert">
+		INSERT INTO ec_express(
+			id,
+			name,
+			code,
+			logo_url
+		) VALUES (
+			#{id},
+			#{name},
+			#{code},
+			#{logoUrl}
+		)
+	</insert>
+	
+	<update id="update">
+		UPDATE ec_express SET
+			name = #{name},
+			code = #{code},
+			logo_url = #{logoUrl}
+		WHERE id = #{id}
+	</update>
+</mapper>

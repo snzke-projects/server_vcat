@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ActivityDao">
+	<sql id="activityColumns">
+			a.id AS "id",
+			a.is_activate AS "isActivate",
+			a.activate_time AS "activateTime",
+			a.title AS "title",
+			a.address AS "address",
+			a.img_url AS "imgUrl",
+			a.seat AS "seat",
+			a.fee_name AS "feeName",
+			a.fee AS "fee",
+			a.start_date AS "startDate",
+			a.end_date AS "endDate",
+			a.intro AS "intro",
+			a.details AS "details",
+			a.del_flag AS "delFlag",
+			a.create_date AS "createDate",
+			a.feedback_status AS "feedBackStatus",
+			(SELECT (a.seat - COUNT(1)) FROM ec_customer_activity customer WHERE customer.activity_id = a.id) AS "lastSeat"
+	</sql>
+	<select id="get" resultType="Activity">
+		SELECT
+		<include refid="activityColumns"/>
+		FROM ec_activity a
+        LEFT JOIN ec_activity_feedback eaf ON eaf.id = a.id
+		WHERE a.id = #{id}
+	</select>
+    <select id="select" resultType="Activity">
+        SELECT
+        <include refid="activityColumns"/>
+        FROM ec_activity a
+        LEFT JOIN ec_activity_feedback eaf ON eaf.id = a.id
+        WHERE a.id = #{id}
+    </select>
+	
+	<select id="findList" resultType="Activity">
+		SELECT
+        a.id AS "id",
+        a.is_activate AS "isActivate",
+        a.activate_time AS "activateTime",
+        a.title AS "title",
+        a.address AS "address",
+        a.img_url AS "imgUrl",
+        a.seat AS "seat",
+        a.fee_name AS "feeName",
+        a.fee AS "fee",
+        a.start_date AS "startDate",
+        a.end_date AS "endDate",
+        a.intro AS "intro",
+        a.details AS "details",
+        a.del_flag AS "delFlag",
+        a.create_date AS "createDate",
+        a.feedback_status AS "feedBackStatus",
+        (SELECT (a.seat - COUNT(1)) FROM ec_customer_activity customer WHERE customer.activity_id = a.id) AS "lastSeat",
+        eaf.title AS "feedback.title",
+        eaf.is_activate AS "feedback.isActivate"
+		FROM ec_activity a
+        LEFT JOIN ec_activity_feedback eaf ON eaf.id = a.id
+		WHERE a.del_flag = #{DEL_FLAG_NORMAL}
+		<if test="title != null and title != ''">
+			AND a.title like '%${title}%'
+		</if>
+		ORDER BY a.is_activate ASC ,a.activate_time ASC
+	</select>
+
+	<insert id="insert">
+		INSERT INTO ec_activity(
+			id,
+			is_activate,
+			title,
+			address,
+			img_url,
+			seat,
+			fee_name,
+			fee,
+			intro,
+			details,
+			del_flag,
+			create_date,
+			start_date,
+			end_date,
+			feedback_status
+		) VALUES (
+			#{id},
+			#{NOT_ACTIVATED},
+			#{title},
+			#{address},
+			#{imgUrl},
+			#{seat},
+			#{feeName},
+			#{fee},
+			#{intro},
+			#{details},
+			#{DEL_FLAG_NORMAL},
+			CURRENT_TIMESTAMP,
+			#{startDate},
+			#{endDate},
+			0
+		)
+	</insert>
+	<update id="update">
+		UPDATE ec_activity SET
+			title = #{title},
+			address = #{address},
+			img_url = #{imgUrl},
+			seat = #{seat},
+			fee_name = #{feeName},
+			fee = #{fee},
+			start_date = #{startDate},
+			end_date = #{endDate},
+			intro = #{intro},
+			details = #{details}
+		WHERE id = #{id}
+	</update>
+	<update id="delete">
+		UPDATE ec_activity SET
+			del_flag = #{DEL_FLAG_DELETE}
+		WHERE id = #{id}
+	</update>
+	<update id="activate">
+		UPDATE ec_activity SET
+			is_activate = #{ACTIVATED},
+			activate_time = CURRENT_TIMESTAMP
+		WHERE id = #{id}
+	</update>
+    <update id="feedback">
+        UPDATE ec_activity SET
+          feedback_status = 1
+        WHERE id = #{id}
+    </update>
+
+	<select id="findParticipationList" resultType="com.vcat.module.ec.entity.Participation">
+		SELECT
+		activity.title AS "title",
+		customer.user_name AS "name",
+		customerActivity.real_name AS "realName",
+		customerActivity.phone_number AS "phone",
+		customerActivity.qq AS "qq",
+		customerActivity.email AS "email",
+		DATE_FORMAT(customerActivity.create_date,'%Y-%m-%d %H:%i:%s') AS "date",
+		oad.delivery_name AS "deliveryName",
+		oad.delivery_phone AS "deliveryPhone",
+		CONCAT(oad.province,' ',oad.city,' ',oad.district,' ',oad.detail_address) AS "detailAddress",
+		(SELECT
+            'true'
+        FROM
+            ec_answer_sheet eas
+        LEFT JOIN ec_questionnaire eq ON eas.questionnaire_id = eq.id
+        LEFT JOIN ec_activity_answer_sheet aas ON eas.id = aas.answer_sheet_id
+        WHERE
+            (
+                aq.questionnaire_id = eas.questionnaire_id -- 查询是否参加活动报告
+                OR
+                aq.questionnaire_id = eq.parent_id -- 查询是否参加活动子报告
+            )
+        AND eas.customer_id = customer.id
+        AND aas.activity_id = activity.id
+        LIMIT 1) AS 'hasReport',
+		customer.id AS 'customerId',
+		q.title AS 'questionnaireTitle'
+		FROM ec_customer_activity customerActivity
+		LEFT JOIN ec_customer customer ON customer.id = customerActivity.customer_id
+		LEFT JOIN ec_activity activity ON activity.id = customerActivity.activity_id
+		LEFT JOIN ec_order_activity oa ON oa.customer_id = customer.id AND oa.activity_id = activity.id
+		LEFT JOIN ec_order_address oad ON oad.id = oa.order_id
+		LEFT JOIN ec_activity_questionnaire aq ON activity.id = aq.activity_id
+		LEFT JOIN ec_questionnaire q ON aq.questionnaire_id = q.id
+		WHERE activity.id = #{id}
+		ORDER BY customerActivity.create_date DESC
+	</select>
+    <select id="countReported" resultType="java.lang.Integer">
+        SELECT COUNT(DISTINCT customer_id)
+        FROM ec_answer_sheet eas
+        LEFT JOIN ec_questionnaire q ON eas.questionnaire_id = q.id
+        LEFT JOIN ec_activity_answer_sheet eaas ON eaas.answer_sheet_id = eas.id
+        WHERE
+        (q.id = (
+            SELECT questionnaire_id
+            FROM ec_activity_questionnaire aq
+            WHERE aq.activity_id = #{activityId}
+        )
+        OR q.parent_id = (
+            SELECT questionnaire_id
+            FROM ec_activity_questionnaire aq
+            WHERE aq.activity_id = #{activityId}
+        ))
+        AND eaas.activity_id = #{activityId}
+    </select>
+    <select id="statisticsActivityAnswer" resultType="java.util.Map">
+        SELECT CONCAT(eqq.id,ea.answer) AS 'questionId',COUNT(1) AS 'count' FROM ec_answer ea
+        LEFT JOIN ec_answer_sheet eas ON ea.answer_sheet_id = eas.id
+        LEFT JOIN ec_questionnaire_questions eqq ON ea.questionnaire_question_id = eqq.id
+        LEFT JOIN ec_questionnaire eq ON eqq.questionnaire_id = eq.id
+        LEFT JOIN ec_activity_answer_sheet eaas ON eaas.answer_sheet_id = eas.id
+        WHERE (eq.id = (
+                SELECT
+                    questionnaire_id
+                FROM
+                    ec_activity_questionnaire aq
+                WHERE
+                    aq.activity_id = #{activityId}
+            )
+        OR eq.parent_id = (
+            SELECT
+                questionnaire_id
+            FROM
+                ec_activity_questionnaire aq
+            WHERE
+                aq.activity_id = #{activityId}
+        ))
+        AND eqq.type IN ('1','2')
+        AND eaas.activity_id = #{activityId}
+        GROUP BY CONCAT(eqq.id,ea.answer)
+    </select>
+    <insert id="insertActivityQuestionnaire">
+        INSERT INTO ec_activity_questionnaire
+        SELECT #{id},value FROM sys_dict WHERE type = 'ec_activity_default_questionnaire_id' LIMIT 1
+    </insert>
+</mapper>

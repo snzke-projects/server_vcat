@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.HeadImageDao">
+<sql id="Base_Column_List">
+	id AS "id",
+	name AS "name",
+	url AS "url",
+	page_url AS "pageUrl",
+	display_order AS "displayOrder",
+	type AS "type",
+	is_activate AS "isActivate",
+	del_flag AS "delFlag"
+</sql>
+<select id="get" resultType="HeadImage">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_head_image
+	WHERE del_flag = #{DEL_FLAG_NORMAL}
+	<if test="id!=null and id!=''">
+		AND id = #{id}
+	</if>
+</select>
+<select id="findList" resultType="HeadImage">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_head_image
+	WHERE del_flag = #{DEL_FLAG_NORMAL}
+	<if test="id!=null and id!=''">
+		AND id = #{id}
+	</if>
+	ORDER BY type,is_activate DESC,display_order
+</select>
+<select id="getAppShowList" resultType="Map" parameterType="HeadImage">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_head_image
+	WHERE del_flag = #{DEL_FLAG_NORMAL}
+	AND is_activate = #{ACTIVATED}
+	AND type=#{type}
+	<if test="id!=null and id!=''">
+		AND id = #{id}
+	</if>
+	ORDER BY display_order ASC
+</select>
+<insert id="insert">
+	INSERT INTO ec_head_image(
+		id,
+		name,
+		url,
+		display_order,
+		page_url,
+		type
+	) VALUES (
+		#{id},
+		#{name},
+		#{url},
+		#{displayOrder},
+		#{pageUrl},
+		#{type}
+	)
+</insert>
+<update id="activate">
+	UPDATE ec_head_image
+	SET is_activate = #{isActivate}
+	WHERE id = #{id}
+</update>
+<update id="update">
+	UPDATE ec_head_image
+	SET name = #{name}
+	,url = #{url}
+	,display_order = #{displayOrder}
+	,page_url = #{pageUrl}
+	,type = #{type}
+	WHERE id = #{id}
+</update>
+<delete id="delete">
+	UPDATE ec_head_image
+	SET del_flag = #{DEL_FLAG_DELETE}
+	WHERE id = #{id}
+</delete>
+</mapper>

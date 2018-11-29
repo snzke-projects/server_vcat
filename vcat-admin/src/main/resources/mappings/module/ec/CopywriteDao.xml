@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.CopywriteDao">
+    <select id="get" resultType="com.vcat.module.ec.entity.Copywrite">
+        SELECT
+        c.id,
+        c.title,
+        c.content,
+        c.is_activate AS "isActivate",
+        c.activate_time AS "activateTime",
+        c.create_date AS "createDate",
+        c.product_id AS "product.id",
+        p.name AS "product.name"
+        FROM ec_copywrite c
+        LEFT JOIN ec_product p ON c.product_id = p.id
+        WHERE c.id = #{id}
+    </select>
+    <select id="findList" resultType="com.vcat.module.ec.entity.Copywrite">
+        SELECT
+            c.id,
+            c.title,
+            c.content,
+            c.is_activate AS "isActivate",
+            c.activate_time AS "activateTime",
+            c.create_date AS "createDate",
+            c.product_id AS "product.id",
+            p.name AS "product.name"
+        FROM ec_copywrite c
+        LEFT JOIN ec_product p ON c.product_id = p.id
+        WHERE 1=1
+        <if test="isActivate != null">
+            AND c.is_activate = #{isActivate}
+        </if>
+        <if test="sqlMap.keyWord != null and sqlMap.keyWord != ''">
+            AND (c.title LIKE '%${sqlMap.keyWord}%'
+            OR c.content LIKE '%${sqlMap.keyWord}%'
+            OR p.name LIKE '%${sqlMap.keyWord}%')
+        </if>
+        <if test="null != sqlMap.st and '' != sqlMap.st">
+            AND c.activate_time >= STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d")
+        </if>
+        <if test="null != sqlMap.et and '' != sqlMap.et">
+            AND ADDDATE(STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d"),INTERVAL 1 DAY) > c.activate_time
+        </if>
+        ORDER BY c.activate_time DESC
+    </select>
+    <insert id="insert">
+        INSERT INTO ec_copywrite(id,product_id,title,content,is_activate,activate_time,create_date)VALUES (
+        #{id},
+        #{product.id},
+        #{title},
+        #{content},
+        0,
+        NULL,
+        CURRENT_TIMESTAMP
+        )
+    </insert>
+    <update id="update">
+        UPDATE ec_copywrite
+        SET title = #{title}
+        ,content = #{content}
+        ,product_id = #{product.id}
+        WHERE id = #{id}
+    </update>
+    <update id="activate">
+        UPDATE ec_copywrite
+        SET is_activate = #{isActivate}
+        <if test="isActivate != null and isActivate">
+            ,activate_time = CURRENT_TIMESTAMP
+        </if>
+        WHERE id = #{id}
+    </update>
+    <select id="getCopywriteCount" resultType="java.lang.Integer">
+        SELECT COUNT(id) FROM ec_copywrite WHERE is_activate = 1 AND product_id = (SELECT product_id FROM ec_copywrite WHERE id = #{id})
+    </select>
+</mapper>

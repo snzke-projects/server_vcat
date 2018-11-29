@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.QuestionnaireDao">
+    <sql id="questionnaireColumns">
+        a.id AS "id",
+        a.title AS "title",
+        a.display_order AS "displayOrder",
+        a.del_flag AS "delFlag",
+        a.parent_id AS "parent.id"
+    </sql>
+    <select id="get" resultType="Questionnaire">
+        SELECT
+        <include refid="questionnaireColumns"></include>
+        FROM ec_questionnaire a
+        WHERE 1=1
+        <if test="id != null and id != ''">
+            AND a.id = #{id}
+        </if>
+        <if test="sqlMap.activityId != null and sqlMap.activityId != ''">
+            AND a.id = (SELECT questionnaire_id FROM ec_activity_questionnaire WHERE activity_id = #{sqlMap.activityId})
+        </if>
+    </select>
+    <select id="select" resultType="Questionnaire">
+        SELECT
+        <include refid="questionnaireColumns"></include>
+        FROM ec_questionnaire a
+        WHERE a.id = #{id}
+    </select>
+    <select id="findList" resultType="Questionnaire">
+        SELECT
+          <include refid="questionnaireColumns"></include>
+        FROM ec_questionnaire a
+        WHERE 1=1
+          <if test="title != null and title != ''">
+              AND a.title like '%${title}%'
+          </if>
+          <if test="parent != null and parent.id != null and parent.id != ''">
+              AND a.parent_id = #{parent.id}
+          </if>
+        ORDER BY a.display_order ASC
+    </select>
+    <insert id="insert">
+        INSERT INTO ec_questionnaire(
+        id,
+        title,
+        display_order,
+        del_flag
+        ) VALUES (
+        #{id},
+        #{title},
+        #{displayOrder},
+        #{DEL_FLAG_NORMAL},
+        )
+    </insert>
+    <update id="update">
+        UPDATE ec_questionnaire SET
+        title = #{title}
+        ,display_order = #{displayOrder}
+        ,parent_id = #{parent.id}
+        WHERE id = #{id}
+    </update>
+    <update id="delete">
+        UPDATE ec_questionnaire SET
+        del_flag = #{DEL_FLAG_DELETE}
+        WHERE id = #{id}
+    </update>
+</mapper>

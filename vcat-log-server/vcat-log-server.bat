@@ -1,0 +1,1 @@
+java -classpath slf4j-api-1.7.21.jar;logback-access-1.1.7.jar;logback-classic-1.1.7.jar;logback-core-1.1.7.jar ch.qos.logback.classic.net.SimpleSocketServer 6001 logback.xml

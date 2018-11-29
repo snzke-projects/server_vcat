@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.FundOperLogDao">
+    <insert id="insertLoad">
+        INSERT INTO ec_fund_oper_load_log(
+        id,
+        shop_fund_id,
+        fund_field_type_id,
+        fund,
+        remain_fund,
+        note,
+        oper_by,
+        oper_date,
+        relate_id,
+        fund_type
+        ) VALUES (
+        #{id},
+        #{shopFundId},
+        (SELECT s.id FROM ec_fund_field_type AS s WHERE s.name=#{fundFieldType.name} LIMIT 1),
+        #{fund},
+        #{remainFund},
+        #{note},
+        #{createBy.id},
+        NOW(),
+        #{relateId},
+        #{fundType}
+        )
+    </insert>
+    <insert id="insertSale">
+        INSERT INTO ec_fund_oper_sale_log(
+        id,
+        shop_fund_id,
+        fund_field_type_id,
+        fund,
+        remain_fund,
+        note,
+        oper_by,
+        oper_date,
+        relate_id,
+        fund_type
+        ) VALUES (
+        #{id},
+        #{shopFundId},
+        (SELECT s.id FROM ec_fund_field_type AS s WHERE s.name=#{fundFieldType.name} LIMIT 1),
+        #{fund},
+        #{remainFund},
+        #{note},
+        #{createBy.id},
+        NOW(),
+        #{relateId},
+        #{fundType}
+        )
+    </insert>
+    <insert id="insertShare">
+        INSERT INTO ec_fund_oper_share_log(
+        id,
+        shop_fund_id,
+        fund_field_type_id,
+        fund,
+        remain_fund,
+        note,
+        oper_by,
+        oper_date,
+        relate_id,
+        fund_type
+        ) VALUES (
+        #{id},
+        #{shopFundId},
+        (SELECT s.id FROM ec_fund_field_type AS s WHERE s.name=#{fundFieldType.name} LIMIT 1),
+        #{fund},
+        #{remainFund},
+        #{note},
+        #{createBy.id},
+        NOW(),
+        #{relateId},
+        #{fundType}
+        )
+    </insert>
+    <insert id="insertBonus">
+        INSERT INTO ec_fund_oper_bonus_log(
+        id,
+        shop_fund_id,
+        fund_field_type_id,
+        fund,
+        remain_fund,
+        note,
+        oper_by,
+        oper_date,
+        relate_id,
+        fund_type
+        ) VALUES (
+        #{id},
+        #{shopFundId},
+        (SELECT s.id FROM ec_fund_field_type AS s WHERE s.name=#{fundFieldType.name} LIMIT 1),
+        #{fund},
+        #{remainFund},
+        #{note},
+        #{createBy.id},
+        NOW(),
+        #{relateId},
+        #{fundType}
+        )
+    </insert>
+    <insert id="insertInvite">
+        INSERT INTO ec_fund_oper_invite_log(
+        id,
+        shop_fund_id,
+        fund_field_type_id,
+        fund,
+        remain_fund,
+        note,
+        oper_by,
+        oper_date,
+        relate_id,
+        fund_type
+        ) VALUES (
+        #{id},
+        #{shopFundId},
+        (SELECT s.id FROM ec_fund_field_type AS s WHERE s.name=#{fundFieldType.name} LIMIT 1),
+        #{fund},
+        #{remainFund},
+        #{note},
+        #{createBy.id},
+        NOW(),
+        #{relateId},
+        #{fundType}
+        )
+    </insert>
+</mapper>

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.OrderItemDao">
+	<select id="get" resultType="OrderItem">
+		SELECT
+            a.id AS "id",
+            a.quantity AS "quantity",
+            a.promotion_quantity AS "promotionQuantity",
+            a.item_price AS "itemPrice",
+            a.purchase_price AS "purchasePrice",
+            a.sale_earning AS "saleEarning",
+            a.bonus_earning AS "bonusEarning",
+            a.first_bonus_earning AS "firstBonusEarning",
+            a.second_bonus_earning AS "secondBonusEarning",
+            a.point AS "point",
+            a.order_item_type AS "orderType",
+            a.single_coupon AS "singleCoupon",
+            a.can_refund AS "canRefund",
+            brand.name AS "productItem.product.brand.name",
+            productItem.id AS "productItem.id",
+            productItem.name AS "productItem.name",
+            productItem.inventory AS "productItem.inventory",
+            productItem.coupon_all_inventory AS "productItem.couponAllInventory",
+            productItem.coupon_part_inventory AS "productItem.couponPartInventory",
+            product.id AS "productItem.product.id",
+            product.name AS "productItem.product.name",
+            product.is_virtual_product AS "productItem.product.isVirtualProduct",
+            refund.id AS "refund.id",
+            refund.return_status AS "refund.returnStatus",
+            refund.refund_status AS "refund.refundStatus",
+            refund.is_activate AS "refund.isActivate",
+            shop.id AS "shop.id",
+            shop.name AS "shop.name",
+            shop.advanced_shop AS "shop.advancedShop",
+            parent.id AS "parent.id",
+            parent.name AS "parent.name",
+            customer.id AS "customer.id",
+            customer.phone_number AS "shop.customer.phoneNumber",
+            reconciliation.id AS "reconciliation.id",
+            reconciliation.note AS "reconciliation.note",
+            reconciliation.create_date AS "reconciliation.createDate",
+            reconciliationOper.id AS "reconciliation.operator.id",
+            reconciliationOper.name AS "reconciliation.operator.name",
+            IFNULL((SELECT COUNT(1) FROM ec_return refund WHERE refund.order_item_id = a.id),0) AS "refundCount",
+            shopInfo.farm_name AS "shopInfo.farmName"
+		FROM ec_order_item a
+        LEFT JOIN ec_product_item productItem on productItem.id = a.product_item_id
+        LEFT JOIN ec_product product on product.id = a.product_id
+        LEFT JOIN ec_brand brand ON brand.id = a.brand_id
+        LEFT JOIN ec_supplier supplier on supplier.id = a.supplier_id
+        LEFT JOIN (SELECT * FROM ec_return
+        GROUP BY order_item_id,apply_time
+        HAVING apply_time IN (SELECT MAX(r2.apply_time) FROM ec_return r2 GROUP BY r2.order_item_id)) refund ON refund.order_item_id = a.id
+        LEFT JOIN ec_express express on express.id = refund.express_id
+        LEFT JOIN ec_shop shop ON shop.id = a.shop_id
+        LEFT JOIN ec_shop parent ON parent.id = a.parent_id
+        LEFT JOIN ec_customer customer ON shop.id = customer.id
+        LEFT JOIN ec_product_farm farm ON farm.product_id = a.product_id
+            LEFT JOIN ec_shop_info shopInfo ON (shopInfo.shop_id = a.shop_id AND (shopInfo.product_id = farm.farm_id OR shopInfo.product_id = a.product_id))
+        LEFT JOIN ec_reconciliation_detail reconciliation ON reconciliation.order_item_id = a.id
+        LEFT JOIN sys_user reconciliationOper ON reconciliationOper.id = reconciliation.create_by
+		WHERE a.id = #{id}
+	</select>
+	<select id="findList" resultType="OrderItem">
+		SELECT
+            a.id AS "id",
+            a.quantity AS "quantity",
+            a.promotion_quantity AS "promotionQuantity",
+            a.item_price AS "itemPrice",
+            a.purchase_price AS "purchasePrice",
+            a.sale_earning AS "saleEarning",
+            a.bonus_earning AS "bonusEarning",
+            a.first_bonus_earning AS "firstBonusEarning",
+            a.second_bonus_earning AS "secondBonusEarning",
+            a.point AS "point",
+            a.order_item_type AS "orderType",
+            a.single_coupon AS "singleCoupon",
+            a.can_refund AS "canRefund",
+            brand.name AS "productItem.product.brand.name",
+            productItem.id AS "productItem.id",
+            productItem.name AS "productItem.name",
+            productItem.inventory AS "productItem.inventory",
+            productItem.coupon_all_inventory AS "productItem.couponAllInventory",
+            productItem.coupon_part_inventory AS "productItem.couponPartInventory",
+            product.id AS "productItem.product.id",
+            product.name AS "productItem.product.name",
+            product.is_virtual_product AS "productItem.product.isVirtualProduct",
+            refund.id AS "refund.id",
+            refund.return_status AS "refund.returnStatus",
+            refund.refund_status AS "refund.refundStatus",
+            refund.is_activate AS "refund.isActivate",
+            refund.is_receipt AS "refund.isReceipt",
+            shop.id AS "shop.id",
+            shop.name AS "shop.name",
+            shop.advanced_shop AS "shop.advancedShop",
+            parent.id AS "parent.id",
+            parent.name AS "parent.name",
+            customer.id AS "customer.id",
+            customer.phone_number AS "shop.customer.phoneNumber",
+            reconciliation.id AS "reconciliation.id",
+            reconciliation.note AS "reconciliation.note",
+            reconciliation.create_date AS "reconciliation.createDate",
+            reconciliationOper.id AS "reconciliation.operator.id",
+            reconciliationOper.name AS "reconciliation.operator.name",
+            IFNULL((SELECT COUNT(1) FROM ec_return refund WHERE refund.order_item_id = a.id),0) AS "refundCount",
+            shopInfo.id AS "shopInfo.id",
+            shopInfo.farm_name AS "shopInfo.farmName"
+		FROM ec_order_item a
+        LEFT JOIN ec_product_item productItem on productItem.id = a.product_item_id
+        LEFT JOIN ec_product product on product.id = a.product_id
+        LEFT JOIN ec_brand brand ON brand.id = a.brand_id
+        LEFT JOIN ec_supplier supplier on supplier.id = a.supplier_id
+        LEFT JOIN (SELECT * FROM ec_return
+        GROUP BY order_item_id,apply_time
+        HAVING apply_time IN (SELECT MAX(r2.apply_time) FROM ec_return r2 GROUP BY r2.order_item_id)) refund ON refund.order_item_id = a.id
+        LEFT JOIN ec_shop shop ON shop.id = a.shop_id
+        LEFT JOIN ec_shop parent ON parent.id = a.parent_id
+        LEFT JOIN ec_customer customer ON shop.id = customer.id
+        LEFT JOIN ec_product_farm farm ON farm.product_id = a.product_id
+        LEFT JOIN ec_shop_info shopInfo ON (shopInfo.shop_id = a.shop_id AND (shopInfo.product_id = farm.farm_id OR shopInfo.product_id = a.product_id))
+        LEFT JOIN ec_reconciliation_detail reconciliation ON reconciliation.order_item_id = a.id
+        LEFT JOIN sys_user reconciliationOper ON reconciliationOper.id = reconciliation.create_by
+		WHERE 1=1
+		<if test="order != null and '' != order.id">
+			AND a.order_id = #{order.id}
+		</if>
+		ORDER BY a.id ASC
+	</select>
+	<select id="getUnCompletedRefundCountByOrderId" resultType="Integer">
+		SELECT COUNT(1)
+		FROM ec_order_item a
+		LEFT JOIN ec_return ret ON a.id = ret.order_item_id
+		AND ret.is_activate = 1
+		WHERE a.order_id = #{id}
+		AND ((ret.return_status NOT IN ("3","4")
+		OR ret.refund_status NOT IN ("2","3")
+		OR ret.id IS NULL)
+		OR (ret.refund_status = '2' and ret.quantity != (a.quantity + a.promotion_quantity)))
+	</select>
+</mapper>

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.FreightConfigDao">
+	<select id="get" resultType="com.vcat.module.ec.entity.FreightConfig">
+		SELECT 
+			a.id AS "id",
+			a.name AS "name",
+			a.first AS "first",
+			a.first_price AS "firstPrice",
+			a.increment AS "increment",
+			a.increment_price AS "incrementPrice",
+			a.nationwide_flag AS "nationwideFlag",
+			a.express_template_id AS "expressTemplate.id",
+			et.valuation_method AS "expressTemplate.valuationMethod"
+		FROM ec_freight_config a
+		LEFT JOIN ec_express_template et ON et.id = a.express_template_id
+		WHERE a.id = #{id}
+	</select>
+
+	<select id="findList" resultType="com.vcat.module.ec.entity.FreightConfig">
+		SELECT 
+			a.id AS "id",
+			a.name AS "name",
+			a.first AS "first",
+			a.first_price AS "firstPrice",
+			a.increment AS "increment",
+			a.increment_price AS "incrementPrice",
+			a.nationwide_flag AS "nationwideFlag",
+			a.express_template_id AS "expressTemplate.id",
+			et.valuation_method AS "expressTemplate.valuationMethod"
+		FROM ec_freight_config a
+		LEFT JOIN ec_express_template et ON et.id = a.express_template_id
+		WHERE 1=1
+		<if test="expressTemplate != null and expressTemplate.id != null and expressTemplate.id != ''">
+            AND et.id = #{expressTemplate.id}
+        </if>
+		ORDER BY a.nationwide_flag DESC
+	</select>
+	<insert id="insert">
+		INSERT INTO ec_freight_config(
+			id,
+			name,
+			first,
+			first_price,
+			increment,
+			increment_price,
+			nationwide_flag,
+			express_template_id
+		) VALUES (
+			#{id},
+			#{name},
+			#{first},
+			#{firstPrice},
+			#{increment},
+			#{incrementPrice},
+			#{nationwideFlag},
+			#{expressTemplate.id}
+		)
+	</insert>
+	
+	<update id="update">
+		UPDATE ec_freight_config SET
+			name = #{name},
+			first = #{first},
+			first_price = #{firstPrice},
+			increment = #{increment},
+			increment_price = #{incrementPrice},
+			nationwide_flag = #{nationwideFlag},
+			express_template_id = #{expressTemplate.id}
+		WHERE id = #{id}
+	</update>
+    <delete id="deleteCityList">
+        DELETE FROM ec_freight_city
+        WHERE freight_config_id IN (
+        SELECT id
+        FROM ec_freight_config fc
+        WHERE express_template_id = #{id}
+        )
+    </delete>
+	<insert id="insertCityList">
+		INSERT INTO ec_freight_city(
+			freight_config_id,
+			city
+		)SELECT
+		#{id},
+		id
+		FROM sys_area
+		WHERE id IN (''
+        <foreach collection="cityList" item="city" separator="">
+            ,#{city.id}
+        </foreach>
+		)
+	</insert>
+    <select id="getCityList" resultType="com.vcat.module.core.entity.Area">
+        SELECT
+          fc.city AS "id"
+          ,area.name AS "name"
+          ,area.parent_id AS "parent.id"
+        FROM ec_freight_city fc
+        LEFT JOIN sys_area area ON area.id = fc.city
+        WHERE freight_config_id = #{id}
+    </select>
+    <delete id="deleteConfigs">
+        DELETE FROM ec_freight_config WHERE express_template_id = #{id}
+    </delete>
+</mapper>

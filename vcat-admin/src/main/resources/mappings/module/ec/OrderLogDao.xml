@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.OrderLogDao">
+	<sql id="orderLogColumns">
+		a.id AS "id",
+		a.result AS "result",
+		a.action AS "action",
+		a.note AS "note",
+		u.name AS "operName",
+		a.oper_date AS "operDate"
+	</sql>
+	<sql id="orderLogJoins">
+		LEFT JOIN ec_order ord ON ord.id = a.order_id
+		LEFT JOIN sys_user u on a.oper_by = u.id
+	</sql>
+	<select id="get" resultType="OrderLog">
+		SELECT 
+			<include refid="orderLogColumns"></include>
+		FROM ec_order_log a
+		<include refid="orderLogJoins"></include>
+		WHERE a.id = #{id}
+	</select>
+	<select id="findList" resultType="OrderLog">
+		SELECT
+			<include refid="orderLogColumns"></include>
+		FROM ec_order_log a
+		<include refid="orderLogJoins"></include>
+		WHERE 1=1
+		<if test="order != null and '' != order.id">
+			AND a.order_id = #{order.id}
+		</if>
+		ORDER BY a.oper_date DESC
+	</select>
+	<insert id="insert">
+		INSERT INTO ec_order_log(
+			id,
+			order_id,
+			result,
+			action,
+			note,
+			oper_by,
+			oper_date
+		)VALUES (
+			#{id},
+			#{order.id},
+			#{result},
+			#{action},
+			#{note},
+			#{currentUser.id},
+			NOW()
+		)
+	</insert>
+</mapper>

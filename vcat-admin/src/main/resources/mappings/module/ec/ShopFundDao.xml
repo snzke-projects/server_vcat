@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ShopFundDao">
+	<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.ShopFund">
+		<id column="id" property="id" />
+		<result column="load_processing_fund" property="loadProcessingFund" />
+		<result column="load_available_fund" property="loadAvailableFund" />
+		<result column="load_used_fund" property="loadUsedFund" />
+		<result column="sale_processing_fund" property="saleProcessingFund" />
+		<result column="sale_available_fund" property="saleAvailableFund" />
+		<result column="sale_used_fund" property="saleUsedFund" />
+		<result column="sale_hold_fund" property="saleHoldFund" />
+		<result column="share_processing_fund" property="shareProcessingFund" />
+		<result column="share_available_fund" property="shareAvailableFund" />
+		<result column="share_used_fund" property="shareUsedFund" />
+		<result column="bonus_processing_fund" property="bonusProcessingFund" />
+		<result column="bonus_available_fund" property="bonusAvailableFund" />
+		<result column="bonus_used_fund" property="bonusUsedFund" />
+		<result column="bonus_hold_fund" property="bonusHoldFund" />
+		<result column="invite_processing_fund" property="inviteProcessingFund" />
+		<result column="invite_available_fund" property="inviteAvailableFund" />
+		<result column="invite_used_fund" property="inviteUsedFund" />
+	</resultMap>
+	<select id="get" resultMap="BaseResultMap">
+		SELECT
+            id,
+            load_processing_fund,
+            load_available_fund,
+            load_used_fund,
+            sale_hold_fund,
+            sale_processing_fund,
+            sale_available_fund,
+            sale_used_fund,
+            share_processing_fund,
+            share_available_fund,
+            share_used_fund,
+            invite_processing_fund,
+            invite_available_fund,
+            invite_used_fund,
+            bonus_hold_fund,
+            bonus_processing_fund,
+            bonus_available_fund,
+            bonus_used_fund
+		FROM ec_shop_fund
+		WHERE id = #{id}
+	</select>
+	<update id="withdrawalSuccess" parameterType="ShopFund">
+		UPDATE ec_shop_fund SET
+		load_processing_fund = 0,
+		load_used_fund = load_used_fund + #{loadProcessingFund},
+		sale_processing_fund = 0,
+		sale_used_fund = sale_used_fund + #{saleProcessingFund},
+		share_processing_fund = 0,
+		share_used_fund = share_used_fund + #{shareProcessingFund},
+		bonus_processing_fund = 0,
+		bonus_used_fund = bonus_used_fund + #{bonusProcessingFund}
+		WHERE id = #{id}
+	</update>
+	<update id="withdrawalFailure" parameterType="ShopFund">
+		UPDATE ec_shop_fund SET
+		load_processing_fund = 0,
+		load_available_fund = load_available_fund + #{loadProcessingFund},
+		sale_processing_fund = 0,
+		sale_available_fund = sale_available_fund + #{saleProcessingFund},
+		share_processing_fund = 0,
+		share_available_fund = share_available_fund + #{shareProcessingFund},
+		bonus_processing_fund = 0,
+		bonus_available_fund = bonus_available_fund + #{bonusProcessingFund}
+		WHERE id = #{id}
+	</update>
+	<update id="refundSuccess" parameterType="ShopFund">
+		UPDATE ec_shop_fund SET
+		sale_hold_fund = (CASE WHEN (sale_hold_fund - #{saleHoldFund}) &lt; 0 THEN 0 ELSE (sale_hold_fund - #{saleHoldFund}) END)
+		WHERE id = #{id}
+	</update>
+	<update id="addBonusBoldFund" parameterType="ShopFund">
+		UPDATE ec_shop_fund SET
+		bonus_hold_fund = (CASE WHEN (bonus_hold_fund - #{bonusHoldFund}) &lt; 0 THEN 0 ELSE (bonus_hold_fund - #{bonusHoldFund}) END)
+		WHERE id = #{id}
+	</update>
+    <update id="issueUpgradeBonus">
+        UPDATE ec_shop_fund
+        SET sale_available_fund = sale_available_fund + #{bonus}
+        WHERE id = #{shopId}
+    </update>
+    <update id="settlementTeamBonus">
+        UPDATE ec_shop_fund
+        SET bonus_available_fund = bonus_available_fund + #{bonus}
+        WHERE id = #{shopId}
+    </update>
+    <update id="handlerSaleEarning">
+        UPDATE ec_shop_fund
+        SET sale_hold_fund = (CASE WHEN #{bonus} &lt;= sale_hold_fund THEN sale_hold_fund - #{bonus} ELSE 0 END)
+            ,sale_available_fund = sale_available_fund + #{bonus}
+        WHERE id = #{shopId}
+    </update>
+    <update id="handlerBonusEarning">
+        UPDATE ec_shop_fund
+        SET bonus_hold_fund = (CASE WHEN #{bonus} &lt;= bonus_hold_fund THEN bonus_hold_fund - #{bonus} ELSE 0 END)
+            ,bonus_available_fund = bonus_available_fund + #{bonus}
+        WHERE id = #{shopId}
+    </update>
+</mapper>

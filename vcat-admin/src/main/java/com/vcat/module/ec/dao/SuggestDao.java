@@ -1,0 +1,14 @@
+package com.vcat.module.ec.dao;
+
+import com.vcat.common.persistence.CrudDao;
+import com.vcat.common.persistence.annotation.MyBatisDao;
+import com.vcat.module.ec.entity.Suggest;
+
+@MyBatisDao
+public interface SuggestDao extends CrudDao<Suggest> {
+    /**
+     * 处理该反馈
+     * @param suggest
+     */
+    void process(Suggest suggest);
+}

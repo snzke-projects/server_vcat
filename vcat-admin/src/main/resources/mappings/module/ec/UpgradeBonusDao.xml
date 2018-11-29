@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.UpgradeBonusDao">
+    <select id="get" resultType="com.vcat.module.ec.entity.UpgradeBonus">
+        SELECT
+            bonus.id,
+            bonus.amount,
+            bonus.note,
+            bonus.status,
+            operBy.id AS "operBy",
+            operBy.name AS "operBy.name",
+            bonus.oper_date AS "operDate",
+            request.id AS "request.id",
+            request.status AS "request.status",
+            shop.id AS "shop.id",
+            shop.user_name AS "shop.name",
+            shop.phone_number AS "shop.customer.phoneNumber",
+            originalParent.id AS "originalParent.id",
+            originalParent.user_name AS "originalParent.name",
+            originalParent.phone_number AS "originalParent.customer.phoneNumber"
+        FROM ec_upgrade_bonus bonus
+        LEFT JOIN sys_user operBy ON operBy.id = bonus.oper_by
+        LEFT JOIN ec_upgrade_request request ON bonus.request_id = request.id
+        LEFT JOIN ec_customer shop ON shop.id = bonus.shop_id
+        LEFT JOIN ec_customer originalParent ON originalParent.id = bonus.original_parent_id
+        WHERE bonus.id = #{id}
+    </select>
+    <insert id="insert">
+        INSERT ec_upgrade_bonus (
+            id,
+            request_id,
+            shop_id,
+            original_parent_id,
+            amount,
+            note,
+            status,
+            oper_by,
+            oper_date
+        ) VALUES(
+            #{id},
+            #{request.id},
+            #{shop.id},
+            #{originalParent.id},
+            NULL,
+            NULL,
+            0,
+            NULL,
+            NULL
+        )
+    </insert>
+    <select id="findList" resultType="com.vcat.module.ec.entity.UpgradeBonus">
+        SELECT
+            bonus.id,
+            bonus.amount,
+            bonus.note,
+            bonus.status,
+            operBy.id AS "operBy",
+            operBy.name AS "operBy.name",
+            bonus.oper_date AS "operDate",
+            request.id AS "request.id",
+            request.status AS "request.status",
+            shop.id AS "shop.id",
+            shop.user_name AS "shop.name",
+            shop.phone_number AS "shop.customer.phoneNumber",
+            originalParent.id AS "originalParent.id",
+            originalParent.user_name AS "originalParent.name",
+            originalParent.phone_number AS "originalParent.customer.phoneNumber"
+        FROM ec_upgrade_bonus bonus
+        LEFT JOIN sys_user operBy ON operBy.id = bonus.oper_by
+        LEFT JOIN ec_upgrade_request request ON bonus.request_id = request.id
+        LEFT JOIN ec_customer shop ON shop.id = bonus.shop_id
+        LEFT JOIN ec_customer originalParent ON originalParent.id = bonus.original_parent_id
+        WHERE 1=1
+        <if test="sqlMap.keyWord != ''">
+            AND (shop.user_name LIKE '%${sqlMap.keyWord}%'
+                OR shop.phone_number LIKE '%${sqlMap.keyWord}%'
+                OR originalParent.user_name LIKE '%${sqlMap.keyWord}%'
+                OR originalParent.phone_number LIKE '%${sqlMap.keyWord}%'
+            )
+        </if>
+        <if test="status != null and status != ''">
+            AND bonus.status = #{status}
+        </if>
+        <if test="null != sqlMap.st and '' != sqlMap.st">
+            AND bonus.oper_date >= STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d %H:%M")
+        </if>
+        <if test="null != sqlMap.et and '' != sqlMap.et">
+            AND STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d %H:%M") > bonus.oper_date
+        </if>
+        ORDER BY bonus.status
+    </select>
+    <update id="issueBonus">
+        UPDATE ec_upgrade_bonus
+        SET status = #{status}
+        ,amount = #{amount}
+        ,note = #{note}
+        ,oper_by = #{currentUser.id}
+        ,oper_date = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+</mapper>
