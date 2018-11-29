@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.OrderItemDao">
+	<sql id="orderItemColumns">
+		a.id AS "id",
+		a.quantity AS "quantity",
+		a.promotion_quantity as "promotionQuantity",
+		a.item_price AS "itemPrice",
+		a.purchase_price AS "purchasePrice",
+		a.sale_earning AS "saleEarning",
+		a.bonus_earning AS "bonusEarning",
+		a.first_bonus_earning AS "firstBonusEarning",
+		a.second_bonus_earning AS "secondBonusEarning",
+		a.point AS "point",
+		a.order_item_type AS "orderType",
+		a.single_coupon AS "singleCoupon",
+		brand.name AS "productItem.product.brand.name",
+		productItem.item_sn AS "productItem.itemSn",
+		productItem.name AS "productItem.name",
+		productItem.retail_price AS "productItem.retailPrice",
+		productItem.sale_earning AS "productItem.saleEarning",
+		productItem.bonus_earning AS "productItem.bonusEarning",
+		productItem.inventory AS "productItem.inventory",
+		productItem.coupon_all_inventory AS "productItem.couponAllInventory",
+		productItem.coupon_part_inventory AS "productItem.couponPartInventory",
+		product.is_virtual_product AS "productItem.product.isVirtualProduct",
+		product.can_refund AS "productItem.product.canRefund",
+		product.id AS "productItem.product.id",
+		product.name AS "productItem.product.name",
+		refund.id AS "refund.id",
+		refund.shipping_number AS "refund.shippingNumber",
+		refund.return_status AS "refund.returnStatus",
+		refund.refund_status AS "refund.refundStatus",
+		refund.phone AS "refund.phone",
+		refund.note AS "refund.note",
+		refund.amount AS "refund.amount",
+		refund.quantity AS "refund.quantity",
+		refund.return_reason AS "refund.returnReason",
+		refund.is_activate AS "refund.isActivate",
+		refund.is_receipt as "refund.receiptType",
+		express.id AS "refund.express.id",
+		express.name AS "refund.express.name",
+		express.code AS "refund.express.code",
+		shop.id AS "shop.id",
+		shop.name AS "shop.name",
+		parent.id AS "parent.id",
+		parent.name AS "parent.name",
+		grandfather.id AS "grandfather.id",
+		grandfather.name AS "grandfather.name",
+		customer.id AS "customer.id",
+		customer.phone_number AS "shop.customer.phoneNumber",
+		reconciliation.id AS "reconciliation.id",
+		reconciliation.note AS "reconciliation.note",
+		reconciliation.create_date AS "reconciliation.createDate",
+		reconciliationOper.id AS "reconciliation.operator.id",
+		reconciliationOper.name AS "reconciliation.operator.name",
+		IFNULL((SELECT COUNT(1) FROM ec_return refund WHERE refund.order_item_id = a.id),0) AS "refundCount",
+		ord.id AS "order.id",
+		ord.freight_price AS "order.freightPrice",
+		ord.order_number AS "order.orderNumber",
+		ord.buyer_id AS "order.buyer.id",
+		ord.order_status as "order.orderStatus",
+		ord.payment_status as "order.paymentStatus",
+		ord.shipping_status as "order.shippingStatus"
+	</sql>
+	<sql id="orderItemJoins">
+        LEFT JOIN ec_order ord ON a.order_id = ord.id
+		LEFT JOIN ec_product_item productItem on productItem.id = a.product_item_id
+		LEFT JOIN ec_product product on product.id = a.product_id
+        LEFT JOIN ec_brand brand ON brand.id = a.brand_id
+		LEFT JOIN ec_supplier supplier on supplier.id = a.supplier_id
+		LEFT JOIN
+		(SELECT order_item_id,apply_time,express_id,id, shipping_number,return_status,is_receipt,
+		refund_status,phone,note,return_reason,is_activate,amount,quantity FROM ec_return
+		GROUP BY order_item_id,apply_time
+		HAVING apply_time IN (SELECT MAX(r2.apply_time) FROM ec_return r2 GROUP BY r2.order_item_id))
+		refund ON refund.order_item_id = a.id
+		LEFT JOIN ec_express express on express.id = refund.express_id
+		LEFT JOIN ec_shop shop ON shop.id = a.shop_id
+		LEFT JOIN ec_shop parent ON parent.id = a.parent_id
+		LEFT JOIN ec_shop grandfather ON grandfather.id = a.grandfather_id
+		LEFT JOIN ec_customer customer ON shop.id = customer.id
+		LEFT JOIN ec_reconciliation_detail reconciliation ON reconciliation.order_item_id = a.id
+		LEFT JOIN sys_user reconciliationOper ON reconciliationOper.id = reconciliation.create_by
+	</sql>
+	<select id="get" resultType="com.vcat.module.ec.entity.OrderItem">
+		SELECT 
+			<include refid="orderItemColumns"/>
+		FROM ec_order_item a
+			<include refid="orderItemJoins"/>
+		WHERE a.id = #{id}
+	</select>
+	<!-- 查询订单的发货员 -->
+	<select id="findDeliveryerList" resultType="String" parameterType="String">
+		SELECT u.id,u.office_id
+		FROM sys_user AS u
+		WHERE u.office_id=
+		(SELECT o.id
+		FROM ec_office_distribution AS od
+		LEFT JOIN sys_office AS o ON o.id=od.office_id
+		LEFT JOIN sys_office AS o1 ON o.parent_id=o1.id
+		WHERE 1=1
+		AND o1.id='31cd20b68f7c4d7295e2726ba0275b94'
+		AND od.distribution_id=
+		(SELECT DISTINCT p1.distribution_id
+		FROM ec_order_item AS oi
+		LEFT JOIN ec_order AS o ON o.id=oi.order_id
+		LEFT JOIN ec_product_item AS pi1 ON oi.product_item_id=pi1.id
+		LEFT JOIN ec_product AS p1 ON p1.id=pi1.product_id AND p1.archived=0
+		WHERE o.order_number=#{_parameter}
+		AND o.shipping_status=0
+		AND o.payment_status=1
+		AND o.order_status=1
+		AND o.seller_del=0))
+	</select>
+	<select id="findList" resultType="OrderItem">
+		SELECT
+			<include refid="orderItemColumns"/>
+		FROM ec_order_item a
+		<include refid="orderItemJoins"/>
+		WHERE 1=1
+		<if test="order != null and order.id != null and '' != order.id">
+			AND a.order_id = #{order.id}
+		</if>
+        <if test="order != null and order.orderNumber != null and '' != order.orderNumber">
+            AND ord.order_number = #{order.orderNumber}
+        </if>
+		ORDER BY a.id ASC
+	</select>
+	<select id="getUnCompletedRefundCountByOrderId" resultType="Integer">
+		SELECT COUNT(1)
+		FROM ec_order_item a
+		LEFT JOIN ec_return ret ON a.id = ret.order_item_id
+		AND ret.is_activate = 1
+		WHERE a.order_id = #{id}
+		AND ((ret.return_status NOT IN ("3","4")
+		OR ret.refund_status NOT IN ("2","3")
+		OR ret.id IS NULL)
+		OR (ret.refund_status = '2' and ret.quantity != a.quantity))
+	</select>
+	<select id="checkReFund" resultType="com.vcat.module.ec.dto.OrderItemDto" parameterType="String">
+	SELECT oi.*,(CASE WHEN rr.id IS NULL THEN 0
+		  WHEN rr.id IS NOT NULL THEN 1 END) AS refundStatus
+	FROM 
+	ec_order_item AS oi
+	LEFT JOIN ec_return AS rr ON oi.id=rr.order_item_id
+	AND rr.return_status IN ('0','1')
+	AND rr.is_activate=1
+	WHERE 
+	oi.id=#{_parameter}
+	</select>
+	<select id="getOrderItemType" resultType="java.lang.Integer">
+		select eoi.order_item_type
+		from ec_order_item as eoi left join ec_order as eo on eoi.order_id = eo.id
+		where eoi.product_item_id = #{productItemId}
+		and eo.id = #{orderId}
+		limit 1
+	</select>
+	<select id="getPaymentInfo" resultType="java.util.Map">
+		select eo.buyer_id as "buyerId", eoi.shop_id as "shopId", eoi.order_item_type as "orderItemType",
+		eo.id as "orderId"
+		from ec_order as eo left join ec_order_item as eoi on eo.id = eoi.order_id
+		where eo.payment_id = #{paymentId}
+		and eoi.order_item_type in (1,2,6,8,9)
+	</select>
+	<insert id="insertItem" parameterType="com.vcat.module.ec.dto.OrderItemDto">
+			INSERT INTO ec_order_item(
+			id,
+			order_id,
+			product_item_id,
+			quantity,
+			promotion_quantity,
+			item_price,
+			sale_earning,
+			bonus_earning,
+			purchase_price,
+			POINT,
+			shop_id,
+			order_item_type,
+			single_coupon,
+			first_bonus_earning,
+			second_bonus_earning,
+			supplier_id,
+			brand_id,
+			product_id,
+			parent_id,
+			grandfather_id,
+			can_refund
+		) SELECT 
+			#{id},
+			#{orderId},
+			#{productItemId},
+			#{quantity},
+			#{promotionQuantity},
+			#{itemPrice},
+			#{saleEarning},
+			#{bonusEarning},
+			pi1.purchase_price,
+			pi1.point,
+			#{shopId},
+			#{orderItemType},
+			'0.00',
+			pi1.first_bonus_earning,
+			pi1.second_bonus_earning,
+			b.supplier_id,
+			b.id,
+			p.id,
+			(SELECT parent_id FROM ec_shop WHERE id = #{shopId}),
+			(SELECT parent_id FROM ec_shop WHERE id = (SELECT parent_id FROM ec_shop WHERE id=#{shopId})),
+			p.can_refund
+		FROM ec_product_item AS pi1
+		LEFT JOIN ec_product AS p ON p.id = pi1.product_id
+		LEFT JOIN ec_brand AS b ON b.id = p.brand_id
+		WHERE pi1.id = #{productItemId}
+	</insert>
+	<delete id="deleteById">
+		DELETE FROM ec_order_item
+		WHERE id=#{_parameter}
+	</delete>
+</mapper>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.CopywriteDefaultDao">
+    <select id="get" parameterType="com.vcat.module.ec.entity.CopywriteDefault" resultType="com.vcat.module.ec.entity.CopywriteDefault">
+        select copywrite_id as "copywrite.id", shop_id as "shop.id", product_id as "product.id"
+        from ec_copywrite_default
+        where 1 = 1
+        <if test="shop.id != null and shop.id != ''">
+            and shop_id = #{shop.id}
+        </if>
+        <if test="product.id != null and product.id != ''">
+            and product_id = #{product.id}
+        </if>
+    </select>
+    <delete id="delete" parameterType="com.vcat.module.ec.entity.CopywriteDefault">
+        delete from ec_copywrite_default
+        where shop_id = #{shop.id}
+        and product_id = #{product.id}
+    </delete>
+    <insert id="insert" parameterType="com.vcat.module.ec.entity.CopywriteDefault">
+        insert into ec_copywrite_default (shop_id, product_id, copywrite_id) VALUES (
+                #{shop.id},
+                #{product.id},
+                #{copywrite.id}
+        )
+    </insert>
+    <update id="update" parameterType="com.vcat.module.ec.entity.CopywriteDefault">
+        update ec_copywrite_default set
+            copywrite_id = #{copywrite.id}
+        where shop_id = #{shop.id}
+        and product_id = #{product.id}
+    </update>
+</mapper>

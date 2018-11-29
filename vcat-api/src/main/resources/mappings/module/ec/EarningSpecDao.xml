@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.EarningSpecDao">
+	<select id="get" resultType="EarningSpec">
+		SELECT 
+			id AS "id",
+			sale_volume AS "saleVolume",
+			withdrawal AS "withdrawal",
+			del_flag AS "delFlag"
+		FROM ec_earning_spec a
+		WHERE a.id = #{id}
+	</select>
+	
+	<select id="findList" resultType="EarningSpec">
+		SELECT
+			id AS "id",
+			sale_volume AS "saleVolume",
+			withdrawal AS "withdrawal",
+			del_flag AS "delFlag"
+		FROM ec_earning_spec a
+		WHERE del_flag = #{DEL_FLAG_NORMAL}
+		ORDER BY a.sale_volume ASC
+	</select>
+	
+	<insert id="insert">
+		INSERT INTO ec_earning_spec(
+			id,
+			sale_volume,
+			withdrawal,
+			del_flag
+		) VALUES (
+			#{id},
+			#{saleVolume},
+			#{withdrawal},
+			#{DEL_FLAG_NORMAL}
+		)
+	</insert>
+
+	<update id="update">
+		UPDATE ec_earning_spec
+		SET	sale_volume = #{saleVolume},
+		withdrawal = #{withdrawal}
+		WHERE id = #{id}
+	</update>
+	
+	<update id="delete">
+		UPDATE ec_earning_spec
+		SET	del_flag = #{DEL_FLAG_DELETE}
+		WHERE id = #{id}
+	</update>
+</mapper>

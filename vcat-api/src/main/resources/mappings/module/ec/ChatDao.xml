@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ChatDao">
+	<insert id="insertChatLogs" parameterType="map">
+		INSERT INTO ec_chat_logs (id, from_id, to_id, chat_type, message, send_time, import_time)
+		VALUES (#{id}, #{from}, #{to}, #{chatType}, #{message}, #{sendTime}, NOW())
+	</insert>
+	<select id="isMessageLogged" parameterType="string" resultType="boolean">
+		SELECT count(1) > 0 FROM ec_chat_logs WHERE id = #{id}
+	</select>
+	<insert id="insertGroup" parameterType="map">
+		INSERT INTO ec_chat_groups(
+		id,
+		name,
+		description,
+		public,
+		allow_invites,
+		max_users,
+		group_avatar,
+		create_date
+		) VALUES (
+		#{id},
+		#{name},
+		#{description},
+		#{public},
+		#{allowInvites},
+		#{maxUsers},
+		#{groupAvatar},
+		NOW()
+		)
+	</insert>
+
+	<insert id="insertGroupCustomer" parameterType="map">
+		INSERT INTO ec_chat_groups_customer(
+		id,
+		group_id,
+		customer_id,
+		owner,
+		banned,
+		alias
+		) VALUES (
+		#{id},
+		#{groupId},
+		#{customerId},
+		#{owner},
+		#{banned},
+		#{alias}
+		)
+	</insert>
+
+	<update id="modifyChatGroups" parameterType="map">
+		UPDATE ec_chat_groups SET name = #{name} , description = #{description} ,
+		max_users = #{maxUsers} , public = #{ispublic}
+		<if test="groupAvatar!=null and groupAvatar!=''">
+			, group_avatar = #{groupAvatar}
+		</if>
+
+		WHERE id = #{id}
+	</update>
+
+	<update id="modifyGroupAvatar" parameterType="map">
+		UPDATE ec_chat_groups SET group_avatar = #{groupAvatar}
+		WHERE id = #{id}
+	</update>
+
+	<delete id="deleteGroupsCustomer" parameterType="string">
+		DELETE FROM ec_chat_groups_customer WHERE group_id = #{id}
+	</delete>
+
+	<delete id="deleteGroups" parameterType="string">
+		DELETE FROM ec_chat_groups WHERE id = #{id}
+	</delete>
+
+	<delete id="deleteUserFromGroup" parameterType="map">
+		DELETE FROM ec_chat_groups_customer WHERE group_id = #{groupId} AND customer_id = #{customerId}
+	</delete>
+
+	<select id="getGroupUsers" parameterType="string" resultType="map">
+		SELECT gc.customer_id, gc.alias, gc.owner, gc.banned,c.user_name,
+		c.avatar_url,
+		(SELECT SUM(fol.fund)
+		FROM ec_fund_oper_bonus_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.shop_fund_id=s.parent_id
+		AND fol.relate_id=s.id
+		AND fol.fund_type IN (1,6)
+		AND fol.fund>0
+		AND fft.name = "bonus_available_fund"
+		) AS "accumulative_bonus",
+		(SELECT SUM(fol.fund)
+		FROM ec_fund_oper_bonus_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.shop_fund_id=s.parent_id
+		AND fol.relate_id=s.id
+		AND fol.fund_type IN (1,6)
+		AND fol.fund>0
+		AND fft.name = "bonus_available_fund"
+		AND fol.oper_date>DATE_SUB(CURDATE(),INTERVAL DAY(CURDATE())-1 DAY) )
+		AS "monthly_bonus",
+		( NULL
+--      查询耗时太长，待修复
+-- 		SELECT SUM(fol.fund)
+-- 		FROM ec_fund_oper_bonus_log AS fol
+-- 		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+-- 		WHERE fol.shop_fund_id=s.parent_id
+-- 		AND (
+-- 		fol.relate_id IN (SELECT o.id FROM ec_order o LEFT JOIN ec_order_item oi ON o.id = oi.order_id
+-- 		WHERE oi.shop_id = s.id AND
+-- 		oi.parent_id =s.parent_id)
+-- 		OR fol.relate_id IN (SELECT o.id FROM ec_order o LEFT JOIN ec_order_item oi ON o.id = oi.order_id
+-- 		WHERE oi.parent_id =s.id AND
+-- 		oi.grandfather_id = s.parent_id
+-- 		)
+-- 		OR fol.relate_id =s.id
+-- 		OR fol.relate_id IN (SELECT r.id FROM ec_return r LEFT JOIN ec_order_item oi ON r.order_item_id = oi.id
+-- 		WHERE oi.shop_id =s.id AND
+-- 		oi.parent_id =s.parent_id )
+-- 		OR fol.relate_id IN (SELECT r.id FROM ec_return r LEFT JOIN ec_order_item oi ON r.order_item_id = oi.id
+-- 		WHERE oi.parent_id = s.id AND
+-- 		oi.grandfather_id =s.parent_id )
+-- 		)
+-- 		AND fol.fund_type IN (1,3,6)
+-- 		AND fft.name = "bonus_hold_fund"
+		)
+		AS "hold_bonus"
+		FROM ec_chat_groups_customer gc LEFT JOIN ec_customer c ON gc.customer_id = c.id
+		AND c.is_registered = 1
+		LEFT JOIN ec_shop s ON s.id = c.id
+		WHERE gc.group_id = #{gid}
+		ORDER BY gc.alias ASC
+	</select>
+
+	<select id="getGroupInfo" parameterType="string" resultType="map">
+		SELECT * FROM ec_chat_groups WHERE  id = #{gid}
+	</select>
+	
+	<select id="getJoinGroups" parameterType="string" resultType="map">
+		SELECT g.name,g.description,g.public,g.allow_invites,g.max_users,
+		       g.group_avatar,gc.group_id,gc.owner,gc.banned,gc.alias,
+		       (SELECT count(1) FROM ec_chat_groups_customer cgc WHERE cgc.group_id = g.id) AS affiliations_count
+		FROM ec_chat_groups g LEFT JOIN ec_chat_groups_customer gc on g.id = gc.group_id WHERE gc.customer_id = #{cid}
+		ORDER BY g.name ASC
+	</select>
+
+	<select id="getParentGroups" parameterType="string" resultType="string">
+		SELECT gc.group_id
+		FROM ec_chat_groups g LEFT JOIN ec_chat_groups_customer gc on g.id = gc.group_id WHERE gc.customer_id = #{cid}
+		AND gc.owner = 0 ORDER BY g.name ASC
+	</select>
+
+	<select id="getBannedList" parameterType="string" resultType="string">
+		SELECT customer_id FROM ec_chat_groups_customer WHERE group_id = #{groupId} and banned = 1
+	</select>
+
+	<select id="isOwner" parameterType="map" resultType="boolean">
+		SELECT owner FROM ec_chat_groups_customer WHERE group_id = #{groupId} and customer_id = #{customerId}
+	</select>
+
+	<update id="banUser" parameterType="map">
+		UPDATE ec_chat_groups_customer SET banned = 1 WHERE group_id = #{groupId} and customer_id = #{customerId}
+	</update>
+
+	<select id="findGroupUserById" parameterType="map" resultType="int">
+		SELECT count(1) FROM ec_chat_groups_customer WHERE group_id = #{groupId} and customer_id = #{customerId}
+	</select>
+
+	<update id="unbanUser" parameterType="map">
+		UPDATE ec_chat_groups_customer SET banned = 0 WHERE group_id = #{groupId} and customer_id = #{customerId}
+	</update>
+	
+	<select id="getParentInfo" resultType="map">
+		SELECT c.id ,c.user_name,c.avatar_url,ss.shop_num,c.phone_number,ss.advanced_shop
+		FROM ec_customer AS c
+		LEFT JOIN ec_shop AS ss ON  ss.id=c.id
+		AND c.is_registered = 1
+		WHERE c.id = (SELECT parent_id FROM ec_shop WHERE id = #{cid} )
+	</select>
+
+	<select id="getMemberList" resultType="map">
+		SELECT c.id ,c.user_name,c.avatar_url,ss.shop_num,c.phone_number,ss.advanced_shop
+		FROM ec_customer AS c
+		LEFT JOIN ec_shop AS ss ON  ss.id=c.id
+		WHERE ss.parent_id=#{pid}
+		AND c.is_registered = 1
+		ORDER BY c.user_name ASC LIMIT 0,500;
+	</select>
+
+	<select id="getMemberInfo" resultType="map">
+		SELECT c.id ,c.user_name,c.avatar_url,c.phone_number, ss.shop_num,ss.parent_id,ss.advanced_shop, (SELECT SUM(fol.fund)
+		FROM ec_fund_oper_bonus_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.shop_fund_id=ss.parent_id
+		AND fol.relate_id=ss.id
+		AND fol.fund_type IN (1,6,8)
+		AND fol.fund>0
+		AND fft.name = "bonus_available_fund"
+		) AS "accumulative_bonus",
+		(SELECT SUM(fol.fund)
+		FROM ec_fund_oper_bonus_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.shop_fund_id=ss.parent_id
+		AND fol.relate_id=ss.id
+		AND fol.fund_type IN (1,6,8)
+		AND fol.fund>0
+		AND fft.name = "bonus_available_fund"
+		AND fol.oper_date>DATE_SUB(CURDATE(),INTERVAL DAY(CURDATE())-1 DAY) )
+		AS "monthly_bonus",
+		(
+--      查询耗时太长，待修复
+			SELECT SUM(fol.fund)
+			FROM ec_fund_oper_bonus_log AS fol
+			LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+			WHERE fol.shop_fund_id=ss.parent_id
+			AND (
+			fol.relate_id IN (SELECT o.id FROM ec_order o LEFT JOIN ec_order_item oi ON o.id = oi.order_id
+			WHERE oi.shop_id = ss.id AND
+			oi.parent_id =ss.parent_id)
+			OR fol.relate_id IN (SELECT o.id FROM ec_order o LEFT JOIN ec_order_item oi ON o.id = oi.order_id
+			WHERE oi.parent_id =ss.id AND
+			oi.grandfather_id = ss.parent_id
+			)
+			OR fol.relate_id =ss.id
+			OR fol.relate_id IN (SELECT r.id FROM ec_return r LEFT JOIN ec_order_item oi ON r.order_item_id = oi.id
+			WHERE oi.shop_id =ss.id AND
+			oi.parent_id =ss.parent_id )
+			OR fol.relate_id IN (SELECT r.id FROM ec_return r LEFT JOIN ec_order_item oi ON r.order_item_id = oi.id
+			WHERE oi.parent_id = ss.id AND
+			oi.grandfather_id =ss.parent_id )
+			)
+			AND fol.fund_type IN (1,3,6,8)
+			AND fft.name = "bonus_hold_fund"
+		)
+		AS "hold_bonus"
+		FROM ec_customer AS c
+		LEFT JOIN ec_shop AS ss ON  ss.id=c.id
+		WHERE c.id = #{cid}
+		AND c.is_registered = 1
+	</select>
+
+	<select id="getShopInfo" resultType="map" >
+		SELECT c.id ,c.user_name,c.avatar_url,ss.shop_num,ss.parent_id
+		FROM ec_customer AS c
+		LEFT JOIN ec_shop AS ss ON  ss.id=c.id
+		WHERE c.id = #{cid}
+		AND c.is_registered = 1
+	</select>
+	
+	<select id="getReferrers" resultType="map" >
+		SELECT
+			c.id,
+			c.user_name,
+			c.avatar_url,
+			ss.shop_num,
+			sg.intro,
+			sg.template_url
+		FROM ec_shop_guru AS sg
+			LEFT JOIN ec_customer AS c ON c.id = sg.id
+			LEFT JOIN ec_shop AS ss ON ss.id = c.id
+		WHERE c.is_registered = 1
+		ORDER BY sg.display_order DESC, ss.name ASC
+	</select>
+
+	<select id="getGroupsByOwner" parameterType="map" resultType="map">
+		SELECT g.id,
+		g.name,
+		g.description,
+		g.public,
+		g.allow_invites,
+		g.max_users,
+		g.group_avatar,
+		create_date,
+		(SELECT count(1) FROM ec_chat_groups_customer cgc WHERE cgc.group_id = g.id) AS affiliations_count,
+		(SELECT count(1) FROM ec_chat_groups_customer WHERE customer_id = #{cid} AND group_id = gc.group_id) AS isjoined
+		FROM ec_chat_groups g LEFT JOIN ec_chat_groups_customer gc ON g.id = gc.group_id
+		WHERE gc.customer_id = #{pid} AND gc.owner = 1 AND g.public = 1
+	</select>
+
+	<select id="updateAlias" parameterType="map">
+		UPDATE ec_chat_groups_customer SET alias = #{alias} WHERE customer_id = #{cid} AND group_id = #{gid}
+	</select>
+
+	<select id="getAlias" parameterType="map" resultType="string">
+		SELECT alias FROM ec_chat_groups_customer WHERE customer_id = #{cid} AND group_id = #{gid}
+	</select>
+
+	<select id="getGroupOwner" resultType="string" parameterType="string" >
+		SELECT customer_id FROM ec_chat_groups_customer WHERE group_id = #{groupId} and owner = 1
+	</select>
+	
+	<select id="isExceeded" resultType="boolean" parameterType="string">
+		SELECT ( COUNT(1) >= (SELECT max_users FROM ec_chat_groups WHERE id = #{groupid}) ) as result FROM ec_chat_groups_customer WHERE group_id = #{groupid}
+	</select>
+
+	<select id="getCurrentSize" resultType="int" parameterType="string">
+		SELECT COUNT(1) as result FROM ec_chat_groups_customer WHERE group_id = #{groupid}
+	</select>
+
+	<select id="isTeamMember" resultType="int" >
+		SELECT COUNT(1) FROM ec_shop where id = #{cid} AND parent_id = #{pid}
+	</select>
+	<select id="getDetail" resultType="java.util.Map">
+		SELECT
+			c.id,
+			c.user_name as userName,
+			c.avatar_url as avatarUrl,
+			ss.shop_num as shopNum,
+			sg.details ,
+			sg.title,
+			sg.img_url as imgUrl,
+			sg.intro
+		# 店铺达人信息
+		FROM ec_shop_guru AS sg
+			# 客户
+			LEFT JOIN ec_customer AS c ON c.id = sg.id
+			# 商店
+			LEFT JOIN ec_shop AS ss ON ss.id = c.id
+		where sg.id = #{recommendId}
+	</select>
+</mapper>

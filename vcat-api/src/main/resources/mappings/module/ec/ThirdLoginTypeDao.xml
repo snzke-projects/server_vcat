@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ThirdLoginTypeDao">
+<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.ThirdLoginType">
+		<id column="id" property="id" />
+		<result column="name"  property="name" />
+		<result column="code"  property="code" />
+</resultMap>
+<sql id="Base_Column_List">
+	id,
+	name,
+	code
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="name!=null and name!=''">
+			AND name = #{name}
+		</if>
+		<if test="code!=null and code!=''">
+			AND code = #{code}
+		</if>
+	</where>
+</sql>
+<select id="get" resultMap="BaseResultMap" parameterType="com.vcat.module.ec.entity.ThirdLoginType">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_3rd_type
+	<include refid="Base_Where_Clause" />
+</select>
+<select id="select" resultMap="BaseResultMap" parameterType="String">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_3rd_type
+	where  1=1 AND id = #{_parameter}
+</select>		
+<insert id="insert" parameterType="com.vcat.module.ec.entity.Customer">
+	INSERT INTO ec_3rd_type(
+	id,
+	name,
+	code
+	) VALUES (
+	#{id},
+	#{name},
+	#{code}
+	)
+</insert>
+	
+	<update id="update" parameterType="com.vcat.module.ec.entity.Customer">
+		UPDATE ec_3rd_type SET
+			name = #{name},
+			max_exp = #{max_exp},
+			min_exp = #{min_exp},
+			url = #{url}
+		WHERE id = #{id}
+	</update>
+</mapper>

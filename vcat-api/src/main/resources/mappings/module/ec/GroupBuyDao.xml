@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.GroupBuyDao">
+    <select id="getGroupBuyInfo" resultType="java.util.Map">
+        SELECT
+          egb.needed_people AS "headCount",
+          # 参团人数
+          (SELECT count(1)
+           FROM ec_group_buying_customer AS egbc1
+             LEFT JOIN ec_group_buying_sponsor AS egbs1 ON egbc1.group_buying_sponsor_id = egbs1.id
+             LEFT JOIN ec_group_buying AS egb1 ON egbs1.group_buying_id = egb1.id
+             LEFT JOIN ec_order AS eo ON egbc1.order_id = eo.id
+           WHERE eo.payment_status = 1
+                 AND egb1.id = egb.id
+                 AND egb1.product_item_id = #{productItemId}
+          )                 AS "joinedCount",
+          # 团购开始时间
+          egbs.start_date   AS "startDate",
+          # 团购结束时间
+          egbs.end_date     AS "endDate",
+          # 商品项库存
+          epi.inventory as "inventory",
+          egb.status as "groupBuyStatus",
+          egbs.status as "sponsorStatus",
+          egb.period as "period"
+        FROM ec_group_buying AS egb
+          LEFT JOIN ec_group_buying_sponsor AS egbs ON egb.id = egbs.group_buying_id
+          left join ec_product_item as epi on egb.product_item_id = epi.id
+        WHERE egb.id = #{groupBuyId}
+              AND egb.status = 1
+              and now() >= egb.start_date and egb.end_date > now()
+    </select>
+    <select id="getGroupBuy" resultType="com.vcat.module.ec.dto.GroupBuyDto">
+        SELECT
+          egb.id              AS "id",
+          egb.name            AS "groupBuyName",
+          egb.status          AS "status",
+          egb.start_date      AS "startDate",
+          egb.end_date        AS "endDate",
+          egb.single_price    AS "singlePrice",
+          egb.needed_people   AS "neededPeople",
+          egb.period          AS "period",
+          egb.product_id      AS "productId",
+          egb.product_item_id AS "productItemId",
+          epi.retail_price    AS "groupBuyPrice",
+          epi.inventory       AS "inventory",
+          ep.name             AS "productName",
+          ep.archived         AS "archived",
+          (SELECT times
+		   FROM ec_product_limit as l
+		   WHERE product_type = 7
+				 AND product_item_id = epi.id
+				 AND now() >= l.start_time and l.end_time >= now() )  AS "limitCount"
+        FROM ec_group_buying AS egb
+          LEFT JOIN ec_product AS ep ON egb.product_id = ep.id
+          LEFT JOIN ec_product_item AS epi ON egb.product_item_id = epi.id AND epi.product_item_type = 1
+        WHERE egb.id = #{id}
+        and ep.del_flag = 0
+        and epi.del_flag= 0
+    </select>
+
+    <select id="getGroupBuyByProductId" resultType="string">
+        SELECT gb.id FROM ec_group_buying gb INNER JOIN ec_product p ON p.id = gb.product_id
+        WHERE p.id = #{productId}
+    </select>
+</mapper>

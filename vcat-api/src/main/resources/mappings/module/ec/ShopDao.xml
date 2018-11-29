@@ -1,0 +1,1174 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ShopDao">
+	<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.Shop">
+		<id column="id" property="id" />
+		<result column="confirm_receipt" property="confirmReceipt" />
+		<result column="auto_off" property="autoOff" />
+		<result column="color" property="color" />
+		<result column="bg_url" property="bgUrl" />
+		<result column="exp" property="exp" />
+		<result column="shop_num" property="shopNum" />
+		<result column="name" property="name" />
+        <result column="parent_id" property="parentId" />
+        <result column="parentName" property="parentName" />
+        <result column="advanced_shop" property="isAdvancedShop" />
+		<association column="level_id"
+			select="com.vcat.module.ec.dao.LevelDao.select" property="level"
+			javaType="com.vcat.module.ec.entity.Level" />
+		<association column="id" 
+			select="com.vcat.module.ec.dao.ShopFundDao.select" property="fund"
+			javaType="com.vcat.module.ec.entity.ShopFund" />
+		<association column="my_invitation_code_id" property="myInviteCode"
+                     select="com.vcat.module.ec.dao.InviteCodeDao.select" javaType="com.vcat.module.ec.entity.InviteCode" />
+        <association column="used_invitation_code_id" property="usedInviteCode"
+                     select="com.vcat.module.ec.dao.InviteCodeDao.select" javaType="com.vcat.module.ec.entity.InviteCode" />
+        <collection property="accounts" select="com.vcat.module.ec.dao.AccountDao.selectByShopId"
+                    column="id" ofType="com.vcat.module.ec.dto.AccountDto">
+        </collection>
+	</resultMap>
+	<sql id="Base_Column_List">
+		s.id,
+		s.level_id,
+		s.confirm_receipt,
+		s.auto_off,
+		s.color,
+		s.bg_url,
+		s.exp,
+		s.shop_num,
+		s.parent_id,
+		s.advanced_shop,
+		s.my_invitation_code_id,
+		s.used_invitation_code_id
+# 		my.id as "myInviteCode.id",
+# 		used.id as "usedInviteCode.id",
+# 		my.code as "myInviteCode.code",
+# 		used.code as "usedInviteCode.code"
+	</sql>
+	<sql id="Base_Where_Clause">
+		<where>
+			1=1
+			<if test="id!=null and id!=''">
+				AND s.id = #{id}
+			</if>
+			<if test="level!=null and level.id!=null and level.id!=''">
+				AND s.level_id = #{level.id}
+			</if>
+			<if test="shopNum!=null and shopNum!=''">
+				AND s.shop_num = #{shopNum}
+			</if>
+		</where>
+	</sql>
+	<select id="get" resultMap="BaseResultMap" parameterType="com.vcat.module.ec.entity.Shop">
+		SELECT
+		<include refid="Base_Column_List" />,ss.user_name AS "parentName",c.user_name AS "name"
+		FROM ec_shop AS s
+		LEFT JOIN ec_customer AS ss ON ss.id=s.parent_id
+		LEFT JOIN ec_customer AS c ON c.id=s.id
+		left join ec_invitation_code as my on my.id = s.my_invitation_code_id
+		left join ec_invitation_code as used on used.id = s.used_invitation_code_id
+		<include refid="Base_Where_Clause" />
+		LIMIT 1
+	</select>
+	<select id="select" resultMap="BaseResultMap" parameterType="String">
+		SELECT
+		<include refid="Base_Column_List" />,ss.user_name AS "parentName",c.user_name AS "name"
+		FROM ec_shop AS s
+		LEFT JOIN ec_customer AS ss ON ss.id=s.parent_id
+		LEFT JOIN ec_customer AS c ON c.id=s.id
+		left join ec_invitation_code as my on my.id = s.my_invitation_code_id
+		left join ec_invitation_code as used on used.id = s.used_invitation_code_id
+		where 1=1 AND s.id = #{_parameter}
+	</select>
+	<insert id="insert" parameterType="com.vcat.module.ec.entity.Shop">
+		INSERT INTO ec_shop(
+		id,
+		level_id,
+		name,
+		confirm_receipt,
+		auto_off,
+		color,
+		bg_url,
+		exp,
+		shop_num,
+		parent_id,
+		my_invitation_code_id,
+		used_invitation_code_id
+		) VALUES (
+		#{id},
+		#{level.id},
+		#{name},
+		#{confirmReceipt},
+		#{autoOff},
+		#{color},
+		#{bgUrl},
+		#{exp},
+		#{shopNum},
+		#{parentId},
+		#{myInviteCodeId},
+		#{usedInviteCodeId}
+		)
+	</insert>
+	<select id="count" 
+		resultType="java.lang.Integer">
+		SELECT MAX(shop_num) FROM ec_shop
+		WHERE shop_num IS NOT NULL
+	</select>
+	<!-- 获取店铺前一百的月收入排行-->
+	<select id="getMonthRankList" resultType="com.vcat.module.ec.entity.Rank" >
+		SELECT @curRow := @curRow + 1 AS "rank",shopId,sname AS "name",lname AS "level",ssss AS "totalFund"
+		FROM
+		(SELECT shopId,shopname AS sname, l.name AS lname,SUM(saf) AS ssss 
+		FROM
+		(SELECT s.id AS shopId,c.user_name AS shopname ,s.level_id AS level_id ,SUM(fol.fund) AS saf
+		FROM ec_fund_oper_sale_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		LEFT JOIN ec_shop AS s ON fol.shop_fund_id=s.id
+		LEFT JOIN ec_customer AS c ON c.id=s.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+		AND fft.value LIKE CONCAT('%', '销售可提现资金' ,'%')
+		GROUP BY fol.shop_fund_id
+		UNION 
+		SELECT s.id AS shopId,c.user_name AS shopname ,s.level_id AS level_id ,SUM(fol.fund) AS saf
+		FROM ec_fund_oper_share_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		LEFT JOIN ec_shop AS s ON fol.shop_fund_id=s.id
+		LEFT JOIN ec_customer AS c ON c.id=s.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+		AND fft.value LIKE CONCAT('%', '分享可提现资金' ,'%')
+		GROUP BY fol.shop_fund_id
+		UNION 
+		SELECT s.id AS shopId,c.user_name AS shopname ,s.level_id AS level_id ,SUM(fol.fund) AS saf
+		FROM ec_fund_oper_invite_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		LEFT JOIN ec_shop AS s ON fol.shop_fund_id=s.id
+		LEFT JOIN ec_customer AS c ON c.id=s.id
+		WHERE fol.fund>0 AND fol.fund_type IN('1','4')
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+		AND fft.value LIKE CONCAT('%', '邀请可提现资金' ,'%')
+		GROUP BY fol.shop_fund_id
+		UNION 
+		SELECT s.id AS shopId,c.user_name AS shopname ,s.level_id AS level_id ,SUM(fol.fund) AS saf
+		FROM ec_fund_oper_bonus_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		LEFT JOIN ec_shop AS s ON fol.shop_fund_id=s.id
+		LEFT JOIN ec_customer AS c ON c.id=s.id
+		WHERE fol.fund>0 AND fol.fund_type IN (1,6,8)
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+		AND fft.value LIKE CONCAT('%', '分红可提现资金' ,'%')
+		GROUP BY fol.shop_fund_id
+		UNION 
+		SELECT s.id AS shopId,c.user_name AS shopname ,s.level_id AS level_id ,SUM(fol.fund) AS saf
+		FROM ec_fund_oper_load_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		LEFT JOIN ec_shop AS s ON fol.shop_fund_id=s.id
+		LEFT JOIN ec_customer AS c ON c.id=s.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+		AND fft.value LIKE CONCAT('%', '上架可提现资金' ,'%')
+		GROUP BY fol.shop_fund_id) AS result1
+		LEFT JOIN ec_level AS l ON result1.level_id=l.id
+		GROUP BY shopname
+		ORDER BY SUM(saf) DESC,shopname ASC) AS result2
+		JOIN    (SELECT @curRow := 0) r
+		LIMIT 0,100
+	</select>
+	<!-- 获取店铺买家数量 -->
+	<select id="countBuyerList" resultType="int" parameterType="java.util.Map">
+		SELECT COUNT(buyer_id)
+		FROM 
+		(
+		SELECT buyer_id FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		WHERE oi.shop_id=#{shopId}
+		AND order_status=2 AND shipping_status=2 
+		AND payment_status=1
+		AND o.is_fund = 1
+		GROUP BY  buyer_id) AS resutl
+	</select>
+	<!-- 获取店铺下家数量 -->
+	<select id="countChildsList" resultType="int" parameterType="String">
+		SELECT COUNT(c.id)
+		FROM ec_customer AS c
+		LEFT JOIN ec_shop AS ss ON  ss.id=c.id
+		WHERE ss.parent_id=#{_parameter}
+		AND c.is_registered IN (0,1)
+	</select>
+	<select id="getChildList" resultType="com.vcat.module.ec.dto.ChildCustomerDto">
+		SELECT c.id AS "id",c.user_name AS "userName",c.avatar_url AS "avatarUrl",
+		"" AS "guruName",(SELECT SUM(fol.fund)
+		FROM ec_fund_oper_bonus_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.shop_fund_id=ss.parent_id
+		AND fol.relate_id=ss.id
+		AND fol.fund_type IN (1,6)
+		AND fol.fund>0
+		AND fft.value ='分红可提现资金') AS "bonusfund"
+		FROM ec_customer AS c
+		LEFT JOIN ec_shop AS ss ON  ss.id=c.id
+		WHERE ss.parent_id=#{shopId}
+		AND c.is_registered IN (0,1)
+		ORDER BY c.create_date DESC
+		LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+	<!-- 获取店铺买家信息-->
+	<select id="getBuyerList" resultType="com.vcat.module.ec.dto.BuyerInfoDto" parameterType="java.util.Map">
+		SELECT 
+		  buyer.user_name AS buyerName,
+		  buyer.avatar_url AS avatarUrl,
+		  buyer.phone_number AS phoneNum,
+		  COUNT(o.buyer_id) AS orderCount,
+		  (SELECT 
+		    add_date 
+		  FROM
+		    ec_order AS o2 
+		    LEFT JOIN ec_order_item AS oi1 
+		      ON oi1.order_id = o2.id 
+		  WHERE o2.id = o.id
+		  ORDER BY add_date DESC 
+		  LIMIT 1) AS lastBuyDate,
+		  (SELECT 
+		    SUM(
+		      oi2.sale_earning * (
+		        oi2.quantity - IFNULL(0, rr.quantity)
+		      )
+		    ) 
+		  FROM ec_order_item AS oi2
+		  LEFT JOIN ec_order AS o1 ON o1.id = oi2.order_id
+		    LEFT JOIN ec_return AS rr 
+		      ON rr.order_item_id = oi2.id 
+		      AND rr.refund_status = 2 
+		      AND rr.is_activate = 1 
+		  WHERE o1.buyer_id = o.buyer_id
+			AND o1.order_status=2
+			AND o1.payment_status=1
+			AND o1.shipping_status=2
+			AND o1.is_fund  = 1
+			AND oi2.order_item_type IN (1,2,6,8,9)) AS saleFund
+		FROM ec_order AS o 
+		  LEFT JOIN ec_customer AS buyer 
+		    ON o.buyer_id = buyer.id 
+		  LEFT JOIN ec_order_item AS oi 
+		    ON oi.order_id = o.id 
+		WHERE 1 = 1 
+		  AND o.order_status = 2 
+		  AND o.payment_status = 1 
+		  AND o.shipping_status = 2 
+		  AND o.is_fund  = 1
+		  AND oi.shop_id = #{shopId}
+		  AND oi.order_item_type IN (1,2,6,8,9)
+		  GROUP BY o.buyer_id 
+		<if test="rankType != null and rankType == 'orderCount'">
+			ORDER BY orderCount DESC
+		</if>
+		<if test="rankType != null and rankType == 'saleFund'">
+			ORDER BY saleFund DESC
+		</if>
+		<if test="rankType != null and rankType == 'lastBuyDate'">
+			ORDER BY lastBuyDate DESC
+		</if>
+		LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+	<update id="update" parameterType="com.vcat.module.ec.entity.Shop">
+		UPDATE ec_shop SET
+		level_id = #{level.id},
+		name = #{name},
+		confirm_receipt = #{confirmReceipt},
+		auto_off = #{autoOff},
+		color = #{color},
+		bg_url = #{bgUrl},
+		exp = #{exp},
+		shop_num = #{shopNum},
+		parent_id=#{parentId},
+		used_invitation_code_id=#{usedInviteCodeId}
+		WHERE id = #{id}
+	</update>
+	
+	<insert id="insertProducts" parameterType="String">
+		INSERT INTO ec_shop_product (id, product_id, shop_id) SELECT
+			REPLACE(CAST(UUID() as char character set utf8), '-', ''),
+			id,
+			#{shopId}
+		FROM
+			ec_product AS p
+			WHERE p.archived=0
+	</insert>
+	
+	<insert id="insertBgImages" parameterType="String">
+		INSERT INTO ec_shop_bg_image (id, shop_id,bg_image_id) SELECT
+			REPLACE(CAST(UUID() as char character set utf8), '-', ''),
+			#{shopId},
+			id
+		FROM
+			ec_bg_image
+			WHERE del_flag=0
+			AND is_activate=1
+		LIMIT 1
+	</insert>
+    <update id="addInvitation">
+        update ec_shop set used_invitation_code_id = (
+            select my_invitation_code_id from ( select my_invitation_code_id from ec_shop
+            where id = #{superCustomerId}) as id2
+        )
+        where id = #{friendCustomerId}
+    </update>
+    <update id="updateLevel" >
+		UPDATE ec_shop SET
+		level_id = (SELECT id FROM ec_level  WHERE <![CDATA[ min_exp<=#{saledWith}  ]]>AND max_exp>=#{saledWith})
+		WHERE id = #{shopId}
+	</update>
+
+	<select id="getFriendsById" parameterType="String" resultType="string">
+		SELECT c.id
+		FROM ec_shop AS ss
+		LEFT JOIN ec_customer AS c ON  ss.id=c.id
+		WHERE ss.parent_id= #{pid}
+	</select>
+
+	<update id="updateParentId" parameterType="com.vcat.module.ec.entity.Shop">
+		UPDATE ec_shop SET
+		parent_id= #{parentId},
+        used_invitation_code_id = #{usedInviteCodeId}
+		WHERE id = #{id}
+	</update>
+    <update id="setParentToNull" parameterType="string">
+        UPDATE ec_shop SET
+        parent_id=NULL
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateToVIP">
+        update ec_shop set
+            advanced_shop = 1,
+            my_invitation_code_id = (select id from (select id from ec_invitation_code where code = #{myInviteCode.code}) as i)
+        where id = #{customer.id}
+    </update>
+	<update id="updateAdvanced">
+		update ec_shop set
+			advanced_shop = #{type}
+		where id = #{shopId}
+	</update>
+	<select id="getRankByPhone" parameterType="string" resultType="com.vcat.module.ec.entity.Rank">
+	SELECT s.id AS "shopId" ,c.user_name AS "name",ll.name AS "level",
+	(SELECT SUM(fund) FROM ec_rank_test WHERE phone_number = c.phone_number
+	AND DATE_FORMAT(NOW(),'%Y-%m-%d')>=DATE_FORMAT(create_date,'%Y-%m-%d')) AS "totalFund"
+	FROM ec_shop AS s 
+	LEFT JOIN ec_customer AS c ON c.id = s.id
+	LEFT JOIN ec_level AS ll ON ll.id = s.level_id
+	WHERE c.phone_number = #{_parameter}
+	</select>
+	<select id="getShopByInviteCode" resultType="com.vcat.module.ec.entity.Shop" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List" />,ss.user_name AS "parentName",c.user_name AS "name"
+        FROM ec_shop AS s
+        LEFT JOIN ec_customer AS ss ON ss.id=s.parent_id
+        LEFT JOIN ec_customer AS c ON c.id=s.id
+        LEFT JOIN ec_invitation_code AS inv ON s.my_invitation_code_id = inv.id
+        WHERE inv.code = #{inviteCode}
+        and inv.status = 1
+        LIMIT 1
+	</select>
+    <select id="getInviteCode" resultType="java.lang.String">
+        select code from  ec_invitation_code
+        where  id = #{id}
+    </select>
+	<select id="getAllShopByPayment" resultType="java.util.Map">
+		select
+		es.id as "shopId",
+		es.name as "shopName",
+		concat(es.advanced_shop,"") as "vip",
+		ec.phone_number as "phoneNumber",
+		eo.order_number as "orderNum"
+		from ec_order as eo
+		left join ec_order_item as eoi on eo.id = eoi.order_id
+		left join ec_shop as es ON eoi.shop_id = es.id
+		left join ec_customer as ec on ec.id = es.id
+		where eo.payment_id = #{paymentId}
+		and es.id is not null
+	</select>
+    <select id="getAllShopByParentId" resultType="com.vcat.module.ec.entity.Shop">
+        SELECT id,shop_num as 'shopNum', name as 'name',parent_id as 'parentId' FROM ec_shop
+        WHERE parent_id = #{parentId}
+    </select>
+	<select id="getProductItemsByPayment" resultType="java.util.Map">
+		select
+			eoi.quantity as "quantity",
+			eoi.product_item_id as "productItemId",
+			eoi.id as "orderItemId",
+			eo.buyer_id as "buyerId",
+			eoi.shop_id as "shopId",
+			eo.payment_id
+		from ec_order as eo left join ec_order_item as eoi on eo.id = eoi.order_id
+			left join ec_shop as es on eoi.shop_id = es.id
+			left join ec_product AS p on eoi.product_id = p.id
+			left join view_all_recommend as reserve on p.id = reserve.productId
+		where 1 = 1
+			  and reserve.typeCode = 'RESERVE'
+			  AND p.archived=0
+			  AND p.del_flag=0
+			  AND p.retail_usable=1
+			  AND reserve.typeCode = 'RESERVE'
+			  AND reserve.endTime>NOW()
+			  AND eo.payment_id = #{paymentId};
+	</select>
+	<select id="getReserveProductItemByPayment" resultType="com.vcat.module.ec.dto.ProductItemDto" parameterType="string">
+        select eoi.shop_id as "shopId", eoi.quantity as "quantity",
+               eoi.promotion_quantity as "promotionQuantity",
+               eoi.product_item_id as "productItemId",
+               eoi.id as "orderItemId",
+               eo.buyer_id as "buyerId",
+			   eoi.product_id as 'productId'
+        from ec_order_reserve as eor left join ec_order as eo on eor.order_id = eo.id
+            left join ec_order_item as eoi on eor.order_item_id = eoi.id
+        where eoi.order_item_type = '6'
+              and eo.payment_id = #{paymentId}
+        LIMIT 1
+	</select>
+    <select id="getReserveProductItemByItemId" resultType="java.util.Map">
+        select
+            eoi.quantity as "quantity",
+            eoi.product_item_id as "productItemId",
+            eoi.id as "orderItemId",
+            eo.buyer_id as "buyerId",
+            eoi.shop_id as "shopId",
+            eo.payment_id
+        from ec_order_reserve as eor left join ec_order as eo on eor.order_id = eo.id
+            left join ec_order_item as eoi on eor.order_item_id = eoi.id
+        where eoi.order_item_type = '6'
+            and eoi.id = #{orderItemId}
+    </select>
+	<select id="getBuyersByPaymentId" resultType="java.util.Map">
+#         select result.productId ,result.quantity , result.price, result.buyerId
+#         from (select epi.product_id as "productId" ,
+#                      eoi.quantity as "quantity",
+#                      ec.id as "buyerId",
+#                      eoi.item_price  as "price"
+#               from ec_order as eo
+#                   left join ec_order_item as eoi on eo.id = eoi.order_id
+#                   left join ec_product_item as epi on eoi.product_item_id = epi.id
+#                   left join ec_customer as ec ON eo.buyer_id = ec.id
+#                                                  and ec.is_registered in (0,1,3)
+#               where eo.payment_id = 'e6510c245020494d9600e231be22c1d0'
+#              ) as result
+#         where result.productId in (select eucp.product_id
+#                                    from ec_upgrade_condition_product as eucp
+#                                        left join ec_upgrade_condition as euc on eucp.upgrade_condition_id = euc.id
+#                                    where eucp.upgrade_condition_id = '13fe3603cbad497c92f8fd773c49c581')
+	</select>
+    <select id="getTotlePriceByRule" resultType="java.util.Map">
+#         select result.productId as "productId",
+#         result.quantity "quantity",
+#         result.price as "price" ,
+#         result.buyerId "buyerId",
+#         result.paymentDate "paymentDate"
+#         from (select  epi.product_id as "productId" ,
+#         eoi.quantity as "quantity",
+#         ec.id as "buyerId",
+#         eoi.item_price  as "price",
+#         ep.payment_date as "paymentDate"
+#         from ec_order as eo
+#         left join ec_payment as ep on eo.payment_id = ep.id
+#         left join ec_order_item as eoi on eo.id = eoi.order_id
+#         left join ec_product_item as epi on eoi.product_item_id = epi.id
+#         left join ec_customer as ec ON eo.buyer_id = ec.id
+#         where ec.id = '982943d9a198479a972f20babffe9278'
+#         and eo.payment_status = 1
+#         <![CDATA[and #{paymentDate}
+#               <= date_sub( now() ,interval 20 minute)]]>
+#         ) as result
+#         where result.productId in (select eucp.product_id
+#         from ec_upgrade_condition_product as eucp
+#         left join ec_upgrade_condition as euc on eucp.upgrade_condition_id = euc.id
+#         where eucp.upgrade_condition_id = '13fe3603cbad497c92f8fd773c49c581');
+    </select>
+    <select id="getOtherShop" resultType="com.vcat.module.ec.entity.Shop">
+        select <include refid="Base_Column_List" />
+        from ec_shop  as s , ec_customer as c
+        where s.id = c.id and c.is_registered = 1 AND c.device_type is not null and s.advanced_shop = 0
+        and s.used_invitation_code_id is null
+    </select>
+	<select id="isSpecialProduct" resultType="java.util.Map">
+        select eoi.shop_id as "shopId",
+               payment_date as "paymentDate"
+        from ec_product_item as epi
+            left join ec_order_item as eoi ON epi.id = eoi.product_item_id
+            left join ec_order as eo on eoi.order_id = eo.id
+            left join ec_payment as ep on eo.payment_id = ep.id
+        where eo.payment_id = #{paymentId}
+              and epi.product_id in (
+            select product_id from ec_upgrade_condition_product
+        ) limit 1
+	</select>
+    <select id="isReach" resultType="java.lang.Boolean">
+        select count(1)  from (
+                                  select sum(result.quantity * result.price) as "totalPrice" ,result.amount
+                                  from (select epi.product_id as "productId" ,
+                                               eo.buyer_id as "buyerId",
+											   eoi.quantity as  "quantity",
+                                               eoi.item_price  as "price",
+                                               ep.payment_date as "paymentDate",
+                                               euc.period as "period",
+                                               euc.amount as "amount",
+                                            eo.add_date
+                                        from ec_product_item as epi
+                                            left join ec_order_item as eoi ON epi.id = eoi.product_item_id
+
+											  left join ec_order as eo on eoi.order_id = eo.id
+											  left join ec_payment as ep on eo.payment_id = ep.id
+											  left join ec_upgrade_condition_product as eucp on eucp.product_id = epi.product_id
+											  left join ec_upgrade_condition as euc on eucp.upgrade_condition_id = euc.id
+                                        where epi.product_id in (
+                                            select product_id from ec_upgrade_condition_product
+                                        )
+                                              and eoi.shop_id = #{shopId}
+                                              and eo.payment_status = 1) as result
+<![CDATA[ where  paymentDate >= date_sub( #{paymentDate} ,interval period minute)]]>
+<![CDATA[ and    paymentDate <= #{paymentDate} ]]>
+  GROUP BY result.buyerId ,result.amount
+                                  ) as a
+        where totalPrice >= amount;
+    </select>
+	<select id="isVipShop" resultType="java.lang.Boolean">
+		select (case when es.advanced_shop = 1 then 1 else 0 end)
+		from ec_order as eo left join ec_shop as es on eo.buyer_id = es.id
+		where eo.id = #{orderId}
+	</select>
+	<select id="getTotalSale" resultType="java.math.BigDecimal">
+		SELECT  SUM(IFNULL(totalSaled,0)-IFNULL(refund,0)) as totalSale
+				FROM
+				(SELECT (oi.quantity*oi.item_price) AS totalSaled,rr.amount AS refund
+				FROM ec_order AS o
+				LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+				LEFT JOIN ec_return AS rr ON rr.order_item_id=oi.id
+				AND rr.refund_status=2 AND rr.is_activate=1
+				WHERE oi.shop_id=#{shopId}
+				AND o.payment_status=1
+			    AND o.order_status=2
+			    AND o.shipping_status=2
+				AND oi.order_item_type IN (1,2,6,8,9)) AS result
+	</select>
+
+
+    <select id="countChildsIsVIP" resultType="java.lang.String">
+		SELECT es.id
+        FROM ec_shop AS es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+        WHERE es.parent_id = #{shopId}
+        <if test="name != null and name != ''">
+            and ec.user_name LIKE CONCAT('%',#{name},'%')
+        </if>
+			  and es.advanced_shop = 1
+	</select>
+	<select id="getChildListIsVIP" resultType="com.vcat.module.ec.dto.AgentShopDto">
+        SELECT
+          *
+        FROM
+            (
+                SELECT
+                    es.id           AS shopId,
+                    ec.user_name    AS name,
+                    ec.avatar_url   AS avatarUrl,
+                    CASE WHEN es.advanced_shop = 1
+                        THEN TRUE
+                    ELSE FALSE
+                    END             AS isVIP,
+                    ec.phone_number AS phone
+                FROM ec_shop AS es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+                WHERE es.parent_id = #{params.shopId}
+                      AND es.advanced_shop = 1
+                      and ec.user_name LIKE CONCAT('%',#{params.name},'%')
+            ) AS t1 LEFT JOIN
+            (
+                <!-- 累计一级团队分红(白金店主给上家提供的分红) -->
+                SELECT
+                    SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0)) AS totalFund,
+                    shopId
+                FROM (
+                         SELECT
+                             (eoi.quantity * eoi.first_bonus_earning) AS totalSaled,
+                             (CASE
+                              WHEN er.amount IS NOT NULL
+                                  THEN eoi.quantity * eoi.first_bonus_earning
+                              ELSE 0
+                              END)                                    AS refund,
+                             eoi.shop_id                              AS shopId,
+                             eoi.id
+                         FROM ec_order_item AS eoi
+                             LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                          AND er.refund_status = 2 AND er.is_activate = 1
+                             LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                         WHERE eoi.shop_id
+                               IN
+                               (
+                                   SELECT es.id
+                                   FROM ec_shop AS es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+                                   WHERE es.parent_id = #{params.shopId}
+                                         AND es.advanced_shop = 1
+                               )
+                               AND eo.order_status = 2
+                               AND eo.payment_status = 1
+                               AND eo.shipping_status = 2
+                               AND eo.is_team_bonus = 1
+                               AND eoi.first_bonus_earning != 0
+                               AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+                     ) AS id2
+                GROUP BY shopId
+            ) AS t2 ON t1.shopId = t2.shopId
+            LEFT JOIN
+            (
+                <!-- 本月一级团队分红(白金店主给上家提供的分红) -->
+                SELECT
+                    SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0)) AS monthTotalFund,
+                    shopId
+                FROM (
+                         SELECT
+                             (eoi.quantity * eoi.first_bonus_earning) AS totalSaled,
+                             (CASE
+                              WHEN er.amount IS NOT NULL
+                                  THEN eoi.quantity * eoi.first_bonus_earning
+                              ELSE 0
+                              END)                                    AS refund,
+                             eoi.shop_id                              AS shopId,
+                             eoi.id
+                         FROM ec_order_item AS eoi
+                             LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                          AND er.refund_status = 2 AND er.is_activate = 1
+                             LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                         WHERE eoi.shop_id
+                               IN
+                               (
+                                   SELECT es.id
+                                   FROM ec_shop AS es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+                                   WHERE es.parent_id = #{params.shopId}
+                                         AND es.advanced_shop = 1
+                               )
+                               AND DATE_FORMAT(eo.add_date, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')
+                               AND eo.order_status = 2
+                               AND eo.payment_status = 1
+                               AND eo.shipping_status = 2
+                               AND eo.is_team_bonus = 1
+                               AND eoi.first_bonus_earning != 0
+                               AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+                     ) AS id2
+                GROUP BY shopId
+            ) AS t3 ON t3.shopId = t1.shopId
+			<if test="params.allOrderType != null and params.allOrderType != ''">
+				order by totalFund  desc, monthTotalFund desc
+			</if>
+			<if test="params.monthOrderType != null and params.monthOrderType != ''">
+				order by monthTotalFund desc, totalFund  desc
+			</if>
+		LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+	<select id="countChildsNotVIP" resultType="java.lang.String">
+		SELECT es.id
+        FROM ec_shop AS es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+        WHERE es.parent_id = #{shopId}
+        <if test="name != null and name != ''">
+            and ec.user_name LIKE CONCAT('%',#{name},'%')
+        </if>
+			  and es.advanced_shop != 1
+	</select>
+	<select id="getChildListNotVIP" resultType="com.vcat.module.ec.dto.AgentShopDto">
+        SELECT *
+        FROM
+            (
+                SELECT
+                    es.id           AS shopId,
+                    ec.user_name    AS name,
+                    ec.avatar_url   AS avatarUrl,
+                    CASE WHEN es.advanced_shop = 1
+                        THEN TRUE
+                    ELSE FALSE
+                    END             AS isVIP,
+                    ec.phone_number AS phone
+                FROM ec_shop AS es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+                WHERE es.parent_id = #{params.shopId}
+                      AND es.advanced_shop != 1
+                      and ec.user_name LIKE CONCAT('%',#{params.name},'%')
+            ) AS t1 LEFT JOIN
+            (
+                SELECT
+                    SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0)) AS totalFund,
+                    shopId
+                FROM (
+                         SELECT
+                             (eoi.quantity * eoi.bonus_earning) AS totalSaled,
+                             (CASE
+                              WHEN er.amount IS NOT NULL
+                                  THEN eoi.quantity * eoi.bonus_earning
+                              ELSE 0
+                              END)                                    AS refund,
+                             eoi.shop_id                              AS shopId,
+                             eoi.id
+                         FROM ec_order_item AS eoi
+                             LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                          AND er.refund_status = 2 AND er.is_activate = 1
+                             LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                         WHERE eoi.shop_id
+                               IN
+                               (
+                                   SELECT es.id
+                                   FROM ec_shop AS es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+                                   WHERE es.parent_id = #{params.shopId}
+                                         AND es.advanced_shop != 1
+                               )
+                               AND eo.order_status = 2
+                               AND eo.payment_status = 1
+                               AND eo.shipping_status = 2
+                               AND eo.is_fund = 1
+                               AND eoi.bonus_earning != 0
+                               AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+                     ) AS id2
+                GROUP BY shopId
+            ) AS t2 ON t1.shopId = t2.shopId
+            LEFT JOIN
+            (
+                SELECT
+                    SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0)) AS monthTotalFund,
+                    shopId
+                FROM (
+                         SELECT
+                             (eoi.quantity * eoi.bonus_earning) AS totalSaled,
+                             (CASE
+                              WHEN er.amount IS NOT NULL
+                                  THEN eoi.quantity * eoi.bonus_earning
+                              ELSE 0
+                              END)                                    AS refund,
+                             eoi.shop_id                              AS shopId,
+                             eoi.id
+                         FROM ec_order_item AS eoi
+                             LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                          AND er.refund_status = 2 AND er.is_activate = 1
+                             LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                         WHERE eoi.shop_id
+                               IN
+                               (
+                                   SELECT es.id
+                                   FROM ec_shop AS es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+                                   WHERE es.parent_id = #{params.shopId}
+                                         AND es.advanced_shop != 1
+                               )
+                               AND DATE_FORMAT(eo.add_date, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')
+                               AND eo.order_status = 2
+                               AND eo.payment_status = 1
+                               AND eo.shipping_status = 2
+                               AND eo.is_fund = 1
+                               AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+                     ) AS id2
+                GROUP BY shopId
+            ) AS t3 ON t3.shopId = t1.shopId
+		<if test="params.allOrderType != null and params.allOrderType != ''">
+			order by totalFund  desc, monthTotalFund desc
+		</if>
+		<if test="params.monthOrderType != null and params.monthOrderType != ''">
+			order by monthTotalFund desc, totalFund  desc
+		</if>
+        LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+    <select id="countGrandChilds" resultType="java.lang.String">
+		SELECT es.id
+		FROM ec_shop AS es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+		where es.parent_id =  #{shopId}
+            <if test="name != null and name != ''">
+                and ec.user_name LIKE CONCAT('%',#{name},'%')
+            </if>
+			  and es.advanced_shop = 1
+    </select>
+    <select id="getGrandChildList" resultType="com.vcat.module.ec.dto.AgentShopDto">
+        SELECT *
+        FROM
+            (
+                SELECT
+                    es.id           AS shopId,
+                    ec.user_name    AS name,
+                    ec.avatar_url   AS avatarUrl,
+                    CASE WHEN es.advanced_shop = 1
+                        THEN TRUE
+                    ELSE FALSE
+                    END             AS isVIP,
+                    ec.phone_number AS phone
+                FROM ec_shop AS es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+                WHERE es.parent_id = #{params.shopId}
+                      AND es.advanced_shop = 1
+                      and ec.user_name LIKE CONCAT('%',#{params.name},'%')
+            ) AS t1 LEFT JOIN
+            (
+                SELECT
+                    SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0)) AS totalFund,
+                    shopId
+                FROM (
+                         SELECT
+                             (eoi.quantity * eoi.second_bonus_earning) AS totalSaled,
+                             (CASE
+                              WHEN er.amount IS NOT NULL
+                                  THEN eoi.quantity * eoi.second_bonus_earning
+                              ELSE 0
+                              END)                                     AS refund,
+                             eoi.shop_id                               AS shopId,
+                             eoi.id
+                         FROM ec_order_item AS eoi
+                             LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                          AND er.refund_status = 2 AND er.is_activate = 1
+                             LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+						 WHERE eoi.shop_id
+							   IN
+							   (
+								   SELECT es.id
+								   FROM ec_shop AS es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+								   WHERE es.parent_id = #{params.shopId}
+										 AND es.advanced_shop = 1
+							   )
+                               AND eo.order_status = 2
+                               AND eo.payment_status = 1
+                               AND eo.shipping_status = 2
+                               AND eo.is_team_bonus = 1
+                               AND eoi.second_bonus_earning != 0
+                               AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+                     ) AS id2
+                GROUP BY shopId
+            ) AS t2 ON t1.shopId = t2.shopId
+            LEFT JOIN
+            (
+                SELECT
+                    SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0)) AS monthTotalFund,
+                    shopId
+                FROM (
+                         SELECT
+                             (eoi.quantity * eoi.second_bonus_earning) AS totalSaled,
+                             (CASE
+                              WHEN er.amount IS NOT NULL
+                                  THEN eoi.quantity * eoi.second_bonus_earning
+                              ELSE 0
+                              END)                                     AS refund,
+                             eoi.shop_id                               AS shopId,
+                             eoi.id
+                         FROM ec_order_item AS eoi
+                             LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                          AND er.refund_status = 2 AND er.is_activate = 1
+                             LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+						 WHERE eoi.shop_id
+							   IN
+							   (
+								   SELECT es.id
+								   FROM ec_shop AS es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+								   WHERE es.parent_id = #{params.shopId}
+										 AND es.advanced_shop = 1
+							   )
+                               AND DATE_FORMAT(eo.add_date, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')
+                               AND eo.order_status = 2
+                               AND eo.payment_status = 1
+                               AND eo.shipping_status = 2
+                               AND eo.is_team_bonus = 1
+                               AND eoi.second_bonus_earning != 0
+                               AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+                     ) AS id2
+                GROUP BY shopId
+            ) AS t3 ON t3.shopId = t1.shopId
+		<if test="params.allOrderType != null and params.allOrderType != ''">
+			order by totalFund  desc, monthTotalFund desc
+		</if>
+		<if test="params.monthOrderType != null and params.monthOrderType != ''">
+			order by monthTotalFund desc, totalFund  desc
+		</if>
+        LIMIT #{page.pageOffset},#{page.pageSize}
+    </select>
+    <select id="getVIPInfo" resultType="com.vcat.module.ec.dto.AgentShopDto">
+        SELECT
+            es.id as shopId,
+            ec.user_name AS name,
+            ec.avatar_url as avatarUrl,
+            case when es.advanced_shop = 1 then true
+            else false
+            end as isVIP,
+            ec.phone_number as phone,
+            (SELECT COUNT(ess.id)
+             FROM ec_shop AS ess
+             WHERE ess.parent_id = #{shopId}
+                   AND ess.advanced_shop = 1) as childNum,
+            (
+                SELECT
+                    SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0)) AS totalFund
+                FROM (
+                         SELECT
+                             (eoi.quantity * eoi.first_bonus_earning) AS totalSaled,
+                             (CASE
+                              WHEN er.amount IS NOT NULL
+                                  THEN eoi.quantity * eoi.first_bonus_earning
+                              ELSE 0
+                              END)                                    AS refund,
+                             eoi.shop_id                              AS shopId,
+                             eoi.id
+                         FROM ec_order_item AS eoi
+                             LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                          AND er.refund_status = 2 AND er.is_activate = 1
+                             LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                         WHERE eoi.shop_id = #{shopId}
+                               AND eo.order_status = 2
+                               AND eo.payment_status = 1
+                               AND eo.shipping_status = 2
+                               AND eo.is_team_bonus = 1
+                               and eoi.first_bonus_earning != 0
+                               AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+                     ) AS id2
+            ) as totalFund,
+            (
+                SELECT
+                    SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0)) AS totalFund
+                FROM (
+                         SELECT
+                             (eoi.quantity * eoi.first_bonus_earning) AS totalSaled,
+                             (CASE
+                              WHEN er.amount IS NOT NULL
+                                  THEN eoi.quantity * eoi.first_bonus_earning
+                              ELSE 0
+                              END)                                    AS refund,
+                             eoi.shop_id                              AS shopId,
+                             eoi.id
+                         FROM ec_order_item AS eoi
+                             LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                          AND er.refund_status = 2 AND er.is_activate = 1
+                             LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                         WHERE eoi.shop_id = #{shopId}
+                               AND DATE_FORMAT(eo.add_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+                               AND eo.order_status = 2
+                               AND eo.payment_status = 1
+                               AND eo.shipping_status = 2
+                               AND eo.is_team_bonus = 1
+                               and eoi.first_bonus_earning != 0
+                               AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+                     ) AS id2
+            ) as monthTotalFund,
+            (
+                SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0))
+                FROM
+                    (
+                        SELECT
+                            (eoi.quantity * eoi.first_bonus_earning) AS totalSaled,
+                            (CASE
+                             WHEN er.amount is not NULL THEN eoi.quantity * eoi.first_bonus_earning
+                             else 0
+                             END) AS refund
+                        FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+                            LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                         AND er.refund_status = 2 AND er.is_activate = 1
+                            LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                        WHERE es.parent_id = #{shopId}
+                              AND es.advanced_shop = 1
+                              AND eo.order_status = 2
+                              AND eo.payment_status = 1
+                              AND eo.shipping_status = 2
+                              AND eo.is_team_bonus = 0
+                              and eoi.first_bonus_earning != 0
+                              AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS result
+            ) as totalHoldFund
+        FROM ec_shop as es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+        where es.id =  #{shopId}
+              and es.advanced_shop = 1
+    </select>
+	<select id="getNotVIPInfo" resultType="com.vcat.module.ec.dto.AgentShopDto">
+        SELECT
+            es.id as shopId,
+            ec.user_name AS name,
+            ec.avatar_url as avatarUrl,
+            case when es.advanced_shop = 1 then true
+            else false
+            end as isVIP,
+            ec.phone_number as phone,
+            (SELECT COUNT(ess.id)
+             FROM ec_shop AS ess
+             WHERE ess.parent_id = #{shopId}
+                   AND ess.advanced_shop = 1) as childNum,
+            (
+                SELECT
+                    SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0)) AS totalFund
+                FROM (
+                         SELECT
+                             (eoi.quantity * eoi.bonus_earning) AS totalSaled,
+                             (CASE
+                              WHEN er.amount IS NOT NULL
+                                  THEN eoi.quantity * eoi.bonus_earning
+                              ELSE 0
+                              END)                                    AS refund,
+                             eoi.shop_id                              AS shopId,
+                             eoi.id
+                         FROM ec_order_item AS eoi
+                             LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                          AND er.refund_status = 2 AND er.is_activate = 1
+                             LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                         WHERE eoi.shop_id = #{shopId}
+                               AND eo.order_status = 2
+                               AND eo.payment_status = 1
+                               AND eo.shipping_status = 2
+                               AND eo.is_fund = 1
+                               and eoi.bonus_earning != 0
+                               AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+                     ) AS id2
+            ) as totalFund,
+            (
+                SELECT
+                    SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0)) AS totalFund
+                FROM (
+                         SELECT
+                             (eoi.quantity * eoi.bonus_earning) AS totalSaled,
+                             (CASE
+                              WHEN er.amount IS NOT NULL
+                                  THEN eoi.quantity * eoi.bonus_earning
+                              ELSE 0
+                              END)                                    AS refund,
+                             eoi.shop_id                              AS shopId,
+                             eoi.id
+                         FROM ec_order_item AS eoi
+                             LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                          AND er.refund_status = 2 AND er.is_activate = 1
+                             LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                         WHERE eoi.shop_id = #{shopId}
+                               AND DATE_FORMAT(eo.add_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+                               AND eo.order_status = 2
+                               AND eo.payment_status = 1
+                               AND eo.shipping_status = 2
+                               AND eo.is_fund = 1
+                               and eoi.bonus_earning != 0
+                               AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+                     ) AS id2
+            ) as monthTotalFund,
+            (
+                SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0))
+                FROM
+                    (
+                        SELECT
+                            (eoi.quantity * eoi.bonus_earning) AS totalSaled,
+                            (CASE
+                             WHEN er.amount is not NULL THEN eoi.quantity * eoi.bonus_earning
+                             else 0
+                             END) AS refund
+                        FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+                            LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                         AND er.refund_status = 2 AND er.is_activate = 1
+                            LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                        WHERE es.parent_id = #{shopId}
+                              AND es.advanced_shop = 1
+                              AND eo.order_status = 2
+                              AND eo.payment_status = 1
+                              AND eo.shipping_status = 2
+                              AND eo.is_fund = 0
+                              and eoi.bonus_earning != 0
+                              AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS result
+            ) as totalHoldFund
+        FROM ec_shop as es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+        where es.id =  #{shopId}
+              and es.advanced_shop != 1
+	</select>
+    <select id="getGrandVIPInfo" resultType="com.vcat.module.ec.dto.AgentShopDto">
+        SELECT
+            es.id                                                                    as shopId,
+            ec.user_name                                                             AS name,
+            ec.avatar_url                                                            as avatarUrl,
+            case when es.advanced_shop = 1
+                then true
+            else false
+            end                                                                      as isVIP,
+            ec.phone_number                                                          as phone,
+            (
+                SELECT COUNT(ess.id)
+                FROM ec_shop AS ess
+                WHERE ess.parent_id = #{shopId}
+                      AND ess.advanced_shop = 1)                                     as childNum,
+            (
+                SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0)) AS totalFund
+                FROM (
+                         SELECT
+                             (eoi.quantity * eoi.second_bonus_earning) AS totalSaled,
+                             (CASE
+                              WHEN er.amount IS NOT NULL
+                                  THEN eoi.quantity * eoi.second_bonus_earning
+                              ELSE 0
+                              END)                              AS refund,
+                             eoi.shop_id                        AS shopId,
+                             eoi.id
+                         FROM ec_order_item AS eoi
+                             LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                          AND er.refund_status = 2 AND er.is_activate = 1
+                             LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                         WHERE eoi.shop_id = #{shopId}
+                               AND eo.order_status = 2
+                               AND eo.payment_status = 1
+                               AND eo.shipping_status = 2
+                               AND eo.is_team_bonus = 1
+                               and eoi.second_bonus_earning != 0
+                               AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS id2)   as totalFund,
+            (
+                SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0)) AS totalFund
+                FROM (
+                         SELECT
+                             (eoi.quantity * eoi.second_bonus_earning) AS totalSaled,
+                             (CASE
+                              WHEN er.amount IS NOT NULL
+                                  THEN eoi.quantity * eoi.second_bonus_earning
+                              ELSE 0
+                              END)                              AS refund,
+                             eoi.shop_id                        AS shopId,
+                             eoi.id
+                         FROM ec_order_item AS eoi
+                             LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                          AND er.refund_status = 2 AND er.is_activate = 1
+                             LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                         WHERE eoi.shop_id = #{shopId}
+                               AND DATE_FORMAT(eo.add_date, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')
+                               AND eo.order_status = 2
+                               AND eo.payment_status = 1
+                               AND eo.shipping_status = 2
+                               AND eo.is_team_bonus = 1
+                               and eoi.second_bonus_earning != 0
+                               AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS id2)   as monthTotalFund,
+            (
+                SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0))
+                FROM
+                    (
+                        SELECT
+                            (eoi.quantity * eoi.second_bonus_earning) AS totalSaled,
+                            (CASE
+                             WHEN er.amount is not NULL
+                                 THEN eoi.quantity * eoi.second_bonus_earning
+                             else 0
+                             END)                              AS refund
+                        FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+                            LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                                         AND er.refund_status = 2 AND er.is_activate = 1
+                            LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                        WHERE es.parent_id = #{shopId}
+                              AND es.advanced_shop = 1
+                              AND eo.order_status = 2
+                              AND eo.payment_status = 1
+                              AND eo.shipping_status = 2
+                              AND eo.is_team_bonus = 0
+                              and eoi.second_bonus_earning != 0
+                              AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS result) as totalHoldFund
+        FROM ec_shop as es LEFT JOIN ec_customer AS ec ON es.id = ec.id
+        where es.id = #{shopId}
+              and es.advanced_shop = 1
+    </select>
+	<select id="getShopStatus" resultType="java.lang.Integer">
+        SELECT
+            case when es.advanced_shop = 0 then 0
+            when es.advanced_shop = 1 then 1
+            when eur.status = 1 then 2
+            when es.advanced_shop = 2 and eur.id is null then 4
+            when eur.status = 2 then 3 end as shopType
+        FROM ec_shop as es left join ec_upgrade_request as eur on eur.shop_id = es.id
+        where es.id = #{shopId}
+	</select>
+    <select id="getShopInfo" resultType="com.vcat.module.ec.dto.AgentShopDto">
+		SELECT
+			es.id as shopId,
+			es.id as huanId,
+			ec.user_name as name,
+			ec.phone_number as phone,
+			ec.avatar_url as avatarUrl,
+			(case when es.advanced_shop = 1 then 1
+				else 0 end ) as isVIP
+		FROM ec_shop as es left join ec_customer as ec on es.id = ec.id
+		where es.id = #{shopId}
+	</select>
+</mapper>

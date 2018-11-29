@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ActivityStatAnswerDao">
+
+
+	<select id="getStatAnswerList" resultType="com.vcat.module.ec.entity.ActivityStatAnswer" parameterType="String">
+	SELECT answer_range ,person_range,(SELECT SUM(person_range) FROM ec_activity_stat_answer AS asa WHERE asa.statistics_id = #{_parameter} )AS "totalPerson"
+	FROM ec_activity_stat_answer
+	WHERE statistics_id=#{_parameter}
+	</select>
+</mapper>

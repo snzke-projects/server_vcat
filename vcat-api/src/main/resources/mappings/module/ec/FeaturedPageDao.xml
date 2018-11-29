@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.FeaturedPageDao">
+    <sql id="Base_Column_List">
+        id,
+        name,
+        type,
+        url,
+        code
+    </sql>
+    <sql id="Base_Where_Clause">
+        <where>
+            1=1
+            <if test="id!=null and id!=''">
+                AND id = #{id}
+            </if>
+            <if test="type!=null and type!=''">
+                AND type = #{type}
+            </if>
+        </where>
+    </sql>
+    <select id="select" resultType="com.vcat.module.ec.entity.FeaturedPage" parameterType="String">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM ec_featured_page
+        where 1=1 AND id = #{_parameter}
+    </select>
+    <select id="get" resultType="com.vcat.module.ec.entity.FeaturedPage" parameterType="com.vcat.module.ec.entity.FeaturedPage">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM ec_featured_page
+        <include refid="Base_Where_Clause" />
+        LIMIT 1
+    </select>
+    <select id="getByType" resultType="com.vcat.module.ec.entity.FeaturedPage">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM ec_featured_page
+        WHERE type = #{_parameter}
+    </select>
+    <select id="findList" resultType="com.vcat.module.ec.entity.FeaturedPage">
+        SELECT
+          a.id,
+          a.name,
+          a.type,
+          a.display_order AS "displayOrder",
+          a.is_activate AS "isActivate",
+          a.url,
+          a.code,
+          a.width,
+          a.height
+        FROM ec_featured_page a
+        ORDER BY a.display_order
+    </select>
+    <update id="update">
+        UPDATE ec_featured_page
+        SET name = #{name}
+        ,display_order = #{displayOrder}
+        ,url = #{urlCode}
+        ,code = #{codeString}
+        WHERE id = #{id}
+    </update>
+</mapper>

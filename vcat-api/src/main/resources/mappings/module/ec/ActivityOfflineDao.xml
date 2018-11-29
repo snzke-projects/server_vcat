@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ActivityOfflineDao">
+	<select id="get" resultType="ActivityOffline">
+		SELECT
+		a.id AS "id",
+		a.is_activate AS "isActivate",
+		a.activate_time AS "activateTime",
+		a.title AS "title",
+		a.address AS "address",
+		a.img_url AS "imgUrl",
+		a.seat AS "seat",
+		a.start_date AS "startDate",
+		a.end_date AS "endDate",
+		a.intro AS "intro",
+		a.details AS "details",
+		a.del_flag AS "delFlag",
+		a.create_date AS "createDate",
+		a.ticket_url AS "ticketUrl",
+		a.open_status AS "openStatus",
+		(SELECT (a.seat - COUNT(1)) FROM ec_activity_offline_customer customer WHERE customer.activity_offline_id = a.id) AS "lastSeat"
+		FROM ec_activity_offline a
+		WHERE a.id = #{id}
+	</select>
+
+	<select id="findList" resultType="ActivityOffline">
+		SELECT
+		a.id AS "id",
+		a.is_activate AS "isActivate",
+		a.activate_time AS "activateTime",
+		a.title AS "title",
+		a.address AS "address",
+		a.img_url AS "imgUrl",
+		a.seat AS "seat",
+		a.start_date AS "startDate",
+		a.end_date AS "endDate",
+		a.intro AS "intro",
+		a.details AS "details",
+		a.del_flag AS "delFlag",
+		a.create_date AS "createDate",
+		a.ticket_url AS "ticketUrl",
+		a.open_status AS "openStatus",
+		(SELECT (a.seat - COUNT(1)) FROM ec_activity_offline_customer customer WHERE customer.activity_offline_id = a.id) AS "lastSeat"
+		FROM ec_activity_offline a
+		WHERE a.del_flag = #{DEL_FLAG_NORMAL}
+		<if test="title != null and title != ''">
+			AND a.title like '%${title}%'
+		</if>
+		ORDER BY a.is_activate ASC ,a.activate_time ASC
+	</select>
+
+	<insert id="insert">
+		INSERT INTO ec_activity_offline(
+		id,
+		is_activate,
+		title,
+		address,
+		img_url,
+		seat,
+		intro,
+		details,
+		del_flag,
+		create_date,
+		start_date,
+		end_date,
+		ticket_url,
+        template_url
+		) VALUES (
+		#{id},
+		#{NOT_ACTIVATED},
+		#{title},
+		#{address},
+		#{imgUrl},
+		#{seat},
+		#{intro},
+		#{details},
+		#{DEL_FLAG_NORMAL},
+		CURRENT_TIMESTAMP,
+		#{startDate},
+		#{endDate},
+		#{ticketUrl},
+        (SELECT value FROM sys_dict WHERE type = 'ec_activity_offline_url')
+		)
+	</insert>
+	<update id="update">
+		UPDATE ec_activity_offline SET
+		title = #{title},
+		address = #{address},
+		img_url = #{imgUrl},
+		seat = #{seat},
+		start_date = #{startDate},
+		end_date = #{endDate},
+		intro = #{intro},
+		details = #{details},
+		ticket_url = #{ticketUrl}
+		WHERE id = #{id}
+	</update>
+	<update id="delete">
+		UPDATE ec_activity_offline SET del_flag = #{DEL_FLAG_DELETE} WHERE id = #{id}
+	</update>
+	<update id="activate">
+		UPDATE ec_activity_offline SET
+		is_activate = #{ACTIVATED},
+		activate_time = CURRENT_TIMESTAMP,
+        open_status = 1
+		WHERE id = #{id}
+	</update>
+	<update id="changeOpenStatus">
+		UPDATE ec_activity_offline SET open_status = #{openStatus} WHERE id = #{id}
+	</update>
+	<select id="findParticipationList" resultType="com.vcat.module.ec.entity.Participation">
+		SELECT
+		activity.title AS "title",
+		customer.user_name AS "name",
+		customerActivity.real_name AS "realName",
+		customerActivity.phone_number AS "phone",
+		customerActivity.qq AS "qq",
+		customerActivity.email AS "email",
+		DATE_FORMAT(customerActivity.create_date,'%Y-%m-%d %H:%i:%s') AS "date",
+		address.delivery_name AS "deliveryName",
+		address.delivery_phone AS "deliveryPhone",
+		CONCAT(province.name,' ',city.name,' ',district.name,' ',address.detail_address) AS "detailAddress"
+		FROM ec_activity_offline_customer customerActivity
+		LEFT JOIN ec_customer customer ON customer.id = customerActivity.customer_id
+		LEFT JOIN ec_activity_offline activity ON activity.id = customerActivity.activity_offline_id
+		LEFT JOIN ec_address address ON address.id = customerActivity.address_id
+		LEFT JOIN sys_area province ON province.id = address.province_id
+		LEFT JOIN sys_area city ON city.id = address.city_id
+		LEFT JOIN sys_area district ON district.id = address.district_id
+		WHERE activity.id = #{id}
+		ORDER BY customerActivity.create_date DESC
+	</select>
+
+	<!--根据ID查询线下活动信息-->
+	<select id="getOfflineActivity" resultType="com.vcat.module.ec.entity.ActivityOffline">
+		SELECT
+		ao.id,
+		ao.title,
+		ao.img_url as imgUrl,
+		ao.start_date as startDate,
+		ao.end_date as endDate,
+		ao.address,
+		ao.details,
+		ao.seat,
+		ao.open_status as openStatus,
+		ao.ticket_url as ticketUrl,
+# 		ao.is_activate as isActivate,
+		(SELECT ao.seat - COUNT(1) FROM ec_activity_offline_customer ac WHERE ac.activity_offline_id = #{offlineActivityId}) as lastSeat
+		FROM ec_activity_offline ao WHERE ao.is_activate = 1
+		AND ao.id = #{offlineActivityId}
+	</select>
+	<!-- 查询当前客户是否参加活动-->
+	<select id="isJoin" resultType="java.lang.Boolean">
+		SELECT COUNT(1) FROM ec_activity_offline_customer
+		WHERE customer_id = #{cid}
+		AND activity_offline_id = #{offlineActivityId}
+	</select>
+	<!--查询活动是否进行中-->
+	<!--<select id="inProgress" resultType="java.lang.Boolean">-->
+		<!--SELECT COUNT(1) FROM ec_activity_offline-->
+		<!--WHERE NOW() > end_date-->
+		<!--AND id = #{offlineActivityId}-->
+	<!--</select>-->
+	<!--查询活动人数是否已满-->
+	<select id="getSeatStatus" resultType="String" parameterType="String">
+		SELECT (   CASE
+		WHEN seat > (SELECT COUNT(id) FROM ec_activity_offline_customer WHERE activity_offline_id = #{offlineActivityId})
+		THEN '0'
+		ELSE '1'
+		END
+		) AS "isFull"
+		FROM ec_activity_offline
+		WHERE id = #{offlineActivityId}
+	</select>
+	<select id="findTopActivity" resultType="java.util.Map">
+		SELECT
+			activity.title AS "title"
+		FROM ec_activity_offline activity
+		WHERE 1=1
+			  AND activity.is_activate = 1
+		ORDER BY activity.activate_time DESC limit 1
+	</select>
+
+	<update id="updateStatus">
+		UPDATE ec_activity_offline SET open_status = 0
+		WHERE id = #{id}
+	</update>
+	<select id="getOfflineActivityList" resultType="com.vcat.module.ec.dto.OfflineActivityDto">
+		<![CDATA[
+        SELECT
+            ao.id,
+            ao.title,
+            ao.img_url                                                         AS imgUrl,
+            ao.intro,
+            date_format(ao.activate_time, '%Y-%c-%d %h:%i:%s')                 AS activateTime,
+            ao.template_url                                                    AS "templateUrl",
+
+            ao.open_status as openStatus,
+            (SELECT count(1)
+             FROM ec_activity_offline_customer oc
+             WHERE oc.activity_offline_id = ao.id) >= ao.seat                  AS isFull,
+            #            如果人数没满且openStatus=1   --> isInprogress = 1
+            #            如果人数满 或者 openStatus=0   --> isInprogress = 0
+            (case when ao.open_status=1&&((SELECT count(1)
+                                           FROM ec_activity_offline_customer oc
+                                           WHERE oc.activity_offline_id = ao.id) < ao.seat) then 1
+             else 0
+             end) as isInProgress,
+            (SELECT count(1)
+             FROM ec_activity_offline_customer oc
+             WHERE oc.activity_offline_id = ao.id AND oc.customer_id = #{cid}) AS isSelfJoined
+#             (NOW() >= ao.start_date AND NOW() <= ao.end_date)                  AS isInProgress
+        FROM ec_activity_offline ao
+        WHERE ao.is_activate = 1
+        ORDER BY ao.activate_time DESC
+        LIMIT #{page.pageOffset}, #{page.pageSize}
+        ]]>
+	</select>
+	<select id="countOfflineActivityList" resultType="int">
+		<![CDATA[
+        SELECT count(1)
+        FROM ec_activity_offline ao WHERE ao.is_activate = 1 ORDER BY ao.activate_time DESC
+        ]]>
+	</select>
+</mapper>

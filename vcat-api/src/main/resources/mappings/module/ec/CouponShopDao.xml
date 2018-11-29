@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.CouponShopDao">
+<sql id="Base_Column_List">
+	id,
+	shop_id AS "shop.id",
+	coupon_id AS "coupon.id"
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="shop!=null and shop.id!=null and shop.id!=''">
+			AND shop_id = #{shop.id}
+		</if>
+		<if test="coupon!=null and coupon.id!=null and coupon.id!=''">
+			AND coupon_id = #{coupon.id}
+		</if>
+	</where>
+</sql>
+<select id="get" resultType="com.vcat.module.ec.entity.CouponShop" parameterType="com.vcat.module.ec.entity.CouponShop">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_coupon_shop
+	<include refid="Base_Where_Clause" />
+</select>
+<insert id="insert" parameterType="com.vcat.module.ec.entity.CouponOperLog">
+	INSERT INTO ec_coupon_shop(
+	id,
+	shop_id,
+	coupon_id
+	) VALUES (
+	#{id},
+	#{shop.id},
+	#{coupon.id}
+	)
+</insert>
+<select id="getShopCouponDetailBillCount" resultType="Integer">
+	SELECT COUNT(cf.id)
+	FROM ec_coupon_fund AS cf
+	LEFT JOIN ec_coupon_oper_log AS col ON col.coupon_fund_id=cf.id
+	WHERE DATE_FORMAT(col.oper_date,'%Y-%m')=#{month}
+	AND cf.shop_id=#{shopId}
+</select>
+<select id="getShopCouponDetailBill" resultType="com.vcat.module.ec.dto.FundDetailBillDto">
+	SELECT IF(col.fund>0,col.fund,-col.fund) AS "fund",col.type AS "fundTypeName",col.oper_date AS "fundDate"
+	FROM ec_coupon_fund AS cf
+	LEFT JOIN ec_coupon_oper_log AS col ON col.coupon_fund_id=cf.id
+	WHERE DATE_FORMAT(col.oper_date,'%Y-%m')=#{month}
+	AND cf.shop_id=#{shopId}
+	ORDER BY col.oper_date DESC
+	LIMIT #{page.pageOffset},#{page.pageTail}
+</select>
+<select id="getShopCouponDetailBill2" resultType="com.vcat.module.ec.dto.FundDetailBillDto">
+	SELECT IF(col.fund>0,col.fund,-col.fund) AS "fund",col.oper_date AS "fundDate",
+	(CASE 
+		WHEN col.type=1 THEN "获得猫币：邀请好友加入战队"
+		WHEN col.type=2 THEN "获得猫币：加入好友战队"
+		WHEN col.type=3 THEN "消费猫币：购物"
+		WHEN col.type=4 THEN "获得猫币：平台奖励"
+	END) AS "fundTypeName",
+	"V猫小店" AS "buyerName",
+	(SELECT cfg_value FROM ec_app_config WHERE cfg_name='app_icon' ) AS "buyerAvatarUrl"
+	FROM ec_coupon_fund AS cf
+	LEFT JOIN ec_coupon_oper_log AS col ON col.coupon_fund_id=cf.id
+	WHERE DATE_FORMAT(col.oper_date,'%Y-%m')=#{month}
+	AND cf.shop_id=#{shopId}
+	ORDER BY col.oper_date DESC
+	LIMIT #{page.pageOffset},#{page.pageTail}
+</select>
+	
+<select id="getInviteeCouponCount" resultType="Integer" >
+	SELECT count(1) as total
+	FROM ec_coupon_shop cs
+	LEFT JOIN ec_coupon c
+	ON cs.coupon_id = c.id
+	WHERE c.type = 2 and cs.shop_id = #{shopId}
+    GROUP BY cs.shop_id
+</select>
+
+</mapper>

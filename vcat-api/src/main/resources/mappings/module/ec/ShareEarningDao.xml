@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ShareEarningDao">
+	<sql id="shareColumns">
+			a.id AS "id",
+			a.product_id AS "product.id",
+			a.fund AS "fund",
+			a.available_share AS "availableShare",
+			a.start_time AS "startTime",
+			a.end_time AS "endTime",
+			a.is_activate AS "isActivate",
+			a.title AS "title",
+			a.img_url AS "imgUrl",
+			a.activate_time AS "activateTime",
+			(select count(1) from ec_share_earning_log sel where sel.share_id = a.id) AS "sharedCount",
+			p.name AS "product.name",
+			ec.id AS "product.category.id",
+			ec.name AS "product.category.name"
+	</sql>
+	<sql id="shareJoins">
+		LEFT JOIN ec_product p ON a.product_id = p.id
+        LEFT JOIN ec_brand brand ON brand.id = p.brand_id
+		LEFT JOIN ec_supplier supplier ON brand.supplier_id = supplier.id
+		LEFT JOIN ec_category_product cp ON cp.product_id = p.id
+		LEFT JOIN ec_category ec ON ec.id = cp.category_id
+	</sql>
+	<select id="get" resultType="ShareEarning">
+		SELECT
+		<include refid="shareColumns"/>
+		FROM ec_share_earning a
+		<include refid="shareJoins"/>
+		WHERE a.id = #{id}
+	</select>
+	
+	<select id="getAvaShareEarning" resultType="ShareEarning">
+		SELECT
+		<include refid="shareColumns"/>
+		FROM ec_share_earning a
+		<include refid="shareJoins"/>
+		WHERE 1=1
+		<if test="product != null and product.id != null and product.id != ''">
+			AND a.product_id = #{product.id}
+		</if>
+		AND NOW() BETWEEN a.start_time AND a.end_time
+		LIMIT 1
+	</select>
+	
+	<select id="findList" resultType="ShareEarning">
+		SELECT
+		<include refid="shareColumns"/>
+		FROM ec_share_earning a
+		<include refid="shareJoins"/>
+		WHERE a.del_flag = #{DEL_FLAG_NORMAL}
+		<if test="title != null and title != ''">
+			AND (
+				a.title like '%${title}%'
+			OR
+				p.name like '%${title}%'
+			OR
+				ec.name like '%${title}%'
+			)
+		</if>
+		<if test="product != null and product.category != null and product.category.id != ''">
+			AND ec.id = #{product.category.id}
+		</if>
+		<if test="sqlMap.st != null and sqlMap.st != ''">
+			AND a.start_time > STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d %H:%i:%s")
+		</if>
+		<if test="sqlMap.et != null and sqlMap.et != ''">
+			AND STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d %H:%i:%s") > a.end_time
+		</if>
+		ORDER BY a.is_activate ASC ,a.end_time ASC
+	</select>
+
+	<select id="getShareMessageList" resultType="Map">
+		SELECT
+			a.id AS "id",
+			a.fund AS "fund",
+			a.available_share AS "availableShare",
+			a.start_time AS "startTime",
+			a.end_time AS "endTime",
+			a.title AS "title",
+			a.img_url AS "imgUrl",
+			a.activate_time AS "activateTime",
+			p.name AS "productName",
+			p.id AS "productId",
+			p.copywrite AS "copywrite",
+			(CASE
+			WHEN a.start_time>NOW() THEN '活动还未开始'
+			WHEN a.available_share>(SELECT COUNT(1) FROM ec_share_earning_log sel WHERE sel.share_id = a.id) 
+			AND NOW()>a.start_time AND a.end_time>NOW() THEN '活动火热进行中'
+			WHEN NOW()>a.end_time THEN '活动已结束'
+			WHEN (SELECT COUNT(1) FROM ec_share_earning_log sel WHERE sel.share_id = a.id)>=a.available_share THEN '活动已结束'
+			END) AS "statusName",
+			(SELECT i.url
+			FROM ec_product_image AS pi1
+			LEFT JOIN ec_image AS i ON pi1.image_id=i.id
+			WHERE pi1.product_id=p.id
+			ORDER BY pi1.display_order DESC LIMIT 1)
+			AS "mainUrl",
+			(CASE WHEN sub.id IS NULL THEN 'false' ELSE 'true' END) AS "remind",
+			IFNULL((SELECT (CASE WHEN archived = 0 THEN 'false' ELSE 'true' END) FROM ec_shop_product WHERE product_id = p.id AND shop_id = #{sqlMap.shopId}),'true')  AS "shopArchived",
+			(CASE WHEN p.archived = 0 THEN 'false' ELSE 'true' END) AS "productArchived"
+		FROM ec_share_earning a
+		LEFT JOIN ec_sub_push sub ON a.id = sub.relation_id AND sub.type = #{sqlMap.remindType} AND sub.customer_id = #{sqlMap.shopId}
+		LEFT JOIN ec_product p ON a.product_id = p.id
+		LEFT JOIN ec_category_product cp ON p.id = cp.product_id
+        LEFT JOIN ec_category c ON cp.category_id = c.id
+		WHERE a.del_flag = #{DEL_FLAG_NORMAL}
+		AND a.is_activate = #{ACTIVATED}
+        ORDER BY a.activate_time DESC
+	</select>
+
+	<select id="getShareEarningList" resultType="ShareEarning">
+		SELECT
+		<include refid="shareColumns"/>
+		FROM ec_share_earning a
+		<include refid="shareJoins"/>
+		WHERE a.product_id = #{id}
+	</select>
+
+	<select id="checkSameProductActivated" resultType="Boolean">
+		SELECT CASE WHEN COUNT(1) > 0 THEN '1' ELSE '0' END
+		FROM ec_share_earning shareEarning
+		LEFT JOIN ec_product p ON p.id = shareEarning.product_id
+		WHERE shareEarning.id NOT IN (#{id})
+		AND p.id = (SELECT product_id FROM ec_share_earning WHERE id=#{id})
+		AND shareEarning.is_activate = #{ACTIVATED}
+		AND NOW() > shareEarning.start_time
+		AND shareEarning.end_time > NOW()
+	</select>
+
+	<insert id="insert">
+		INSERT INTO ec_share_earning(
+			id,
+			product_id,
+			fund,
+			is_activate,
+			available_share,
+			start_time,
+			end_time,
+			title,
+			img_url,
+			del_flag
+		) VALUES (
+			#{id},
+			#{product.id},
+			#{fund},
+			#{isActivate},
+			#{availableShare},
+			#{startTime},
+			#{endTime},
+			#{title},
+			#{imgUrl},
+			#{DEL_FLAG_NORMAL}
+		)
+	</insert>
+	<update id="update">
+		UPDATE ec_share_earning SET
+			fund = #{fund},
+			available_share = #{availableShare},
+			start_time = #{startTime},
+			end_time = #{endTime},
+			title = #{title},
+			img_url = #{imgUrl},
+			product_id = #{product.id}
+		WHERE id = #{id}
+	</update>
+	<update id="delete">
+		UPDATE ec_share_earning SET
+			del_flag = #{DEL_FLAG_DELETE}
+		WHERE id = #{id}
+	</update>
+	<update id="activate">
+		UPDATE ec_share_earning SET
+			is_activate = #{ACTIVATED},
+			activate_time = now()
+		WHERE id = #{id}
+	</update>
+	<select id="remindCount" resultType="Integer">
+		SELECT count(1) FROM ec_sub_push WHERE customer_id = #{customerId} AND type = #{type} AND relation_id = #{relationId}
+	</select>
+	<insert id="remindShare">
+		INSERT INTO ec_sub_push(
+			id,
+			customer_id,
+			type,
+			relation_id,
+			push_id,
+			push_time,
+			is_activate,
+			title,
+			content
+		) VALUES (
+			#{id},
+			#{customerId},
+			#{type},
+			#{relationId},
+			#{pushId},
+			#{pushDate},
+			#{isActivate},
+			#{title},
+			#{content}
+		)
+	</insert>
+
+    <select id="getPieChartList" resultType="java.util.LinkedHashMap">
+        SELECT
+            t.name AS "name",
+            count(1) AS "y"
+        FROM
+            ec_share_earning_log log
+        LEFT JOIN ec_share_earning s ON s.id = log.share_id
+        LEFT JOIN ec_shop shop ON shop.id = log.shop_id
+        LEFT JOIN ec_3rd_type t ON t.id = log.3rd_type_id
+        WHERE
+            s.id = #{id}
+        GROUP BY
+            t.code
+        UNION
+            SELECT
+                '尚未分享',
+                (
+                    SELECT
+                        s.available_share - count(1)
+                    FROM
+                        ec_share_earning_log log
+                    LEFT JOIN ec_share_earning s ON s.id = log.share_id
+                    WHERE s.id = #{id}
+                )
+    </select>
+    <select id="getPushTokenListByProductId" resultType="String">
+        SELECT c.push_token AS "pushToken"
+        FROM ec_customer c
+        WHERE c.id IN (SELECT sp.shop_id FROM ec_shop_product sp WHERE sp.product_id = #{id} AND del_flag = 0)
+        AND c.device_type = 3
+    </select>
+</mapper>

@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.CartDao">
+<resultMap id="BaseResultMap" type="com.vcat.module.ec.dto.CartDto">
+		<result column="shopId"  property="shopId" />
+		<result column="shopName"  property="shopName" />
+</resultMap>
+
+<sql id="Base_Column_List">
+	id,
+	product_item_id,
+	customer_id,
+	quantity,
+	price,
+	img_url,
+	shop_id,
+	cart_status,
+	cart_type AS "productType"
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="productItemId!=null and productItemId!=''">
+			AND product_item_id = #{productItemId}
+		</if>
+		<if test="customerId!=null and customerId!=''">
+			AND customer_id = #{customerId}
+		</if>
+		<if test="shopId!=null and shopId!=''">
+			AND shop_id = #{shopId}
+		</if>
+		<if test="productType!=null and productType!=''">
+			AND cart_type = #{productType}
+		</if>
+	</where>
+</sql>
+<select id="get" resultType="com.vcat.module.ec.entity.Cart" parameterType="com.vcat.module.ec.entity.Cart">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_cart
+	<include refid="Base_Where_Clause" />
+</select>
+<select id="getCartList" resultMap="BaseResultMap" parameterType="String">
+SELECT DISTINCT 
+c.shop_id AS "shopId",
+CONCAT(ec.user_name,"的V猫小店")  AS "shopName",
+c.cart_type AS "productType" 
+FROM ec_cart AS c
+LEFT JOIN ec_shop AS s ON s.id=c.shop_id
+LEFT JOIN ec_customer AS ec ON ec.id=c.shop_id
+WHERE customer_id = #{customerId}
+AND cart_type = #{productType}
+ORDER BY create_time DESC
+</select>
+
+<select id="findcartListByShop" resultType="com.vcat.module.ec.entity.Cart" parameterType="java.util.Map">
+SELECT
+c.id, c.product_item_id AS "productItemId",c.quantity AS "quantity",c.cart_status AS "cartStatus",
+c.img_url AS "mainUrl",p.name AS "productName",pi1.name AS "productItemName",c.cart_type AS "productType",
+			  <if test="productType==1" >
+				pi1.retail_price  AS "price",
+				pi1.inventory AS "inventory",
+			  </if>
+			  <if test="productType==2">
+				pi1.retail_price  AS "price",
+				pi1.inventory AS "inventory",
+			  </if>
+			  <if test="productType==3">
+			  pi1.retail_price  AS "price",
+			  pi1.retail_price  AS "couponValue",
+			  pi1.coupon_all_inventory AS "inventory",
+			  </if>
+			  <if test="productType==4">
+			  pi1.retail_price  AS "price",
+			  pi1.coupon_value  AS "couponValue",
+			  pi1.coupon_part_inventory AS "inventory",
+			  </if>
+			(CASE
+	            WHEN p.archived=0 AND c.cart_type=1 AND (sp.archived=0
+					 OR (p.id in
+					 (SELECT tp.product_id FROM ec_topic_product tp LEFT JOIN ec_topic t ON tp.topic_id = t.id
+					 WHERE t.is_activate = 1 AND t.del_flag = 0 )))
+				THEN "0"
+	            WHEN c.cart_type=2 OR c.cart_type=3 OR c.cart_type=4 THEN "0"
+	            ELSE "1"
+	        END) AS "isSellerLoad"
+FROM ec_cart AS c
+LEFT JOIN ec_product_item AS pi1 ON pi1.id=c.product_item_id
+LEFT JOIN ec_product AS p ON p.id=pi1.product_id
+LEFT JOIN ec_shop_product AS sp ON sp.product_id=p.id
+AND sp.shop_id=#{shopId}
+WHERE 1=1
+<if test="shopId!=null and shopId!=''">
+AND c.shop_id = #{shopId}
+</if>
+AND c.customer_id=#{customerId}
+AND c.cart_type=#{productType}
+ORDER BY c.create_time DESC
+</select>
+
+<select id="findcartListByShop2" resultType="com.vcat.module.ec.entity.Cart" parameterType="java.util.Map">
+    SELECT
+    c.id, c.product_item_id AS "productItemId",c.quantity AS "quantity",c.cart_status AS "cartStatus",
+    c.img_url AS "mainUrl",p.name AS "productName",pi1.name AS "productItemName",c.cart_type AS "productType",
+    <if test="productType==1" >
+        pi1.retail_price  AS "price",
+		(CASE WHEN (select endTime from view_all_recommend as var where var.productId = p.id and endTime is not null) is null then pi1.inventory
+		else (SELECT inventory
+		FROM ec_shop_product
+		WHERE product_id = p.id
+		AND shop_id = sp.shop_id)
+		end) AS "inventory",
+    </if>
+    <if test="productType==2">
+        (select  (case when (es.advanced_shop = 1) then (pi1.retail_price - epi.sale_earning - epi.bonus_earning)
+        else (epi.retail_price - epi.sale_earning ) end )
+        from ec_shop as es, ec_product_item as epi
+        where es.id = #{customerId}
+        and epi.id = c.product_item_id) as 'price',
+        pi1.inventory AS "inventory",
+    </if>
+    (CASE
+    WHEN p.archived=0 AND c.cart_type=1 AND (sp.archived=0
+    OR (p.id in
+    (SELECT tp.product_id FROM ec_topic_product tp LEFT JOIN ec_topic t ON tp.topic_id = t.id
+    WHERE t.is_activate = 1 AND t.del_flag = 0 )))
+    THEN "0"
+    WHEN c.cart_type=2 OR c.cart_type=3 OR c.cart_type=4 THEN "0"
+    ELSE "1"
+    END) AS "isSellerLoad"
+    FROM ec_cart AS c
+    LEFT JOIN ec_product_item AS pi1 ON pi1.id=c.product_item_id
+    LEFT JOIN ec_product AS p ON p.id=pi1.product_id
+	LEFT JOIN ec_shop_product AS sp ON sp.product_id=p.id
+    AND sp.shop_id=#{shopId}
+    WHERE 1=1
+    <if test="shopId!=null and shopId!=''">
+        AND c.shop_id = #{shopId}
+    </if>
+    AND c.customer_id=#{customerId}
+    AND c.cart_type=#{productType}
+    ORDER BY c.create_time DESC
+</select>
+
+<select id="countByBuyerId" resultType="Integer" parameterType="String">
+SELECT
+IFNULL(SUM(quantity),0)
+FROM ec_cart
+WHERE customer_id = #{buyerId}
+</select>
+
+<insert id="insert" parameterType="com.vcat.module.ec.entity.Cart">
+	INSERT INTO ec_cart(
+	id,
+	product_item_id,
+	customer_id,
+	quantity,
+	price,
+	img_url,
+	brand_id,
+	shop_id,
+	create_time,
+	cart_type,
+	cart_status
+	) VALUES (
+	#{id},
+	#{productItemId},
+	#{customerId},
+	#{quantity},
+	(SELECT retail_price AS price FROM ec_product_item WHERE id=#{productItemId}),
+	(SELECT i.url AS ImgUrl
+	FROM ec_product_image AS pi1
+	LEFT JOIN ec_image AS i ON pi1.image_id=i.id
+	LEFT JOIN ec_product AS p ON pi1.product_id=p.id
+	LEFT JOIN ec_product_item AS pi2 ON pi2.product_id=p.id
+	WHERE pi2.id=#{productItemId}
+	ORDER BY pi1.display_order DESC LIMIT 1),
+	(SELECT p.brand_id AS brand_id
+	FROM ec_product_item AS pi1
+	LEFT JOIN ec_product AS p ON pi1.product_id=p.id
+	LEFT JOIN ec_brand AS b ON b.id=p.brand_id
+	WHERE pi1.id=#{productItemId}),
+	#{shopId},
+	NOW(),
+	#{productType},
+	#{cartStatus}
+	)
+</insert>
+<!--将商品添加到购物车中,区分特约小店店主和钻石小店店主家-->
+<insert id="insert2" parameterType="com.vcat.module.ec.entity.Cart">
+    INSERT INTO ec_cart(
+    id,
+    product_item_id,
+    customer_id,
+    quantity,
+    price,
+    img_url,
+    brand_id,
+    shop_id,
+    create_time,
+    cart_type,
+    cart_status
+    ) VALUES (
+    #{id},
+    #{productItemId},
+    #{customerId},
+    #{quantity},
+
+    (select  (case when (es.advanced_shop = 1) then (epi.retail_price - epi.sale_earning - epi.bonus_earning)
+              else (epi.retail_price - epi.sale_earning) end )
+     from ec_shop as es, ec_product_item as epi
+     where es.id = #{customerId}
+     and epi.id = #{productItemId}),
+
+    (SELECT i.url AS ImgUrl
+    FROM ec_product_image AS pi1
+    LEFT JOIN ec_image AS i ON pi1.image_id=i.id
+    LEFT JOIN ec_product AS p ON pi1.product_id=p.id
+    LEFT JOIN ec_product_item AS pi2 ON pi2.product_id=p.id
+    WHERE pi2.id=#{productItemId}
+    ORDER BY pi1.display_order DESC LIMIT 1),
+    (SELECT p.brand_id AS brand_id
+    FROM ec_product_item AS pi1
+    LEFT JOIN ec_product AS p ON pi1.product_id=p.id
+    LEFT JOIN ec_brand AS b ON b.id=p.brand_id
+    WHERE pi1.id=#{productItemId}),
+    #{shopId},
+    NOW(),
+    #{productType},
+    #{cartStatus}
+    )
+</insert>
+<update id="update" parameterType="com.vcat.module.ec.entity.Cart">
+	UPDATE ec_cart SET
+	quantity=#{quantity},
+	create_time=NOW()
+	WHERE id = #{id}
+</update>
+<delete id="deleteCarts" parameterType="com.vcat.module.ec.entity.Cart">
+DELETE FROM
+ec_cart
+<include refid="Base_Where_Clause" />
+</delete>
+</mapper>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.InviteEarningLogDao">
+<sql id="Base_Column_List">
+	id,
+	invite_earning_id,
+	inviter,
+	invitee,
+	inviter_earning AS "inviterEarning",
+	invitee_earning AS "inviteeEarning",
+	create_date
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="inviter!=null and inviter!=''">
+			AND inviter = #{inviter}
+		</if>
+		<if test="invitee!=null and invitee!=''">
+			AND invitee = #{invitee}
+		</if>
+	</where>
+</sql>
+<select id="get" resultType="com.vcat.module.ec.entity.InviteEarningLog" parameterType="com.vcat.module.ec.entity.InviteEarningLog">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_invite_earning_log
+	<include refid="Base_Where_Clause" />
+</select>
+<select id="getNowTotalFund" resultType="int" parameterType="String">
+  SELECT COUNT(id)
+  FROM ec_invite_earning_log
+  WHERE invite_earning_id=#{_parameter}
+</select>
+<insert id="insert" parameterType="com.vcat.module.ec.entity.InviteEarningLog">
+	INSERT INTO ec_invite_earning_log(
+	id,
+	invite_earning_id,
+	inviter,
+	invitee,
+	inviter_earning,
+	invitee_earning,
+	create_date
+	) VALUES (
+	#{id},
+	#{inviteEarningId},
+	#{inviter},
+	#{invitee},
+	#{inviterEarning},
+	#{inviteeEarning},
+	NOW()
+	)
+</insert>
+<select id="findLog" resultType="java.util.LinkedHashMap">
+    SELECT
+    inviter.name AS "inviter",
+    invitee.name AS "invitee",
+    log.inviter_earning AS "inviterEarning",
+    log.invitee_earning AS "inviteeEarning",
+    log.create_date AS "date"
+    FROM ec_invite_earning_log log
+    LEFT JOIN ec_invite_earning invite ON invite.id = log.invite_earning_id
+    LEFT JOIN ec_shop inviter ON inviter.id = log.inviter
+    LEFT JOIN ec_shop invitee ON invitee.id = log.invitee
+    WHERE invite.id = #{id}
+    ORDER BY log.create_date DESC
+</select>
+</mapper>

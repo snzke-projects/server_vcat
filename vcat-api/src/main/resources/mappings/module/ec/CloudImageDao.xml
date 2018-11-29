@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.CloudImageDao">
+
+	<insert id="insert" parameterType="com.vcat.module.ec.entity.CloudImage">
+		INSERT INTO ec_cloud_image(
+		id,
+		bucket,
+		size,
+		appid,
+		sha,
+		url,
+		fileid,
+		date,
+		magic_context
+		) VALUES (
+		#{id},
+		#{bucket},
+		#{size},
+		#{appid},
+		#{sha},
+		#{url},
+		#{fileid},
+		NOW(),
+		#{magiContext}
+		)
+	</insert>
+</mapper>

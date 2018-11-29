@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.FundOperLogDao">
+    <insert id="insertLoad">
+        INSERT INTO ec_fund_oper_load_log(
+        id,
+        shop_fund_id,
+        fund_field_type_id,
+        fund,
+        remain_fund,
+        note,
+        oper_by,
+        oper_date,
+        relate_id,
+        fund_type
+        ) VALUES (
+        #{id},
+        #{shopFundId},
+        (SELECT s.id FROM ec_fund_field_type AS s WHERE s.name=#{fundFieldType.name} LIMIT 1),
+        #{fund},
+        #{remainFund},
+        #{note},
+        #{createBy.id},
+        NOW(),
+        #{relateId},
+        #{fundType}
+        )
+    </insert>
+    <insert id="insertSale">
+        INSERT INTO ec_fund_oper_sale_log(
+        id,
+        shop_fund_id,
+        fund_field_type_id,
+        fund,
+        remain_fund,
+        note,
+        oper_by,
+        oper_date,
+        relate_id,
+        fund_type
+        ) VALUES (
+        #{id},
+        #{shopFundId},
+        (SELECT s.id FROM ec_fund_field_type AS s WHERE s.name=#{fundFieldType.name} LIMIT 1),
+        #{fund},
+        #{remainFund},
+        #{note},
+        #{createBy.id},
+        NOW(),
+        #{relateId},
+        #{fundType}
+        )
+    </insert>
+    <insert id="insertShare">
+        INSERT INTO ec_fund_oper_share_log(
+        id,
+        shop_fund_id,
+        fund_field_type_id,
+        fund,
+        remain_fund,
+        note,
+        oper_by,
+        oper_date,
+        relate_id,
+        fund_type
+        ) VALUES (
+        #{id},
+        #{shopFundId},
+        (SELECT s.id FROM ec_fund_field_type AS s WHERE s.name=#{fundFieldType.name} LIMIT 1),
+        #{fund},
+        #{remainFund},
+        #{note},
+        #{createBy.id},
+        NOW(),
+        #{relateId},
+        #{fundType}
+        )
+    </insert>
+    <insert id="insertBonus">
+        INSERT INTO ec_fund_oper_bonus_log(
+        id,
+        shop_fund_id,
+        fund_field_type_id,
+        fund,
+        remain_fund,
+        note,
+        oper_by,
+        oper_date,
+        relate_id,
+        fund_type
+        ) VALUES (
+        #{id},
+        #{shopFundId},
+        (SELECT s.id FROM ec_fund_field_type AS s WHERE s.name=#{fundFieldType.name} LIMIT 1),
+        #{fund},
+        #{remainFund},
+        #{note},
+        #{createBy.id},
+        NOW(),
+        #{relateId},
+        #{fundType}
+        )
+    </insert>
+    <insert id="insertInvite">
+        INSERT INTO ec_fund_oper_invite_log(
+        id,
+        shop_fund_id,
+        fund_field_type_id,
+        fund,
+        remain_fund,
+        note,
+        oper_by,
+        oper_date,
+        relate_id,
+        fund_type
+        ) VALUES (
+        #{id},
+        #{shopFundId},
+        (SELECT s.id FROM ec_fund_field_type AS s WHERE s.name=#{fundFieldType.name} LIMIT 1),
+        #{fund},
+        #{remainFund},
+        #{note},
+        #{createBy.id},
+        NOW(),
+        #{relateId},
+        #{fundType}
+        )
+    </insert>
+    <select id="getBonusLog" resultType="FundOperLog">
+        SELECT fol.* FROM ec_fund_oper_bonus_log AS fol
+        LEFT JOIN ec_fund_field_type AS fft ON fft.id=fol.fund_field_type_id
+        WHERE fol.shop_fund_id=#{shopFundId}
+        AND fft.name=#{fundFieldType.name}
+        AND fol.relate_id=#{relateId}
+        AND fol.fund_type=1
+        AND fol.note LIKE CONCAT('%',#{note},'%')
+    </select>
+    <select id="getLoadLog" resultType="FundOperLog">
+        SELECT fol.* FROM ec_fund_oper_load_log AS fol
+        LEFT JOIN ec_fund_field_type AS fft ON fft.id=fol.fund_field_type_id
+        WHERE fol.shop_fund_id=#{shopFundId}
+        AND fft.name=#{fundFieldType.name}
+        AND fol.relate_id=#{relateId}
+        AND fol.fund_type=1
+        AND fol.note LIKE CONCAT('%',#{note},'%')
+    </select>
+    <select id="getSaleLog" resultType="FundOperLog">
+        SELECT fol.* FROM ec_fund_oper_sale_log AS fol
+        LEFT JOIN ec_fund_field_type AS fft ON fft.id=fol.fund_field_type_id
+        WHERE fol.shop_fund_id=#{shopFundId}
+        AND fft.name=#{fundFieldType.name}
+        AND fol.relate_id=#{relateId}
+        AND fol.fund_type=1
+        AND fol.note LIKE CONCAT('%',#{note},'%')
+    </select>
+    <select id="getSaleLogs" resultType="com.vcat.module.core.entity.FundOperLog">
+        select efosl.* from ec_fund_oper_sale_log as efosl
+        where relate_id in (select id from ec_order
+        where order_status = 2
+              and payment_status = 1
+              and shipping_status =2
+              and add_date > '2016-03-23 04:00:00' and '2016-03-31 05:00:00' > add_date)
+        group by relate_id
+        having count(relate_id) =1
+        ORDER BY efosl.oper_date desc
+        limit 0,13
+    </select>
+</mapper>

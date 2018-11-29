@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.CustomerRoleDao">
+<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.CustomerRole">
+		<id column="id" property="id" />
+		<association column="role_id"
+			select="com.vcat.module.ec.dao.EcRoleDao.select" property="role"
+			javaType="com.vcat.module.ec.entity.EcRole" />
+</resultMap>
+<sql id="Base_Column_List">
+	id,
+	customer_id,
+	role_id
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="customer.id!=null and customer.id!=''">
+			AND customer_id = #{customer.id}
+		</if>
+		<if test="role.id!=null and role.id!=''">
+			AND role_id = #{role.id}
+		</if>
+	</where>
+</sql>
+<select id="findRoleList" resultMap="BaseResultMap" parameterType="String">
+	SELECT
+	id,
+	customer_id,
+	role_id
+	FROM ec_customer_role
+	where 1=1 AND customer_id = #{_parameter}
+</select>
+<select id="findRole"  resultType="com.vcat.module.ec.entity.CustomerRole">
+	SELECT
+	cr.id,
+	cr.customer_id,
+	cr.role_id
+	FROM ec_customer_role AS cr
+	LEFT JOIN ec_role AS r ON r.id=cr.role_id
+	where 1=1 AND cr.customer_id = #{customerId}
+	AND r.role_name = #{roleName}
+</select>
+<delete id="deleteRole"  >
+DELETE 
+FROM
+  ec_customer_role 
+WHERE 1 = 1 
+  AND customer_id = #{customerId}
+  AND role_id = 
+  (SELECT 
+    id 
+  FROM
+    ec_role 
+  WHERE role_name = #{roleName})
+</delete>
+<insert id="insert" parameterType="com.vcat.module.ec.entity.CustomerRole">
+	INSERT INTO ec_customer_role(
+	id,
+	customer_id,
+	role_id
+	) VALUES (
+	#{id},
+	#{customer.id},
+	#{role.id}
+	)
+ 
+</insert>
+</mapper>

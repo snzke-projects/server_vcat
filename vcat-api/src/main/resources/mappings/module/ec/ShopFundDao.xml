@@ -1,0 +1,1050 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ShopFundDao">
+	<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.ShopFund">
+		<id column="id" property="id" />
+		<result column="load_processing_fund" property="loadProcessingFund" />
+		<result column="load_available_fund" property="loadAvailableFund" />
+		<result column="load_used_fund" property="loadUsedFund" />
+		<result column="sale_processing_fund" property="saleProcessingFund" />
+		<result column="sale_available_fund" property="saleAvailableFund" />
+		<result column="sale_used_fund" property="saleUsedFund" />
+		<result column="sale_hold_fund" property="saleHoldFund" />
+		<result column="share_processing_fund" property="shareProcessingFund" />
+		<result column="share_available_fund" property="shareAvailableFund" />
+		<result column="share_used_fund" property="shareUsedFund" />
+		<result column="bonus_processing_fund" property="bonusProcessingFund" />
+		<result column="bonus_available_fund" property="bonusAvailableFund" />
+		<result column="bonus_used_fund" property="bonusUsedFund" />
+		<result column="bonus_hold_fund" property="bonusHoldFund" />
+		<result column="invite_processing_fund" property="inviteProcessingFund" />
+		<result column="invite_available_fund" property="inviteAvailableFund" />
+		<result column="invite_used_fund" property="inviteUsedFund" />
+	</resultMap>
+	<sql id="Base_Column_List">
+		id,
+		load_processing_fund,
+		load_available_fund,
+		load_used_fund,
+		sale_hold_fund,
+		sale_processing_fund,
+		sale_available_fund,
+		sale_used_fund,
+		share_processing_fund,
+		share_available_fund,
+		share_used_fund,
+		invite_processing_fund,
+		invite_available_fund,
+		invite_used_fund,
+		bonus_hold_fund,
+		bonus_processing_fund,
+		bonus_available_fund,
+		bonus_used_fund
+	</sql>
+	<sql id="Base_Where_Clause">
+		<where>
+			1=1
+			<if test="id!=null and id!=''">
+				AND id = #{id}
+			</if>
+		</where>
+	</sql>
+	<select id="get" resultMap="BaseResultMap" parameterType="com.vcat.module.ec.entity.ShopFund">
+		SELECT
+		<include refid="Base_Column_List" />
+		FROM ec_shop_fund
+		<include refid="Base_Where_Clause" />
+	</select>
+	<select id="select" resultMap="BaseResultMap" parameterType="String">
+		SELECT
+		<include refid="Base_Column_List" />
+		FROM ec_shop_fund
+		where 1=1 AND id = #{_parameter}
+	</select>
+	<select id="count" 
+		resultType="java.lang.Integer">
+		select count(id) from ec_shop_fund
+	</select>
+	<!-- 获取店铺资金-->
+	<select id="getShopFund" resultType="com.vcat.module.ec.entity.ShopFund" parameterType="String">
+		SELECT sf.id AS "id",
+		       sf.load_processing_fund AS "loadProcessingFund",
+		       sf.load_available_fund AS "loadAvailableFund",
+		       sf.load_used_fund AS "loadUsedFund",
+		       sf.sale_processing_fund AS "saleProcessingFund",
+		       sf.sale_available_fund AS "saleAvailableFund",
+		       sf.sale_used_fund AS "saleUsedFund",
+		       sf.sale_hold_fund AS "saleHoldFund",
+		       sf.share_processing_fund AS "shareProcessingFund",
+		       sf.share_available_fund AS "shareAvailableFund",
+		       sf.share_used_fund AS "shareUsedFund",
+		       sf.invite_processing_fund AS "inviteProcessingFund",
+		       sf.invite_available_fund AS "inviteAvailableFund",
+		       sf.invite_used_fund AS "inviteUsedFund",
+		       sf.bonus_processing_fund AS "bonusProcessingFund",
+		       sf.bonus_available_fund AS "bonusAvailableFund",
+		       sf.bonus_used_fund AS "bonusUsedFund",
+		       sf.bonus_hold_fund AS "bonusHoldFund",
+
+            (select sum(sf.sale_available_fund) from ec_shop_fund sf LEFT JOIN ec_fund_oper_sale_log as fol ON fol.shop_fund_id = sf.id
+            LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+            WHERE fol.fund>0 AND fol.fund_type=8
+            AND fft.value ='分红可提现资金' AND fol.shop_fund_id=#{_parameter}
+            ) as "boleAvailableFund",
+            (select sum(sf.sale_used_fund) from ec_shop_fund sf LEFT JOIN ec_fund_oper_sale_log as fol ON fol.shop_fund_id = sf.id
+            LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+            WHERE fol.fund>0 AND fol.fund_type=8
+            AND fft.value ='分红已提现金额' AND fol.shop_fund_id=#{_parameter}
+            ) as "boleUsedFound",
+            (select sum(sf.sale_processing_fund) from ec_shop_fund sf LEFT JOIN ec_fund_oper_sale_log as fol ON fol.shop_fund_id = sf.id
+            LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+            WHERE fol.fund>0 AND fol.fund_type=8
+            AND fft.value ='分红奖励提现中' AND fol.shop_fund_id=#{_parameter}
+            ) as "boleProcessingFund",
+
+			<!-- 本月销售总收入-->
+		  	(SELECT SUM(fol.fund)
+		   	FROM ec_fund_oper_sale_log AS fol
+		   	LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		   	WHERE fol.fund>0 AND fol.fund_type = 1
+		     AND DATE_FORMAT(fol.oper_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+		     AND fft.value ='销售可提现资金' AND fol.shop_fund_id=#{_parameter}) AS monthSaleTotalFund ,
+            <!-- 本月邀请(伯乐)总收入-->
+            (SELECT SUM(fol.fund)
+            FROM ec_fund_oper_sale_log AS fol
+            LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+				WHERE fol.fund>0 and  fol.fund_type=7
+            AND DATE_FORMAT(fol.oper_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+            AND fft.value ='销售可提现资金' AND fol.shop_fund_id=#{_parameter}) AS monthBoleTotalFund,
+            <!--邀请(伯乐)总收入-->
+            (SELECT SUM(fol.fund)
+            FROM ec_fund_oper_sale_log AS fol
+            LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+				WHERE fol.fund>0 and  fol.fund_type=7
+            AND fft.value ='销售可提现资金' AND fol.shop_fund_id=#{_parameter}) AS  boleTotalFund,
+		     <!-- 本月分红总收入-->
+		  (SELECT SUM(fol.fund)
+		   FROM ec_fund_oper_bonus_log AS fol
+		   LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		   WHERE fol.fund>0 AND fol.fund_type IN (1,6,8)
+		     AND DATE_FORMAT(fol.oper_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+		     AND fft.value ='分红可提现资金' AND fol.shop_fund_id=#{_parameter}) AS monthBonusTotalFund ,
+			<!-- 本月分享总收入-->
+		  (SELECT SUM(fol.fund)
+		   FROM ec_fund_oper_share_log AS fol
+		   LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		   WHERE fol.fund>0 AND fol.fund_type=1
+		     AND DATE_FORMAT(fol.oper_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+		     AND fft.value ='分享可提现资金' AND fol.shop_fund_id=#{_parameter}) AS monthShareTotalFund,
+		     <!-- 本月邀请总收入-->
+		  (SELECT SUM(fol.fund)
+		   FROM ec_fund_oper_invite_log AS fol
+		   LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		   WHERE fol.fund>0 AND fol.fund_type IN('1','4')
+		     AND DATE_FORMAT(fol.oper_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+		     AND fft.value ='邀请可提现资金' AND fol.shop_fund_id=#{_parameter}) AS monthInviteTotalFund,
+		     <!-- 战队红包-->
+		   (SELECT SUM(fol.fund)
+		   FROM ec_fund_oper_invite_log AS fol
+		   LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		   WHERE fol.fund>0 AND fol.fund_type = 4
+		     AND DATE_FORMAT(fol.oper_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+		     AND fft.value ='邀请可提现资金' AND fol.shop_fund_id=#{_parameter}) AS teamFund,
+			<!-- 本月上架总收入-->
+		  (SELECT SUM(fol.fund)
+		   FROM ec_fund_oper_load_log AS fol
+		   LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		   WHERE fol.fund>0 AND fol.fund_type=1
+		     AND DATE_FORMAT(fol.oper_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m')
+		     AND fft.value ='上架可提现资金' AND fol.shop_fund_id=#{_parameter}) AS monthLoadTotalFund ,
+			<!-- 本月分享商品次数-->
+		  (SELECT COUNT(sel.id)
+		   FROM ec_share_earning_log AS sel
+		   WHERE sel.shop_id =#{_parameter}
+		     AND DATE_FORMAT(sel.share_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m') ) AS monthTotalShareCount,
+		    <!-- 本月邀请好友次数-->
+		  (SELECT COUNT(iel.id)
+		   FROM ec_invite_earning_log AS iel
+		   WHERE iel.inviter =#{_parameter}
+		     AND DATE_FORMAT(iel.create_date,'%Y-%m')=DATE_FORMAT(NOW(),'%Y-%m') ) AS monthTotalInviteCount,
+			<!-- 店铺商品总数-->
+		  (SELECT COUNT(sp.id)
+		   FROM ec_shop_product AS sp
+		   WHERE sp.shop_id=#{_parameter}
+		   AND sp.del_flag=0
+		   AND sp.archived=0 ) AS totalShopProductCount,
+			<!-- 店铺上架奖励总数（无法提现）-->
+		  (SELECT SUM(le.fund)
+		   FROM ec_load_earning AS le
+		   LEFT JOIN ec_shop_product AS sp ON le.product_id=sp.product_id
+		   WHERE sp.shop_id=#{_parameter}
+		     AND le.is_activate=TRUE
+		     AND sp.del_flag=0
+		     AND sp.archived=0 ) AS totalLoadAward,
+			<!-- 店铺销售额-->
+		  (SELECT  SUM(IFNULL(totalSaled,0)-IFNULL(refund,0)) 
+				FROM
+				(SELECT (oi.quantity*oi.item_price) AS totalSaled,rr.amount AS refund
+				FROM ec_order AS o
+				LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+				LEFT JOIN ec_return AS rr ON rr.order_item_id=oi.id
+				AND rr.refund_status=2 AND rr.is_activate=1
+				WHERE oi.shop_id=#{_parameter}
+				AND o.order_status=2
+				AND o.payment_status=1
+				AND o.shipping_status=2
+				AND oi.order_item_type IN (1,2,6,8,9)) AS result
+		      ) AS totalSale
+		FROM ec_shop_fund AS sf
+		WHERE 1=1
+		  AND id = #{_parameter}
+	</select>
+	<!-- 获取月账单-->
+	<select id="getShopDetailBill" resultType="com.vcat.module.ec.dto.FundDetailBillDto" parameterType="java.util.Map">
+		SELECT result.value AS "fundTypeName",result.fund AS "fund",result.oper_date AS "fundDate",
+		c.user_name AS "buyerName",c.avatar_url AS "buyerAvatarUrl"
+		FROM
+		(SELECT fft.value,fol.fund,fol.oper_date,fol.relate_id AS buyer_id
+		FROM ec_fund_oper_load_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='上架可提现资金' AND fol.shop_fund_id=#{shopId}
+		UNION
+		SELECT fft.value,fol.fund,fol.oper_date,o.buyer_id AS buyer_id
+		FROM ec_fund_oper_sale_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		LEFT JOIN ec_order_item AS oi ON fol.relate_id=oi.order_id
+		AND oi.order_item_type IN (1,2,6,8,9)
+		LEFT JOIN ec_order AS o ON fol.relate_id=o.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='销售可提现资金' AND fol.shop_fund_id=#{shopId}
+		UNION
+		SELECT fft.value,fol.fund,fol.oper_date,fol.relate_id AS buyer_id
+		FROM ec_fund_oper_share_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='分享可提现资金' AND fol.shop_fund_id=#{shopId}
+		UNION
+		SELECT fft.value,fol.fund,fol.oper_date,fol.relate_id AS buyer_id
+		FROM ec_fund_oper_invite_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='邀请可提现资金' AND fol.shop_fund_id=#{shopId}
+		UNION
+		SELECT	"战队红包",fol.fund,fol.oper_date,fol.relate_id AS buyer_id
+		FROM ec_fund_oper_invite_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type=4
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='邀请可提现资金' AND fol.shop_fund_id=#{shopId}
+		UNION
+		SELECT fft.value,fol.fund,fol.oper_date,fol.relate_id AS buyer_id
+		FROM ec_fund_oper_bonus_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type IN (1,6)
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='分红可提现资金' AND fol.shop_fund_id=#{shopId}) AS result
+		LEFT JOIN ec_customer AS c ON result.buyer_id=c.id 
+		ORDER BY fundDate DESC
+		LIMIT #{page.pageOffset},#{page.pageTail}
+	</select>
+		<!-- 获取月账单V2-->
+	<select id="getShopDetailBill2" resultType="com.vcat.module.ec.dto.FundDetailBillDto" parameterType="java.util.Map">
+				SELECT result.value AS "fundTypeName",result.fund AS "fund",result.oper_date AS "fundDate",
+		(CASE
+			WHEN result.value="代理奖励"  THEN "V猫小店" 
+			WHEN result.value="分享奖励"  THEN "V猫小店" 
+			ELSE c.user_name 
+		END) AS "buyerName",
+		(CASE
+			WHEN result.value="代理奖励" THEN (SELECT cfg_value FROM ec_app_config WHERE cfg_name='app_icon' ) 
+			WHEN result.value="分享奖励" THEN (SELECT cfg_value FROM ec_app_config WHERE cfg_name='app_icon' )
+			ELSE c.avatar_url 
+		END) AS "buyerAvatarUrl",
+		result.bonusLevel AS "bonusLevel"
+		FROM
+		(SELECT "代理奖励" AS "value",fol.fund,fol.oper_date,fol.relate_id AS buyer_id,
+		'0' AS "bonusLevel"
+		FROM ec_fund_oper_load_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='上架可提现资金' AND fol.shop_fund_id=#{shopId}
+		UNION
+		SELECT "销售收入" AS "value",fol.fund,fol.oper_date,o.buyer_id AS buyer_id,
+		'0' AS "bonusLevel"
+		FROM ec_fund_oper_sale_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		LEFT JOIN ec_order_item AS oi ON fol.relate_id=oi.order_id
+		AND oi.order_item_type IN (1,2,6,8,9)
+		LEFT JOIN ec_order AS o ON fol.relate_id=o.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='销售可提现资金' AND fol.shop_fund_id=#{shopId}
+		UNION
+		SELECT "分享奖励" AS "value",fol.fund,fol.oper_date,fol.relate_id AS buyer_id,
+		'0' AS "bonusLevel"
+		FROM ec_fund_oper_share_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='分享可提现资金' AND fol.shop_fund_id=#{shopId}
+		UNION
+		SELECT "分红收入" AS "value",fol.fund,fol.oper_date,fol.relate_id AS buyer_id,
+		(CASE
+			WHEN fol.fund_type=1 THEN 1
+			WHEN fol.fund_type=6 THEN 2
+		 	WHEN fol.fund_type=8 then 2
+		END) AS "bonusLevel"
+		FROM ec_fund_oper_bonus_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type IN (1,6,8)
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='分红可提现资金' AND fol.shop_fund_id=#{shopId}) AS result
+		LEFT JOIN ec_customer AS c ON result.buyer_id=c.id
+		ORDER BY fundDate DESC
+		LIMIT #{page.pageOffset},#{page.pageTail}
+	</select>
+		<!-- 获取销售月账单-->
+	<select id="getShopSaleDetailBill" resultType="com.vcat.module.ec.dto.FundDetailBillDto" parameterType="java.util.Map">
+		SELECT result.value AS "fundTypeName",result.fund AS "fund",result.oper_date AS "fundDate",
+		c.user_name AS "buyerName",c.avatar_url AS "buyerAvatarUrl"
+		FROM
+		(SELECT fft.value,fol.fund,fol.oper_date, o.buyer_id AS buyer_id
+		FROM ec_fund_oper_sale_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		LEFT JOIN ec_order_item AS oi ON fol.relate_id=oi.order_id
+		AND oi.order_item_type IN (1,2,6,8,9)
+		LEFT JOIN ec_order AS o ON fol.relate_id=o.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='销售可提现资金' AND fol.shop_fund_id=#{shopId}
+		) AS result
+		LEFT JOIN ec_customer AS c ON result.buyer_id=c.id 
+		ORDER BY fundDate DESC
+		LIMIT #{page.pageOffset},#{page.pageTail}
+	</select>
+	<select id="getShopSaleDetailBill2" resultType="com.vcat.module.ec.dto.FundDetailBillDto" parameterType="java.util.Map">
+		SELECT result.value AS "fundTypeName",result.fund AS "fund",result.oper_date AS "fundDate",
+		c.user_name AS "buyerName",c.avatar_url AS "buyerAvatarUrl"
+		FROM
+		(SELECT "销售收入" AS "value",fol.fund,fol.oper_date, o.buyer_id AS buyer_id
+		FROM ec_fund_oper_sale_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		LEFT JOIN ec_order_item AS oi ON fol.relate_id=oi.order_id
+		AND oi.order_item_type IN (1,2,6,8,9)
+		LEFT JOIN ec_order AS o ON fol.relate_id=o.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='销售可提现资金' AND fol.shop_fund_id=#{shopId}
+		) AS result
+		LEFT JOIN ec_customer AS c ON result.buyer_id=c.id 
+		ORDER BY fundDate DESC
+		LIMIT #{page.pageOffset},#{page.pageTail}
+	</select>
+	<select id="getShopDetailBillCount" resultType="java.lang.Integer">
+		SELECT COUNT(result.fund)
+		FROM
+		(SELECT fft.value,fol.fund,fol.oper_date,fol.relate_id AS buyer_id
+		FROM ec_fund_oper_load_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='上架可提现资金' AND fol.shop_fund_id=#{shopId}
+		UNION
+		SELECT fft.value,fol.fund,fol.oper_date,o.buyer_id AS buyer_id
+		FROM ec_fund_oper_sale_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		LEFT JOIN ec_order_item AS oi ON fol.relate_id=oi.order_id
+		AND oi.order_item_type IN (1,2,6,8,9)
+		LEFT JOIN ec_order AS o ON fol.relate_id=o.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='销售可提现资金' AND fol.shop_fund_id=#{shopId}
+		UNION
+		SELECT fft.value,fol.fund,fol.oper_date,fol.relate_id AS buyer_id
+		FROM ec_fund_oper_share_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='分享可提现资金' AND fol.shop_fund_id=#{shopId}
+		UNION
+		SELECT fft.value,fol.fund,fol.oper_date,fol.relate_id AS buyer_id
+		FROM ec_fund_oper_bonus_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type IN (1,6,8)
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='分红可提现资金' AND fol.shop_fund_id=#{shopId}) AS result
+	</select>
+	<select id="getShopSaleDetailBillCount" resultType="java.lang.Integer">
+		SELECT COUNT(result.fund)
+		FROM
+		(
+		SELECT fft.value,fol.fund,fol.oper_date,o.buyer_id AS buyer_id
+		FROM ec_fund_oper_sale_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		LEFT JOIN ec_order_item AS oi ON fol.relate_id=oi.order_id
+		AND oi.order_item_type IN (1,2,6,8,9)
+		LEFT JOIN ec_order AS o ON fol.relate_id=o.id
+		WHERE fol.fund>0 AND fol.fund_type=1
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='销售可提现资金' AND fol.shop_fund_id=#{shopId}
+		) AS result
+	</select>
+	
+	<select id="getShopBonusDetailBillCount" resultType="java.lang.Integer">
+		SELECT COUNT(result.fund)
+		FROM
+		(
+		SELECT fft.value,fol.fund,fol.oper_date,fol.relate_id AS buyer_id
+		FROM ec_fund_oper_bonus_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type IN (1,6,8)
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='分红可提现资金' AND fol.shop_fund_id=#{shopId}
+		) AS result
+	</select>
+
+	<select id="getShopBonusDetailBillCount2" resultType="java.lang.Integer">
+        SELECT
+            count(eoi.id)
+        FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+            LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                         AND er.refund_status = 2 AND er.is_activate = 1
+            LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+        WHERE es.parent_id = #{shopId}
+              AND DATE_FORMAT(eo.add_date, '%Y-%m') = #{month}
+              AND es.advanced_shop != 1
+              AND eo.order_status = 2
+              AND eo.payment_status = 1
+              AND eo.shipping_status = 2
+              AND eo.is_fund = 1
+              and eoi.bonus_earning != 0
+              AND eoi.order_item_type IN (1, 2, 6, 8, 9);
+	</select>
+
+	<select id="getShopFirstBonusDetailBillCount" resultType="java.lang.Integer">
+        SELECT
+            count(eoi.id)
+        FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+            LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                         AND er.refund_status = 2 AND er.is_activate = 1
+            LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+        WHERE es.parent_id = #{shopId}
+              AND DATE_FORMAT(eo.add_date, '%Y-%m') = #{month}
+              AND es.advanced_shop = 1
+              AND eo.order_status = 2
+              AND eo.payment_status = 1
+              AND eo.shipping_status = 2
+              AND eo.is_team_bonus = 1
+              and eoi.first_bonus_earning != 0
+              AND eoi.order_item_type IN (1, 2, 6, 8, 9);
+	</select>
+
+	<select id="getShopSecondBonusDetailBillCount" resultType="java.lang.Integer">
+        SELECT
+            count(eoi.id)
+        FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+            LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                         AND er.refund_status = 2 AND er.is_activate = 1
+            LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+            left join ec_shop as parent_shop on es.parent_id = parent_shop.id
+        WHERE parent_shop.parent_id = #{shopId}
+              AND DATE_FORMAT(eo.add_date, '%Y-%m') =  #{month}
+              AND es.advanced_shop = 1
+              AND eo.order_status = 2
+              AND eo.payment_status = 1
+              AND eo.shipping_status = 2
+              AND eo.is_team_bonus = 1
+              and eoi.second_bonus_earning != 0
+              AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+	</select>
+
+
+		<!-- 获取分红月账单-->
+	<select id="getShopBonusDetailBill" resultType="com.vcat.module.ec.dto.FundDetailBillDto" parameterType="java.util.Map">
+		SELECT result.value AS "fundTypeName",result.fund AS "fund",result.oper_date AS "fundDate",
+		c.user_name AS "buyerName",c.avatar_url AS "buyerAvatarUrl"
+		FROM
+		(SELECT fft.value,fol.fund,fol.oper_date, fol.relate_id AS buyer_id
+		FROM ec_fund_oper_bonus_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type IN (1,6,8)
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='分红可提现资金' AND fol.shop_fund_id=#{shopId}
+		) AS result
+		LEFT JOIN ec_customer AS c ON result.buyer_id=c.id 
+		ORDER BY fundDate DESC
+		LIMIT #{page.pageOffset},#{page.pageTail}
+	</select>
+			<!-- 获取分红月账单-->
+	<select id="getShopBonusDetailBill2" resultType="com.vcat.module.ec.dto.FundDetailBillDto" parameterType="java.util.Map">
+		SELECT result.value AS "fundTypeName",result.fund AS "fund",result.oper_date AS "fundDate",
+		c.user_name AS "buyerName",c.avatar_url AS "buyerAvatarUrl",
+		(CASE
+			WHEN result.fund_type=1 THEN 1
+			WHEN result.fund_type=6 THEN 2
+			WHEN result.fund_type=8 then 2
+		END) AS "bonusLevel"
+		FROM
+		(SELECT "分红收入" AS "value",fol.fund,fol.oper_date, fol.relate_id AS buyer_id,fol.fund_type
+		FROM ec_fund_oper_bonus_log AS fol
+		LEFT JOIN ec_fund_field_type AS fft ON fol.fund_field_type_id=fft.id
+		WHERE fol.fund>0 AND fol.fund_type IN (1,6,8)
+		AND DATE_FORMAT(fol.oper_date,'%Y-%m')=#{month}
+		AND fft.value ='分红可提现资金' AND fol.shop_fund_id=#{shopId}
+		) AS result
+		LEFT JOIN ec_customer AS c ON result.buyer_id=c.id 
+		ORDER BY fundDate DESC
+		LIMIT #{page.pageOffset},#{page.pageTail}
+	</select>
+
+	<select id="getShopBonusDetailBill3" resultType="com.vcat.module.ec.dto.FundDetailBillDto" parameterType="java.util.Map">
+        SELECT
+            result.*,
+            ec.user_name as "buyerName",
+            ec.avatar_url as "buyerAvatarUrl"
+        FROM
+            (SELECT
+                 eo.add_date as "fundDate",
+                 eoi.bonus_earning as "fund",
+                 "销售分红" as "fundTypeName",
+                 "1" as "bonusLevel",
+                 eo.buyer_id
+             FROM ec_order_item AS eoi
+                 LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                 LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                              AND er.refund_status = 2 AND er.is_activate = 1
+                 LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+             WHERE es.parent_id = #{shopId}
+                   AND DATE_FORMAT(eo.add_date, '%Y-%m') = #{month}
+                   AND es.advanced_shop != 1
+                   AND eo.order_status = 2
+                   AND eo.payment_status = 1
+                   AND eo.shipping_status = 2
+                   AND eo.is_fund = 1
+                   and eoi.bonus_earning != 0
+                   AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+             order  by eo.add_date DESC) as result
+            LEFT JOIN ec_customer as ec on result.buyer_id = ec.id
+        LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+
+	<select id="getShopFirstBonusDetailBill2" resultType="com.vcat.module.ec.dto.FundDetailBillDto" parameterType="java.util.Map">
+        SELECT
+            result.*,
+            ec.user_name as "buyerName",
+            ec.avatar_url as "buyerAvatarUrl"
+        FROM
+            (SELECT
+                 eo.add_date as "fundDate",
+                 (eoi.first_bonus_earning * eoi.quantity) as "fund",
+                 "一级团队分红" as "fundTypeName",
+                 "2" as "bonusLevel",
+                 eo.buyer_id
+             FROM ec_order_item AS eoi
+                 LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                 LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                              AND er.refund_status = 2 AND er.is_activate = 1
+                 LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+             WHERE es.parent_id = #{shopId}
+                   AND DATE_FORMAT(eo.add_date, '%Y-%m') = #{month}
+                   AND es.advanced_shop = 1
+                   AND eo.order_status = 2
+                   AND eo.payment_status = 1
+                   AND eo.shipping_status = 2
+                   AND eo.is_team_bonus = 1
+                   and eoi.first_bonus_earning != 0
+                   AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+             order  by eo.add_date DESC) as result
+            LEFT JOIN ec_customer as ec on result.buyer_id = ec.id
+        LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+
+	<select id="getShopSecondBonusDetailBill2" resultType="com.vcat.module.ec.dto.FundDetailBillDto" parameterType="java.util.Map">
+        SELECT
+            result.*,
+            ec.user_name as "buyerName",
+            ec.avatar_url as "buyerAvatarUrl"
+        FROM
+            (SELECT
+                 eo.add_date as "fundDate",
+                 eoi.second_bonus_earning as "fund",
+                 "二级团队分红" as "fundTypeName",
+                 "3" as "bonusLevel",
+                 eo.buyer_id
+             FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+                 LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+                                              AND er.refund_status = 2 AND er.is_activate = 1
+                 LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+                 left join ec_shop as parent_shop on es.parent_id = parent_shop.id
+             WHERE parent_shop.parent_id = #{shopId}
+                   AND DATE_FORMAT(eo.add_date, '%Y-%m') = #{month}
+                   AND es.advanced_shop = 1
+                   AND eo.order_status = 2
+                   AND eo.payment_status = 1
+                   AND eo.shipping_status = 2
+                   AND eo.is_team_bonus = 1
+                   and eoi.second_bonus_earning != 0
+                   AND eoi.order_item_type IN (1, 2, 6, 8, 9)
+             order  by eo.add_date DESC) as result
+            LEFT JOIN ec_customer as ec on result.buyer_id = ec.id
+        LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+			<!-- 获取店铺前一百的总收入排行-->
+	<select id="getRankList" resultType="com.vcat.module.ec.entity.Rank" >
+		SELECT @curRow := @curRow + 1 AS "rank",shopId,lname AS "name", llevel AS "level",totalFund AS "totalFund"
+		FROM
+		(SELECT s.id AS shopId,c.user_name AS 'lname',l.name AS "llevel",(sf.invite_available_fund+sf.invite_processing_fund+sf.invite_used_fund+sf.load_available_fund+sf.load_processing_fund+sf.load_used_fund+sf.sale_available_fund +sf.sale_processing_fund+sf.sale_used_fund+sf.share_available_fund+sf.share_processing_fund +sf.share_used_fund+sf.bonus_available_fund +sf.bonus_processing_fund+sf.bonus_used_fund) AS "totalFund" FROM ec_shop AS s JOIN ec_shop_fund AS sf ON s.id=sf.id  JOIN ec_level AS l ON l.id=s.level_id
+		LEFT JOIN ec_customer AS c ON s.id=c.id
+		ORDER BY totalFund DESC,lname ASC) AS result
+		JOIN    (SELECT @curRow := 0) r
+		WHERE totalFund!=0
+		LIMIT 0,100
+	</select>
+	 <select id="getSaleHoldFund" parameterType="String" resultType="com.vcat.module.ec.dto.ShopFundDto">
+		SELECT eoi.shop_id AS id,(0-(eoi.quantity*eoi.sale_earning)) AS saleHoldFund,eoi.id orderItemId
+			FROM ec_order_item as eoi
+			left join ec_order as eo on eoi.order_id = eo.id
+			where eo.id = #{_parameter}
+			AND eoi.order_item_type IN (1,9)
+		ORDER BY eoi.id;
+	 </select>
+	 <select id="getSaleHoldFundLog" parameterType="String" resultType="com.vcat.module.ec.entity.FundOperSaleLog">
+		SELECT o.id AS "relateId",oi.shop_id AS "shopFundId" ,(oi.quantity*oi.sale_earning) AS fund
+		  FROM ec_order AS o
+			LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+			JOIN ec_shop_fund AS sf ON sf.id=oi.shop_id
+		  where o.id = #{_parameter}
+			AND oi.order_item_type IN (1,9)
+		ORDER BY oi.id;
+	 </select>
+	 <select id="getBonusHoldFundLog" parameterType="String" resultType="com.vcat.module.ec.entity.FundOperBonusLog">
+		SELECT o.id AS "relateId",oi.parent_id AS "shopFundId" ,SUM((oi.quantity*oi.bonus_earning)) AS fund
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		JOIN ec_shop_fund AS sf ON sf.id=oi.shop_id
+		where o.id = #{_parameter}
+		AND oi.order_item_type IN (1,9)
+		GROUP BY oi.id;
+	 </select>
+	<select id="getFirstBonusHoldFundLog" parameterType="String" resultType="com.vcat.module.ec.entity.FundOperBonusLog">
+		SELECT o.id AS "relateId",oi.parent_id AS "shopFundId" ,SUM((oi.quantity*oi.first_bonus_earning)) AS fund
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+
+		JOIN ec_shop_fund AS sf ON sf.id=oi.shop_id
+		WHERE payment_id=#{_parameter}
+		AND oi.order_item_type IN (1,2,6,8,9)
+		GROUP BY o.id
+	</select>
+	<select id="getSecondBonusHoldFundLog" parameterType="String" resultType="com.vcat.module.ec.entity.FundOperBonusLog">
+		SELECT o.id AS "relateId",oi.grandfather_id AS "shopFundId" ,SUM((oi.quantity*oi.second_bonus_earning)) AS fund
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+
+		JOIN ec_shop_fund AS sf ON sf.id=oi.shop_id
+		WHERE payment_id=#{_parameter}
+		AND oi.order_item_type IN (1,2,6,8,9)
+		GROUP BY o.id
+	 </select>
+	 <select id="getBonusHoldFund" parameterType="String" resultType="com.vcat.module.ec.entity.ShopFund">
+		SELECT oi.parent_id AS id,(0-(oi.quantity*oi.bonus_earning)) AS bonusHoldFund
+		  FROM ec_order AS o
+			LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		  where o.id = #{_parameter}
+			AND oi.order_item_type IN (1,9)
+		GROUP BY oi.id;
+	 </select>
+	<select id="getFirstBonusHoldFund" parameterType="String" resultType="com.vcat.module.ec.entity.ShopFund">
+		SELECT oi.parent_id AS id,(0-SUM((oi.quantity*oi.first_bonus_earning))) AS bonusHoldFund
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+
+		WHERE payment_id=#{_parameter}
+		AND oi.order_item_type IN (1,2,6,8,9)
+		GROUP BY o.id
+	</select>
+	 <select id="getSecondBonusHoldFund" parameterType="String" resultType="com.vcat.module.ec.entity.ShopFund">
+  		SELECT oi.grandfather_id AS id,(0-SUM((oi.quantity*oi.second_bonus_earning))) AS bonusHoldFund
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+
+		WHERE payment_id=#{_parameter}
+		AND oi.order_item_type IN (1,2,6,8,9)
+		GROUP BY o.id
+	 </select>
+	 <select id="getShopLoadEarning" parameterType="String" resultType="java.math.BigDecimal">
+		 SELECT SUM(le.fund)
+		   FROM ec_load_earning AS le
+		   LEFT JOIN ec_shop_product AS sp ON le.product_id=sp.product_id
+		   WHERE sp.shop_id=#{_parameter}
+		     AND le.is_activate=TRUE
+	 </select>
+
+	<select id="getShopFund2" resultType="com.vcat.module.ec.dto.ShopFundExpandDto">
+		SELECT
+			( <!--累计销售分红总收入 特约下家给的分红-->
+				SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0))
+				FROM
+					(
+						SELECT
+							(eoi.quantity * eoi.bonus_earning) AS totalSaled,
+							(CASE
+							 WHEN er.amount is not NULL THEN eoi.quantity * eoi.bonus_earning
+							 else 0
+							 END) AS refund
+						FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+							LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+														 AND er.refund_status = 2 AND er.is_activate = 1
+							LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+						WHERE es.parent_id = #{shopId}
+							  AND es.advanced_shop != 1
+							  AND eo.order_status = 2
+							  AND eo.payment_status = 1
+							  AND eo.shipping_status = 2
+							  AND eo.is_fund = 1
+							  and eoi.bonus_earning != 0
+							  AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS result) AS bonusTotalFund,
+			( <!--本月销售分红总收入 -->
+				SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0))
+				FROM
+					(
+						SELECT
+							(eoi.quantity * eoi.bonus_earning) AS totalSaled,
+							(CASE
+							 WHEN er.amount is not NULL THEN eoi.quantity * eoi.bonus_earning
+							 else 0
+							 END) AS refund
+						FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+							LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+														 AND er.refund_status = 2 AND er.is_activate = 1
+							LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+						WHERE es.parent_id = #{shopId}
+							  AND DATE_FORMAT(eo.add_date, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')
+							  AND es.advanced_shop != 1
+							  AND eo.order_status = 2
+							  AND eo.payment_status = 1
+							  AND eo.shipping_status = 2
+							  AND eo.is_fund = 1
+							  and eoi.bonus_earning != 0
+							  AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS result) AS 'monthBonusTotalFund',
+			( <!--销售分红待确认收入 -->
+				SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0))
+				FROM
+					(
+						SELECT
+							(eoi.quantity * eoi.bonus_earning) AS totalSaled,
+							(CASE
+							 WHEN er.amount is not NULL THEN eoi.quantity * eoi.bonus_earning
+							 else 0
+							 END) AS refund
+						FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+							LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+														 AND er.refund_status = 2 AND er.is_activate = 1
+							LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+						WHERE es.parent_id = #{shopId}
+							  AND es.advanced_shop != 1
+							  AND eo.order_status = 2
+							  AND eo.payment_status = 1
+							  AND eo.shipping_status = 2
+							  AND eo.is_fund = 0
+							  and eoi.bonus_earning != 0
+							  AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS result) AS 'bonusHoldFund',
+			( <!--累计一级团队分红总收入 白金下家给的分红 -->
+				SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0))
+				FROM
+					(
+						SELECT
+							(eoi.quantity * eoi.first_bonus_earning) AS totalSaled,
+							(CASE
+							 WHEN er.amount is not NULL THEN eoi.quantity * eoi.first_bonus_earning
+							 else 0
+							 END) AS refund
+						FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+							LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+														 AND er.refund_status = 2 AND er.is_activate = 1
+							LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+						WHERE es.parent_id = #{shopId}
+							  AND es.advanced_shop = 1
+							  AND eo.order_status = 2
+							  AND eo.payment_status = 1
+							  AND eo.shipping_status = 2
+							  AND eo.is_team_bonus = 1
+							  and eoi.first_bonus_earning != 0
+							  AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS result) AS 'firstBonusTotalFund',
+			( <!--本月一级团队分红总收入 -->
+				SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0))
+				FROM
+					(
+						SELECT
+							(eoi.quantity * eoi.first_bonus_earning) AS totalSaled,
+							(CASE
+							 WHEN er.amount is not NULL THEN eoi.quantity * eoi.first_bonus_earning
+							 else 0
+							 END) AS refund
+						FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+							LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+														 AND er.refund_status = 2 AND er.is_activate = 1
+							LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+						WHERE es.parent_id = #{shopId}
+							  AND DATE_FORMAT(eo.add_date, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')
+							  AND es.advanced_shop = 1
+							  AND eo.order_status = 2
+							  AND eo.payment_status = 1
+							  AND eo.shipping_status = 2
+							  AND eo.is_team_bonus = 1
+							  and eoi.first_bonus_earning != 0
+							  AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS result) AS 'monthFirstBonusTotalFund',
+			( <!--一级团队分红待确认收入 -->
+				SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0))
+				FROM
+					(
+						SELECT
+							(eoi.quantity * eoi.first_bonus_earning) AS totalSaled,
+							(CASE
+							 WHEN er.amount is not NULL THEN eoi.quantity * eoi.first_bonus_earning
+							 else 0
+							 END) AS refund
+						FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+							LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+														 AND er.refund_status = 2 AND er.is_activate = 1
+							LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+						WHERE es.parent_id = #{shopId}
+							  AND es.advanced_shop = 1
+							  AND eo.order_status = 2
+							  AND eo.payment_status = 1
+							  AND eo.shipping_status = 2
+							  AND eo.is_team_bonus = 0
+							  and eoi.first_bonus_earning != 0
+							  AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS result) AS 'firstBonusHoldFund',
+			( <!--累计二级团队分红总收入 白金下下家给的分红 -->
+				SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0))
+				FROM
+					(
+						SELECT
+							(eoi.quantity * eoi.second_bonus_earning) AS totalSaled,
+							(CASE
+							 WHEN er.amount is not NULL THEN eoi.quantity * eoi.second_bonus_earning
+							 else 0
+							 END) AS refund
+						FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+							LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+														 AND er.refund_status = 2 AND er.is_activate = 1
+							LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+							left join ec_shop as parent_shop on es.parent_id = parent_shop.id
+						WHERE parent_shop.parent_id = #{shopId}
+							  AND es.advanced_shop = 1
+							  AND eo.order_status = 2
+							  AND eo.payment_status = 1
+							  AND eo.shipping_status = 2
+							  AND eo.is_team_bonus = 1
+							  and eoi.second_bonus_earning != 0
+							  AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS result) AS 'secondBonusTotalFund',
+			( <!--本月二级团队分红总收入 -->
+				SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0))
+				FROM
+					(
+						SELECT
+							(eoi.quantity * eoi.second_bonus_earning) AS totalSaled,
+							(CASE
+							 WHEN er.amount is not NULL THEN eoi.quantity * eoi.second_bonus_earning
+							 else 0
+							 END) AS refund
+						FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+							LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+														 AND er.refund_status = 2 AND er.is_activate = 1
+							LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+							left join ec_shop as parent_shop on es.parent_id = parent_shop.id
+						WHERE parent_shop.parent_id = #{shopId}
+							  AND DATE_FORMAT(eo.add_date, '%Y-%m') = DATE_FORMAT(NOW(), '%Y-%m')
+							  AND es.advanced_shop = 1
+							  AND eo.order_status = 2
+							  AND eo.payment_status = 1
+							  AND eo.shipping_status = 2
+							  AND eo.is_team_bonus = 1
+							  and eoi.second_bonus_earning != 0
+							  AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS result) AS 'monthSecondBonusTotalFund',
+			( <!--二级团队分红待确认资金 -->
+				SELECT SUM(IFNULL(totalSaled, 0) - IFNULL(refund, 0))
+				FROM
+					(
+						SELECT
+							(eoi.quantity * eoi.second_bonus_earning) AS totalSaled,
+							(CASE
+							 WHEN er.amount is not NULL THEN eoi.quantity * eoi.second_bonus_earning
+							 else 0
+							 END) AS refund
+						FROM ec_order_item AS eoi LEFT JOIN ec_shop AS es ON eoi.shop_id = es.id
+							LEFT JOIN ec_return AS er ON er.order_item_id = eoi.id
+														 AND er.refund_status = 2 AND er.is_activate = 1
+							LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+							left join ec_shop as parent_shop on es.parent_id = parent_shop.id
+						WHERE parent_shop.parent_id = #{shopId}
+							  AND es.advanced_shop = 1
+							  AND eo.order_status = 2
+							  AND eo.payment_status = 1
+							  AND eo.shipping_status = 2
+							  AND eo.is_team_bonus = 0
+							  and eoi.second_bonus_earning != 0
+							  AND eoi.order_item_type IN (1, 2, 6, 8, 9)) AS result) AS 'secondBonusHoldFund';
+	</select>
+
+
+	<insert id="insert" parameterType="com.vcat.module.ec.entity.ShopFund">
+		INSERT INTO ec_shop_fund(
+		id,
+		load_processing_fund,
+		load_available_fund,
+		load_used_fund,
+		sale_hold_fund,
+		sale_processing_fund,
+		sale_available_fund,
+		sale_used_fund,
+		share_processing_fund,
+		share_available_fund,
+		share_used_fund,
+		invite_processing_fund,
+		invite_available_fund,
+		invite_used_fund,
+		bonus_hold_fund,
+		bonus_processing_fund,
+		bonus_available_fund,
+		bonus_used_fund
+		) VALUES (
+		#{id},
+		#{loadProcessingFund},
+		#{loadAvailableFund},
+		#{loadUsedFund},
+		#{saleHoldFund},
+		#{saleProcessingFund},
+		#{saleAvailableFund},
+		#{saleUsedFund},
+		#{shareProcessingFund},
+		#{shareAvailableFund},
+		#{shareUsedFund},
+		#{inviteProcessingFund},
+		#{inviteAvailableFund},
+		#{inviteUsedFund},
+		#{bonusHoldFund},
+		#{bonusProcessingFund},
+		#{bonusAvailableFund},
+		#{bonusUsedFund}
+		)
+	</insert>
+
+
+	<update id="update" parameterType="com.vcat.module.ec.entity.ShopFund">
+		UPDATE ec_shop_fund SET
+			load_processing_fund = #{loadProcessingFund},
+			load_available_fund = #{loadAvailableFund},
+			load_used_fund = #{loadUsedFund},
+			sale_hold_fund = #{saleHoldFund},
+			sale_processing_fund = #{saleProcessingFund},
+			sale_available_fund = #{saleAvailableFund},
+			sale_used_fund = #{saleUsedFund},
+			bonus_hold_fund = #{bonusHoldFund},
+			bonus_processing_fund = #{bonusProcessingFund},
+			bonus_available_fund = #{bonusAvailableFund},
+			bonus_used_fund = #{bonusUsedFund},
+			share_processing_fund = #{shareProcessingFund},
+			share_available_fund = #{shareAvailableFund},
+			share_used_fund = #{shareUsedFund},
+			invite_processing_fund = #{inviteProcessingFund},
+			invite_available_fund = #{inviteAvailableFund},
+			invite_used_fund = #{inviteUsedFund}
+		WHERE id = #{id}
+	</update>
+	<update id="withdrawCashing"  parameterType="java.util.Map">
+		UPDATE ec_shop_fund SET
+			load_processing_fund = #{loadChangeFund},
+			load_available_fund = load_available_fund-#{loadChangeFund},
+			sale_processing_fund = #{saleChangeFund},
+			sale_available_fund = sale_available_fund-#{saleChangeFund},
+			share_processing_fund = #{saleChangeFund},
+			share_available_fund = share_available_fund-#{saleChangeFund}
+		WHERE id = #{id}
+	</update>
+	<update id="withdrawalSuccess" parameterType="ShopFund">
+		UPDATE ec_shop_fund SET
+		load_processing_fund = 0,
+		load_used_fund = load_used_fund + #{loadProcessingFund},
+		sale_processing_fund = 0,
+		sale_used_fund = sale_used_fund + #{saleProcessingFund},
+		share_processing_fund = 0,
+		share_used_fund = share_used_fund + #{shareProcessingFund},
+		bonus_processing_fund = 0,
+		bonus_used_fund = bonus_used_fund + #{bonusProcessingFund}
+		WHERE id = #{id}
+	</update>
+	<update id="withdrawalFailure" parameterType="ShopFund">
+		UPDATE ec_shop_fund SET
+		load_processing_fund = 0,
+		load_available_fund = load_available_fund + #{loadProcessingFund},
+		sale_processing_fund = 0,
+		sale_available_fund = sale_available_fund + #{saleProcessingFund},
+		share_processing_fund = 0,
+		share_available_fund = share_available_fund + #{shareProcessingFund},
+		bonus_processing_fund = 0,
+		bonus_available_fund = bonus_available_fund + #{bonusProcessingFund}
+		WHERE id = #{id}
+	</update>
+	<update id="refundSuccess" parameterType="com.vcat.module.ec.dto.ShopFundDto">
+		UPDATE ec_shop_fund SET
+		sale_hold_fund = sale_hold_fund - #{saleHoldFund}
+		WHERE id = #{id}
+	</update>
+	<update id="addBonusBoldFund" parameterType="ShopFund">
+		UPDATE ec_shop_fund SET
+		bonus_hold_fund = bonus_hold_fund - #{bonusHoldFund}
+		WHERE id = #{id}
+	</update>
+    <update id="addSaleHoldFund" parameterType="ShopFund">
+        UPDATE ec_shop_fund SET
+        sale_hold_fund = sale_hold_fund - #{saleHoldFund}
+        WHERE id = #{id}
+    </update>
+	
+	<update id="checkShipping">
+		UPDATE ec_shop_fund SET
+		sale_hold_fund = sale_hold_fund - #{saleEarning},
+		sale_available_fund = sale_available_fund + #{saleEarning},
+		load_available_fund = load_available_fund + #{loadEarning}
+		WHERE id = #{id}
+	</update>
+	
+	<update id="addBonusAvaiableFund">
+		UPDATE ec_shop_fund SET
+		bonus_hold_fund = bonus_hold_fund - #{bonusEarning},
+		bonus_available_fund = bonus_available_fund + #{bonusEarning}
+		WHERE id = #{parentShopId}
+	</update>
+
+	<update id="addBonusAvaiableFundOnly">
+		UPDATE ec_shop_fund SET
+		bonus_hold_fund = 0,
+		bonus_available_fund = bonus_available_fund + #{bonusEarning}
+		WHERE id = #{parentShopId}
+	</update>
+
+	<update id="addBonusAvaiableFundOfReserve">
+		UPDATE ec_shop_fund SET
+		bonus_available_fund = bonus_available_fund - #{bonusEarning}
+		WHERE id = #{parentShopId}
+	</update>
+	<update id="updateShopEarning">
+		UPDATE ec_shop_fund SET
+			sale_available_fund = sale_available_fund + #{saleEarning},
+			sale_hold_fund = #{bonusEarning}
+		WHERE id = #{shopId}
+	</update>
+	<insert id="addSaleAvaiableFund">
+		UPDATE ec_shop_fund SET
+			sale_available_fund = sale_available_fund - #{saleEarning}
+		WHERE id = #{shopId}
+	</insert>
+</mapper>

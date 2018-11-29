@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.RefundLogDao">
+	<sql id="refundLogColumns">
+		a.id AS "id",
+		a.return_status AS "returnStatus",
+		a.refund_status AS "refundStatus",
+		a.status_note AS "statusNote",
+		a.note AS "note",
+		a.oper_date AS "createDate",
+		u.id AS "createBy.id",
+		u.name AS "createBy.name",
+		ret.id AS "return.id",
+		ret.shipping_number AS "return.shippingNumber"
+	</sql>
+	<sql id="refundLogJoins">
+		LEFT JOIN ec_return ret ON ret.id = a.return_id
+		LEFT JOIN sys_user u ON u.id = a.oper_by
+	</sql>
+	<select id="get" resultType="RefundLog">
+		SELECT 
+			<include refid="refundLogColumns"></include>
+		FROM ec_return_log a
+		<include refid="refundLogJoins"></include>
+		WHERE a.id = #{id}
+		AND a.is_activate = #{ACTIVATED}
+	</select>
+	
+	<select id="find" resultType="RefundLog">
+		SELECT
+			<include refid="refundLogColumns"></include>
+		FROM ec_return_log a
+		<include refid="refundLogJoins"></include>
+		WHERE a.is_activate = #{ACTIVATED}
+		<if test="id != null and id != ''">
+			AND a.id = #{id}
+		</if>
+	</select>
+	
+	<select id="findList" resultType="RefundLog">
+		SELECT
+			<include refid="refundLogColumns"></include>
+		FROM ec_return_log a
+		<include refid="refundLogJoins"></include>
+		WHERE 1=1
+		<if test="refund != null and refund.id != null and '' != refund.id">
+			AND a.return_id = #{refund.id}
+		</if>
+		ORDER BY a.oper_date DESC
+	</select>
+	<select id="findLogList" resultType="com.vcat.module.ec.dto.RefundLogDto" parameterType="com.vcat.module.ec.entity.RefundLog">
+			SELECT
+		a.status_note AS "statusNote",
+		a.return_status AS "returnStatus",
+		a.refund_status AS "refundStatus",
+		a.oper_date   AS "createDate"
+		FROM ec_return_log a
+		LEFT JOIN ec_return AS rr on rr.id=a.return_id
+		WHERE 1=1
+		AND rr.order_item_id=#{orderItemId}
+		ORDER BY a.oper_date DESC
+	</select>
+	
+	<insert id="insert">
+		INSERT INTO ec_return_log(
+			id,
+			return_id,
+			return_status,
+			refund_status,
+			note,
+			status_note,
+			oper_by,
+			oper_date
+	   	)VALUES (
+			#{id},
+			#{refund.id},
+			#{refund.returnStatus},
+			#{refund.refundStatus},
+			#{refund.note},
+			#{statusNote},
+			#{currentUser.id},
+			now()
+		)
+	</insert>
+    <insert id="initByOrderId">
+        INSERT INTO ec_return_log(
+            id,
+            return_id,
+            return_status,
+            refund_status,
+            note,
+            status_note,
+            oper_by,
+            oper_date
+        )
+            SELECT
+                REPLACE(CAST(UUID() AS CHAR CHARACTER SET UTF8), '-', ''),
+                r.id,
+                r.return_status,
+                r.refund_status,
+                '系统自动创建退款单成功！',
+                '系统自动创建退款单成功！',
+                '1',
+                CURRENT_TIMESTAMP
+            FROM ec_order_item oi
+                LEFT JOIN ec_order o ON oi.order_id = o.id
+                LEFT JOIN ec_order_address a ON o.id = a.id
+                LEFT JOIN ec_return r ON oi.id = r.order_item_id
+            WHERE o.payment_status = 1
+              AND r.id IS NOT NULL
+              AND o.id = #{orderId}
+    </insert>
+    <insert id="addApprovalLog">
+        INSERT INTO ec_return_log(
+            id,
+            return_id,
+            return_status,
+            refund_status,
+            note,
+            status_note,
+            oper_by,
+            oper_date
+        )
+            SELECT
+                REPLACE(CAST(UUID() AS CHAR CHARACTER SET UTF8), '-', ''),
+                r.id,
+                3,
+                r.refund_status,
+                '系统自动审批退款单成功！',
+                '系统自动审批退款单成功！',
+                '1',
+                CURRENT_TIMESTAMP
+            FROM ec_order_item oi
+                LEFT JOIN ec_order o ON oi.order_id = o.id
+                LEFT JOIN ec_order_address a ON o.id = a.id
+                LEFT JOIN ec_return r ON oi.id = r.order_item_id
+            WHERE o.payment_status = 1
+              AND r.id IS NOT NULL
+              AND o.id = #{orderId}
+    </insert>
+</mapper>

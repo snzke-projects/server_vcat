@@ -1,0 +1,1973 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.OrderDao">
+	<resultMap id="BaseResultMap" type="com.vcat.module.ec.dto.OrderDto">
+		<id column="id" property="id"/>
+		<result column="orderNum" property="orderNum"/>
+		<result column="createDate" property="createDate"/>
+		<result column="isFund" property="isFund"/>
+		<result column="buyerId" property="buyerId"/>
+		<result column="totalPrice" property="totalPrice"/>
+		<result column="deliveryNum" property="deliveryNum"/>
+		<result column="receiveUserName" property="receiveUserName"/>
+		<result column="receiveDetailAddress" property="receiveDetailAddress"/>
+		<result column="receivePhoneNum" property="receivePhoneNum"/>
+		<result column="totalProductNum" property="totalProductNum"/>
+		<result column="shippingStatus" property="shippingStatus"/>
+		<result column="orderType" property="orderType"/>
+		<result column="invoice.title" property="invoice.title"/>
+		<result column="invoice.type" property="invoice.type"/>
+		<result column="productType" property="productType"/>
+		<result column="freightPrice" property="freightPrice"/>
+		<collection property="productItems" select="com.vcat.module.ec.dao.OrderDao.findProductItemList"
+					column="id" ofType="com.vcat.module.ec.dto.ProductItemDto">
+		</collection>
+	</resultMap>
+
+	<resultMap id="sellerBaseResultMap" type="com.vcat.module.ec.dto.OrderDto">
+		<id column="id" property="id"/>
+		<result column="orderNum" property="orderNum"/>
+		<result column="createDate" property="createDate"/>
+		<result column="totalPrice" property="totalPrice"/>
+		<result column="deliveryNum" property="deliveryNum"/>
+		<result column="receiveUserName" property="receiveUserName"/>
+		<result column="receiveDetailAddress" property="receiveDetailAddress"/>
+		<result column="receivePhoneNum" property="receivePhoneNum"/>
+		<result column="totalProductNum" property="totalProductNum"/>
+		<result column="shippingStatus" property="shippingStatus"/>
+		<result column="orderType" property="orderType"/>
+		<result column="invoice.title" property="invoice.title"/>
+		<result column="invoice.type" property="invoice.type"/>
+		<result column="productType" property="productType"/>
+		<result column="freightPrice" property="freightPrice"/>
+		<collection property="productItems" select="com.vcat.module.ec.dao.OrderDao.findSellerProductItemList"
+					column="id" ofType="com.vcat.module.ec.dto.ProductItemDto">
+		</collection>
+	</resultMap>
+
+	<resultMap id="orderDetailMap" type="com.vcat.module.ec.dto.OrderDto">
+		<id column="id" property="id"/>
+		<result column="orderType" property="orderType"/>
+		<result column="reFundcount" property="reFundcount"/>
+		<result column="receiveUserName" property="receiveUserName"/>
+		<result column="orderNum" property="orderNum"/>
+		<result column="expressCode" property="expressCode"/>
+		<result column="receiveDetailAddress" property="receiveDetailAddress"/>
+		<result column="city" property="city"/>
+		<result column="receivePhoneNum" property="receivePhoneNum"/>
+		<result column="province" property="province"/>
+		<result column="district" property="district"/>
+		<result column="deliveryNum" property="deliveryNum"/>
+		<result column="createDate" property="createDate"/>
+		<result column="shippingStatus" property="shippingStatus"/>
+		<result column="totalProductNum" property="totalProductNum"/>
+		<result column="totalPrice" property="totalPrice"/>
+		<collection property="productItems" select="com.vcat.module.ec.dao.OrderDao.findSellerProductItemList"
+					column="id" ofType="com.vcat.module.ec.dto.ProductItemDto"/>
+	</resultMap>
+
+	<sql id="orderColumns">
+		a.id AS "id",
+		a.order_number AS "orderNumber",
+		a.total_price AS "totalPrice",
+		a.note AS "note",
+		a.add_date AS "addDate",
+		a.confirm_date AS "confirmDate",
+		a.order_status AS "orderStatus",
+		a.payment_status AS "paymentStatus",
+		a.shipping_status AS "shippingStatus",
+		GROUP_CONCAT(DISTINCT orderType.label SEPARATOR '|') AS "orderType",
+		a.total_coupon AS "totalCoupon",
+		a.freight_price AS "freightPrice",
+		a.reconciliation_status AS "reconciliationStatus",
+		buyer.id AS "buyer.id",
+		buyer.user_name AS "buyer.userName",
+		payment.id AS "payment.id",
+		payment.amount AS "payment.amount",
+		payment.payment_date AS "payment.paymentDate",
+		payment.transaction_no AS "payment.transactionNo",
+		gateway.id AS "payment.gateway.id",
+		gateway.name AS "payment.gateway.name",
+		gateway.code AS "payment.gateway.code",
+		address.id AS "address.id",
+		address.delivery_name AS "address.deliveryName",
+		address.delivery_phone AS "address.deliveryPhone",
+		address.detail_address AS "address.detailAddress",
+		address.province AS "address.province",
+		address.city AS "address.city",
+		address.district AS "address.district",
+		shipping.id AS "shipping.id",
+		shipping.freight_charge AS "shipping.freightCharge",
+		shipping.shipping_number AS "shipping.number",
+		shipping.shipping_date AS "shipping.shippingDate",
+		shipping.oper_date AS "shipping.operDate",
+		express.id AS "shipping.express.id",
+		express.name AS "shipping.express.name",
+		express.code AS "shipping.express.code",
+		invoice.id AS "invoice.id",
+		invoice.title AS "invoice.title",
+		invoice.type AS "invoice.type",
+		invoice.order_time AS "invoice.orderTime",
+		IFNULL((SELECT '1' FROM ec_reconciliation_freight WHERE order_id = a.id),'0') AS "reconciliationFreightStatus"
+	</sql>
+	<sql id="orderListColumns">
+		a.id AS "id",
+		a.order_number AS "orderNumber",
+		a.total_price AS "totalPrice",
+		a.note AS "note",
+		a.add_date AS "addDate",
+		a.confirm_date AS "confirmDate",
+		a.order_status AS "orderStatus",
+		a.payment_status AS "paymentStatus",
+		a.shipping_status AS "shippingStatus",
+		GROUP_CONCAT(DISTINCT orderType.label SEPARATOR '|') AS "orderType",
+		buyer.id AS "buyer.id",
+		buyer.user_name AS "buyer.userName",
+		buyer.phone_number AS "buyer.phoneNumber",
+		payment.id AS "payment.id",
+        payment.amount AS "payment.amount",
+        payment.payment_date AS "payment.paymentDate",
+		gateway.name AS "payment.gateway.name",
+		GROUP_CONCAT(DISTINCT shop.name SEPARATOR '|') AS "shopName",
+		address.id AS "address.id",
+		address.delivery_name AS "address.deliveryName",
+		address.detail_address AS "address.detailAddress",
+		supplier.name AS "supplierName",
+		(CASE WHEN activity.id IS NOT NULL THEN CONCAT(product.name,'[',activity.title,']')
+		ELSE GROUP_CONCAT(DISTINCT product.name SEPARATOR '\r\n')
+		END)AS "productName",
+		shipping.shipping_number AS "shipping.number",
+		express.code AS "shipping.express.code",
+        MAX(refund.id) IS NOT NULL AS "hasReturn",
+        accounting.id IS NOT NULL AS "isAccounting"
+	</sql>
+	<sql id="orderJoins">
+        INNER JOIN ec_customer buyer ON buyer.id = a.buyer_id
+        LEFT JOIN ec_payment payment ON payment.id = a.payment_id
+        LEFT JOIN ec_gateway_type gateway ON gateway.id = payment.gateway_type_id
+        LEFT JOIN ec_order_address address ON address.id = a.id
+        LEFT JOIN ec_invoice invoice ON a.invoice_id = invoice.id
+        LEFT JOIN ec_shipping shipping ON shipping.id = a.shipping_id
+        LEFT JOIN ec_express express ON express.id = shipping.express_id
+        INNER JOIN ec_order_item item ON item.order_id = a.id
+        INNER JOIN ec_supplier supplier ON supplier.id = item.supplier_id
+        INNER JOIN ec_product_item productItem ON item.product_item_id = productItem.id
+        INNER JOIN ec_product product ON product.id = productItem.product_id
+        INNER JOIN ec_distribution distribution ON distribution.id = product.distribution_id
+        INNER JOIN sys_dict orderType ON orderType.value	= item.order_item_type AND orderType.type = 'ec_order_type'
+        LEFT JOIN ec_shop shop ON shop.id = item.shop_id
+        LEFT JOIN ec_order_activity oa ON a.id = oa.order_id
+        LEFT JOIN ec_activity activity ON oa.activity_id = activity.id
+        LEFT JOIN ec_accounting accounting ON accounting.order_id = a.id
+        LEFT JOIN ec_return refund ON refund.order_item_id = item.id
+    </sql>
+	<select id="get" resultType="Order">
+		SELECT
+		<include refid="orderColumns"/>
+		FROM ec_order a
+		<include refid="orderJoins"/>
+		WHERE 1=1
+		<if test="null != id and '' != id">
+			AND a.id = #{id}
+		</if>
+		<if test="null != orderNumber and '' != orderNumber">
+			AND a.order_number = #{orderNumber}
+		</if>
+		${sqlMap.productScope}
+		GROUP BY a.id
+	</select>
+
+	<!-- 根据店铺和订单类型查询订单数量 -->
+	<select id="countByShopId" resultType="int" parameterType="java.util.Map">
+		SELECT COUNT(DISTINCT o.id)
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		<if test="orderType == 5">
+			JOIN ec_return AS rr ON rr.order_item_id=oi.id
+			AND rr.is_activate=1
+			AND rr.return_status!='4'
+			AND rr.refund_status!='3'
+		</if>
+		WHERE oi.shop_id=#{shopId}
+		<if test="orderType == 1">
+			AND o.order_status=0
+			AND o.payment_status=0
+			AND o.shipping_status=0
+		</if>
+		<if test="orderType == 2">
+			AND o.order_status IN ('0','1')
+			AND o.payment_status=1
+			AND o.shipping_status IN ('0','1')
+		</if>
+		<if test="orderType == 3">
+			AND o.order_status=2
+			AND o.payment_status=1
+			AND o.shipping_status=2
+		</if>
+		<if test="orderType == 4">
+			AND o.order_status=3
+			AND o.payment_status=0
+			AND o.shipping_status=0
+		</if>
+		<if test="orderType ==5">
+			AND o.order_status IN ('0','1','2')
+			AND o.payment_status=1
+		</if>
+		AND o.seller_del=0
+		AND oi.order_item_type in (1,9)
+	</select>
+	<!-- 根据买家id和订单类型查询订单数量 -->
+	<select id="countByBuyerId" resultType="int" parameterType="java.util.Map">
+		SELECT COUNT(DISTINCT o.id)
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		<if test="orderType == 6">
+			JOIN ec_return AS rr ON rr.order_item_id=oi.id
+			AND rr.is_activate=1
+			AND rr.return_status!='4'
+			AND rr.refund_status!='3'
+		</if>
+		WHERE o.buyer_id=#{buyerId}
+		<!-- 未付款 -->
+		<if test="orderType == 2">
+			AND o.order_status=0
+			AND o.payment_status=0
+			AND o.shipping_status=0
+		</if>
+		<!-- 已支付未发货 -->
+		<if test="orderType == 3">
+			AND o.order_status IN ('0','1')
+			AND o.payment_status=1
+			AND o.shipping_status=0
+		</if>
+		<!-- 已支付已发货 -->
+		<if test="orderType == 4">
+			AND o.order_status=1
+			AND o.payment_status=1
+			AND o.shipping_status=1
+		</if>
+		<if test="orderType == 5">
+			AND o.order_status=2
+			AND o.payment_status=1
+			AND o.shipping_status=2
+		</if>
+		<if test="orderType ==6">
+			AND o.order_status IN ('0','1','2')
+			AND o.payment_status=1
+		</if>
+		AND o.buyer_del=0
+		AND oi.order_item_type not in (3,4,5)
+	</select>
+
+	<!-- 根据订单获取买家商品列表-->
+	<select id="findProductItemList" resultType="com.vcat.module.ec.dto.ProductItemDto" parameterType="String">
+		SELECT p1.id AS "productId",oi.id AS "orderItemId",p1.name AS productName,pi1.id AS "productItemId",pi1.name AS itemName,oi.item_price AS itemPrice,
+		oi.quantity,
+		oi.promotion_quantity as "promotionQuantity",
+		ss.id AS "shopId",oi.parent_id AS "parentShopId",oi.grandfather_id AS "parentParentShopId",ss.shop_num AS "shopNum",ll.url AS "levelUrl",oi.order_item_type AS "productType",
+		(CASE
+		WHEN o.order_status=0 AND o.payment_status=0 AND o.shipping_status=0 THEN '2'
+		WHEN o.order_status IN ('0','1') AND o.payment_status=1 AND o.shipping_status =0 THEN '3'
+		WHEN o.order_status=1 AND o.payment_status=1 AND o.shipping_status=1 THEN '4'
+		WHEN o.order_status=2 AND o.payment_status=1 AND o.shipping_status=2 AND NOW()>(SELECT IF(ea.receiving_date IS NOT NULL,DATE_ADD(ea.receiving_date,INTERVAL 7 DAY),
+		DATE_ADD(o.confirm_date,INTERVAL 7 DAY))
+		FROM ec_order AS o
+		LEFT JOIN ec_shipping AS s ON s.id=o.shipping_id
+		LEFT JOIN ec_express AS ee ON ee.id=s.express_id
+		LEFT JOIN ec_express_api AS ea ON ea.express_code=ee.code
+		AND ea.shipping_no=s.shipping_number
+		AND ea.state=3
+		WHERE o.id=oi.order_id
+		ORDER BY ea.update_date DESC LIMIT 1)THEN '5'
+		WHEN o.order_status=3 AND o.payment_status=0 AND o.shipping_status=0 THEN '7'
+
+         WHEN oi.order_item_type = 7 AND o.order_status=2 AND o.payment_status=1 AND o.shipping_status=2
+         AND (
+                 SELECT
+                    DATE_ADD(o.confirm_date,INTERVAL 7 DAY)
+                 FROM ec_order AS o
+                 WHERE o.id= #{_parameter}
+                 LIMIT 1) > NOW()  THEN '9'
+         WHEN o.order_status=2 AND o.payment_status=1 AND o.shipping_status=2 AND (SELECT IF(ea.receiving_date IS NOT NULL,DATE_ADD(ea.receiving_date,INTERVAL 7 DAY),
+				DATE_ADD(o.confirm_date,INTERVAL 7 DAY))
+				FROM ec_order AS o
+				LEFT JOIN ec_shipping AS s ON s.id=o.shipping_id
+				LEFT JOIN ec_express AS ee ON ee.id=s.express_id
+				LEFT JOIN ec_express_api AS ea ON ea.express_code=ee.code
+							 AND ea.shipping_no=s.shipping_number
+							 AND ea.state=3
+				WHERE o.id=oi.order_id
+				ORDER BY ea.update_date DESC LIMIT 1)>NOW() THEN '8'
+		 END) AS "type",
+		(SELECT i.url
+		FROM ec_product_image AS pi2
+		LEFT JOIN ec_image AS i ON pi2.image_id=i.id
+		WHERE pi2.product_id=p1.id
+		ORDER BY pi2.display_order DESC LIMIT 1)
+		AS "mainUrl",
+		rr.return_status AS returnStatus,
+		rr.refund_status AS refundStatus,
+		rr.quantity AS requantity,
+		rr.id AS "refundId",
+		oi.sale_earning AS itemSaleEarning,
+		oi.bonus_earning AS itemBonusEarning,
+		oi.first_bonus_earning AS itemFirstBonusEarning,
+		oi.second_bonus_earning AS itemSecondBonusEarning,
+		oi.can_refund as canRefund,
+		(CASE
+		WHEN oi.order_item_type =2 or oi.order_item_type =3 OR oi.order_item_type =4 OR oi.order_item_type=6 or oi.order_item_type =7 or oi.order_item_type =8 THEN 'V猫商场'
+		WHEN oi.order_item_type =1 or oi.order_item_type =9 THEN CONCAT(cc.user_name,"的V猫小店")
+		END) AS "shopName",
+		oi.single_coupon AS "couponValue",
+		(SELECT IF(COUNT(id)>0,'1','0')
+		FROM ec_return
+		WHERE order_item_id=oi.id) AS "checkRefundStatus"
+		FROM ec_order_item AS oi
+		LEFT JOIN ec_order AS o ON o.id=oi.order_id
+		LEFT JOIN ec_product_item AS pi1 ON oi.product_item_id=pi1.id
+		LEFT JOIN ec_product AS p1 ON p1.id=pi1.product_id
+		LEFT JOIN ec_shop AS ss ON ss.id=oi.shop_id
+		LEFT JOIN ec_level AS ll ON ll.id=ss.level_id
+		LEFT JOIN ec_customer AS cc on cc.id=oi.shop_id
+		LEFT JOIN ec_brand brand ON brand.id=p1.brand_id
+		LEFT JOIN ec_supplier AS su ON su.id=brand.supplier_id
+		LEFT JOIN ec_return AS rr ON oi.id=rr.order_item_id
+		AND rr.is_activate=1
+		AND rr.return_status!='4'
+		AND rr.refund_status!='3'
+		WHERE o.id= #{_parameter}
+	</select>
+	<!-- 根据订单获取客户商品列表-->
+	<select id="findSellerProductItemList" resultType="com.vcat.module.ec.dto.ProductItemDto" parameterType="String">
+		SELECT p1.id AS "productId",oi.id AS "orderItemId",p1.name AS productName,pi1.id AS "productItemId",pi1.name AS itemName,oi.item_price AS itemPrice,oi.quantity,
+		ss.id AS "shopId",oi.parent_id AS "parentShopId",oi.grandfather_id AS "parentParentShopId",ss.shop_num AS "shopNum",ll.url AS "levelUrl",oi.order_item_type AS "productType",
+		(CASE
+		WHEN o.order_status=0 AND o.payment_status=0 AND o.shipping_status=0 THEN '2'
+		WHEN o.order_status IN ('0','1') AND o.payment_status=1 AND o.shipping_status =0 THEN '3'
+		WHEN o.order_status=1 AND o.payment_status=1 AND o.shipping_status=1 THEN '4'
+		WHEN o.order_status=2 AND o.payment_status=1 AND o.shipping_status=2 AND NOW()>(SELECT IF(ea.receiving_date IS NOT NULL,DATE_ADD(ea.receiving_date,INTERVAL 7 DAY),
+		DATE_ADD(o.confirm_date,INTERVAL 7 DAY))
+		FROM ec_order AS o
+		LEFT JOIN ec_shipping AS s ON s.id=o.shipping_id
+		LEFT JOIN ec_express AS ee ON ee.id=s.express_id
+		LEFT JOIN ec_express_api AS ea ON ea.express_code=ee.code
+		AND ea.shipping_no=s.shipping_number
+		AND ea.state=3
+		WHERE o.id=oi.order_id
+		ORDER BY ea.update_date DESC LIMIT 1)THEN '5'
+		WHEN o.order_status=3 AND o.payment_status=0 AND o.shipping_status=0 THEN '7'
+		WHEN o.order_status=2 AND o.payment_status=1 AND o.shipping_status=2 AND (SELECT IF(ea.receiving_date IS NOT NULL,DATE_ADD(ea.receiving_date,INTERVAL 7 DAY),
+		DATE_ADD(o.confirm_date,INTERVAL 7 DAY))
+		FROM ec_order AS o
+		LEFT JOIN ec_shipping AS s ON s.id=o.shipping_id
+		LEFT JOIN ec_express AS ee ON ee.id=s.express_id
+		LEFT JOIN ec_express_api AS ea ON ea.express_code=ee.code
+		AND ea.shipping_no=s.shipping_number
+		AND ea.state=3
+		WHERE o.id=oi.order_id
+		ORDER BY ea.update_date DESC LIMIT 1)>NOW() THEN '8'
+		END) AS "type",
+		(SELECT i.url
+		FROM ec_product_image AS pi2
+		LEFT JOIN ec_image AS i ON pi2.image_id=i.id
+		WHERE pi2.product_id=p1.id
+		ORDER BY pi2.display_order DESC LIMIT 1)
+		AS "mainUrl",
+		p1.can_refund as canRefund,
+		rr.return_status AS returnStatus,
+		rr.refund_status AS refundStatus,
+		rr.quantity AS requantity,
+		rr.id AS "refundId",
+		oi.sale_earning AS itemSaleEarning,
+		oi.bonus_earning AS itemBonusEarning,
+        oi.first_bonus_earning AS "itemFirstBonusEarning",
+		oi.second_bonus_earning AS itemSecondBonusEarning,
+		su.name AS "shopName",
+		oi.single_coupon AS "couponValue",
+		(SELECT IF(COUNT(id)>0,'1','0')
+		FROM ec_return
+		WHERE order_item_id=oi.id) AS "checkRefundStatus"
+		FROM ec_order_item AS oi
+		LEFT JOIN ec_order AS o ON o.id=oi.order_id
+		LEFT JOIN ec_product_item AS pi1 ON oi.product_item_id=pi1.id
+		LEFT JOIN ec_product AS p1 ON p1.id=pi1.product_id
+		LEFT JOIN ec_shop AS ss ON ss.id=oi.shop_id
+		LEFT JOIN ec_level AS ll ON ll.id=ss.level_id
+		LEFT JOIN ec_customer AS cc on cc.id=oi.shop_id
+		LEFT JOIN ec_brand brand ON brand.id=p1.brand_id
+		LEFT JOIN ec_supplier AS su ON su.id=brand.supplier_id
+		LEFT JOIN ec_return AS rr ON oi.id=rr.order_item_id
+		AND rr.is_activate=1
+		AND rr.return_status!='4'
+		AND rr.refund_status!='3'
+		WHERE o.id = #{_parameter}
+	</select>
+	<!-- 根据店铺获取订单list -->
+	<select id="getOrderList" resultMap="sellerBaseResultMap" parameterType="java.util.Map">
+		SELECT * FROM (
+		SELECT DISTINCT o.id,o.order_number AS orderNum,o.add_date AS createDate,sh.shipping_number AS deliveryNum,ex.code AS expressCode,
+		oa.delivery_name AS receiveUserName,oa.detail_address AS receiveDetailAddress,oa.delivery_phone AS receivePhoneNum,o.shipping_status AS shippingStatus,
+		(CASE
+		WHEN o.order_status=0 AND o.payment_status=0 AND o.shipping_status=0 THEN '1'
+		WHEN o.order_status IN ('0','1') AND o.payment_status=1 AND o.shipping_status IN ('0','1') THEN '2'
+		WHEN o.order_status=3 AND o.payment_status=0 AND o.shipping_status=0 THEN '4'
+		WHEN o.order_status=2 AND o.payment_status=1 AND o.shipping_status=2 THEN '3'
+		WHEN o.order_status=2 AND o.payment_status=1 AND o.shipping_status=1 THEN '5'
+		END) AS "orderType",
+		(SELECT
+		SUM(oi.quantity)
+		FROM
+		ec_order_item AS oi
+		WHERE oi.order_id = o.id
+		AND oi.order_item_type in (1,9)) AS totalProductNum,
+		(SELECT
+		SUM(oi.item_price*oi.quantity)
+		FROM
+		ec_order_item AS oi
+		WHERE oi.order_id = o.id
+		AND oi.order_item_type in (1,9)) AS totalPrice,
+		oa.province AS "province",
+		oa.city AS "city",
+		oa.district AS "district",
+		(SELECT COUNT(oo.id)
+		FROM ec_order AS oo
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=oo.id
+		JOIN ec_return AS rr ON rr.order_item_id=oi.id
+		AND rr.is_activate=1
+		AND rr.return_status!='4'
+		AND rr.refund_status!='3'
+		WHERE oo.id=o.id
+		AND oi.order_item_type in (1,9)) AS reFundcount
+		FROM ec_order AS o
+		LEFT JOIN ec_shipping AS sh ON o.shipping_id=sh.id
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		LEFT JOIN ec_express AS ex ON ex.id=sh.express_id
+		LEFT JOIN ec_customer_address AS ca ON ca.id=o.customer_address_id
+		LEFT JOIN ec_address AS aa ON aa.id=ca.address_id
+		LEFT JOIN ec_order_address AS oa ON oa.id=o.id
+		LEFT JOIN ec_customer AS cc ON cc.id=ca.customer_id
+		<if test="null != shopId and '' != shopId">
+			WHERE oi.shop_id=#{shopId}
+		</if>
+		<if test="orderType == 1">
+			AND o.order_status=0
+			AND o.payment_status=0
+			AND o.shipping_status=0
+		</if>
+		<if test="orderType == 2">
+			AND o.order_status IN ('0','1')
+			AND o.payment_status=1
+			AND
+			o.shipping_status IN ('0','1')
+		</if>
+		<if test="orderType == 3">
+			AND o.order_status=2
+			AND o.payment_status=1
+			AND
+			o.shipping_status=2
+		</if>
+		<if test="orderType == 4">
+			AND o.order_status=3
+			AND o.payment_status=0
+			AND
+			o.shipping_status=0
+		</if>
+		<if test="orderType ==5">
+			AND o.order_status IN ('0','1','2')
+			AND o.payment_status=1
+		</if>
+		<if test="orderId != null and orderId != ''">
+			AND o.id = #{orderId}
+		</if>
+		<if test="orderNumber != null and orderNumber != ''">
+			AND o.order_number = #{orderNumber}
+		</if>
+		AND o.seller_del=0
+		AND oi.order_item_type in (1,9)
+		) AS result
+		<if test="orderType ==5">
+			WHERE result.reFundcount!=0
+		</if>
+		ORDER BY result.createDate DESC
+		LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+	<!-- 根据店铺获取订单list -->
+	<select id="getBuyerOrderList" resultMap="BaseResultMap" parameterType="java.util.Map">
+		SELECT *
+		FROM (
+			SELECT DISTINCT
+			o.id,
+			o.is_fund                                          AS "isFund",
+			o.order_number                                     AS orderNum,
+			o.add_date                                         AS createDate,
+			o.payment_id                                       AS "paymentId",
+			sh.shipping_number                                 AS deliveryNum,
+			ex.code                                            AS expressCode,
+			oa.delivery_name                                   AS receiveUserName,
+			oa.detail_address                                  AS receiveDetailAddress,
+			oa.delivery_phone                                  AS receivePhoneNum,
+			o.shipping_status 									AS shippingStatus,
+			o.buyer_id                                         AS "buyerId",
+			(SELECT SUM(oi.quantity)
+			FROM ec_order_item AS oi
+			WHERE oi.order_id = o.id)                         AS totalProductNum,
+			o.total_coupon                                     AS "totalCoupon",
+			o.freight_price                                    AS "freightPrice",
+			(o.total_price - o.total_coupon + o.freight_price) AS "totalPrice",
+			(CASE
+			WHEN o.order_status = 0 AND o.payment_status = 0 AND o.shipping_status = 0
+			THEN '2'
+			WHEN o.order_status IN ('0', '1') AND o.payment_status = 1 AND o.shipping_status = 0
+			THEN '3'
+			WHEN o.order_status = 1 AND o.payment_status = 1 AND o.shipping_status = 1
+			THEN '4'
+			WHEN o.order_status = 2 AND o.payment_status = 1 AND o.shipping_status = 2
+			THEN '5'
+			WHEN o.order_status = 3 AND o.payment_status = 0 AND o.shipping_status = 0
+			THEN '7'
+			END)                                              AS "orderType",
+			oa.province                                        AS "province",
+			oa.city                                            AS "city",
+			oa.district                                        AS "district",
+			i.title                                            AS "invoice.title",
+			i.type                                             AS "invoice.type",
+			egbs.id											   AS "groupBuySponsorId",
+			egbs.is_locked									  AS "locked",
+			(SELECT COUNT(oo.id)
+			FROM ec_order AS oo
+			LEFT JOIN ec_order_item AS oi ON oi.order_id = oo.id
+			JOIN ec_return AS rr ON rr.order_item_id = oi.id
+			AND rr.is_activate = 1
+			AND rr.return_status != '4'
+			AND rr.refund_status != '3'
+			WHERE oo.id = o.id)                               AS reFundcount
+		FROM ec_order AS o
+			LEFT JOIN ec_group_buying_customer AS egbc ON egbc.order_id = o.id
+			LEFT JOIN ec_group_buying_sponsor AS egbs ON egbc.group_buying_sponsor_id = egbs.id
+			LEFT JOIN ec_group_buying AS egb ON egbs.group_buying_id = egb.id
+			LEFT JOIN ec_shipping AS sh ON o.shipping_id = sh.id
+			LEFT JOIN ec_order_item AS oi ON oi.order_id = o.id
+			LEFT JOIN ec_express AS ex ON ex.id = sh.express_id
+			LEFT JOIN ec_customer_address AS ca ON ca.id = o.customer_address_id
+			LEFT JOIN ec_address AS aa ON aa.id = ca.address_id
+			LEFT JOIN ec_order_address AS oa ON oa.id = o.id
+			LEFT JOIN ec_customer AS cc ON cc.id = ca.customer_id
+			LEFT JOIN ec_invoice AS i ON i.id = o.invoice_id
+		WHERE 1 = 1
+		<if test="null != buyerId and '' != buyerId">
+			AND o.buyer_id=#{buyerId}
+		</if>
+		<if test="null != shopId and '' != shopId">
+			AND oi.shop_id=#{shopId}
+		</if>
+		<!-- 全部 -->
+		<if test="orderType == 1">
+		</if>
+		<!-- 未付款 -->
+		<if test="orderType == 2">
+			AND o.order_status=0
+			AND o.payment_status=0
+			AND o.shipping_status=0
+		</if>
+		<!-- 已支付未发货 -->
+		<if test="orderType == 3">
+			AND o.order_status IN ('0','1')
+			AND o.payment_status=1
+			AND o.shipping_status=0
+		</if>
+		<!-- 已支付已发货 -->
+		<if test="orderType == 4">
+			AND o.order_status=1
+			AND o.payment_status=1
+			AND o.shipping_status=1
+		</if>
+		<!-- 已完成 -->
+		<if test="orderType == 5">
+			AND o.order_status=2
+			AND o.payment_status=1
+			AND o.shipping_status=2
+		</if>
+		<if test="orderType ==6">
+			AND o.order_status IN ('0','1','2')
+			AND o.payment_status=1
+		</if>
+		<if test="orderId != null and orderId != ''">
+			AND o.id = #{orderId}
+		</if>
+		<if test="orderNumber != null and orderNumber != ''">
+			AND o.order_number = #{orderNumber}
+		</if>
+		AND o.buyer_del = 0
+		AND oi.order_item_type != 5
+		) AS result
+		<if test="orderType ==6">
+			WHERE result.reFundcount!=0
+		</if>
+		ORDER BY result.createDate DESC,result.orderNum DESC
+		LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+	<select id="findList" resultType="Order">
+		SELECT
+		<include refid="orderListColumns"></include>
+		FROM ec_order a
+		<include refid="orderJoins"></include>
+		WHERE 1=1
+		${sqlMap.productScope}
+		<if test="sqlMap.keyWord != null and sqlMap.keyWord != ''">
+			AND (a.id = #{sqlMap.keyWord}
+			OR a.order_number like "%${sqlMap.keyWord}%"
+			OR address.delivery_phone like "%${sqlMap.keyWord}%"
+			OR address.delivery_name like "%${sqlMap.keyWord}%"
+			OR payment.payment_no like "%${sqlMap.keyWord}%"
+			OR buyer.user_name like "%${sqlMap.keyWord}%"
+			OR shop.name like "%${sqlMap.keyWord}%"
+            OR shipping.shipping_number like "%${sqlMap.keyWord}%"
+			)
+		</if>
+		<if test="sqlMap.isForecast != null and sqlMap.isForecast == 'on'">
+			AND (SELECT recommend.startTime
+			FROM ec_order_item orderItem
+			LEFT JOIN ec_product_item item ON orderItem.product_item_id = item.id
+			LEFT JOIN ec_product product ON product.id = item.product_id
+			LEFT JOIN view_all_recommend recommend ON product.id = recommend.productId AND typeCode = 'RESERVE'
+			WHERE orderItem.order_id = a.id LIMIT 1)IS NOT NULL
+		</if>
+		<if test="sqlMap.productId != null and sqlMap.productId != ''">
+            AND a.id IN (SELECT DISTINCT orderItem.order_id
+            FROM ec_order_item orderItem
+            WHERE orderItem.product_id = #{sqlMap.productId})
+		</if>
+		<if test="sqlMap.shopId != null and sqlMap.shopId != ''">
+            AND a.id IN (SELECT DISTINCT orderItem.order_id
+            FROM ec_order_item orderItem
+            WHERE orderItem.shop_id = #{sqlMap.shopId})
+		</if>
+        <if test="sqlMap.buyerId != null and sqlMap.buyerId != ''">
+            AND a.buyer_id = #{sqlMap.buyerId}
+        </if>
+		<if test="sqlMap.type != null and sqlMap.type == 'toConfirmReturn'">
+			AND (SELECT ret.id
+			FROM ec_order_item orderItem
+			LEFT JOIN ec_return ret ON ret.order_item_id = orderItem.id
+			WHERE orderItem.order_id = a.id
+			AND ret.return_status = 0
+			AND ret.refund_status = 0
+			AND ret.is_activate = 1 LIMIT 1)IS NOT NULL
+		</if>
+		<if test="sqlMap.type != null and sqlMap.type == 'toConfirmReceivingReturn'">
+			AND (SELECT ret.id
+			FROM ec_order_item orderItem
+			LEFT JOIN ec_return ret ON ret.order_item_id = orderItem.id
+			WHERE orderItem.order_id = a.id
+			AND ret.return_status IN (1,2)
+			AND ret.refund_status = 0
+			AND ret.is_activate = 1 LIMIT 1)IS NOT NULL
+		</if>
+		<if test="sqlMap.type != null and sqlMap.type == 'onRefund'">
+			AND (SELECT ret.id
+			FROM ec_order_item orderItem
+			LEFT JOIN ec_return ret ON ret.order_item_id = orderItem.id
+			WHERE orderItem.order_id = a.id
+			AND ret.return_status = 3
+			AND ret.refund_status NOT IN ("2","3")
+			AND ret.is_activate = 1 LIMIT 1)IS NOT NULL
+		</if>
+		<if test="sqlMap.type != null and sqlMap.type == 'refundCompleted'">
+			AND (SELECT ret.id
+			FROM ec_order_item orderItem
+			LEFT JOIN ec_return ret ON ret.order_item_id = orderItem.id
+			WHERE orderItem.order_id = a.id
+			AND ret.return_status IN ("3","4")
+			AND ret.refund_status IN ("2","3")
+			AND ret.is_activate = 1 LIMIT 1)IS NOT NULL
+		</if>
+		<if test="sqlMap.ost != null and sqlMap.ost != ''">
+			AND a.add_date > STR_TO_DATE(#{sqlMap.ost},"%Y-%m-%d %H:%i:%s")
+		</if>
+		<if test="sqlMap.oet != null and sqlMap.oet != ''">
+			AND STR_TO_DATE(#{sqlMap.oet},"%Y-%m-%d %H:%i:%s") > a.add_date
+		</if>
+		<if test="sqlMap.sst != null and sqlMap.sst != ''">
+			AND shipping.shipping_date > STR_TO_DATE(#{sqlMap.sst},"%Y-%m-%d %H:%i:%s")
+		</if>
+		<if test="sqlMap.set != null and sqlMap.set != ''">
+			AND STR_TO_DATE(#{sqlMap.set},"%Y-%m-%d %H:%i:%s") > shipping.shipping_date
+		</if>
+		<if test="sqlMap.distributionId != null and sqlMap.distributionId != ''">
+			AND a.id IN (SELECT DISTINCT orderItem.order_id
+			FROM ec_order_item orderItem
+			LEFT JOIN ec_product_item pi ON orderItem.product_item_id = pi.id
+			LEFT JOIN ec_product p ON pi.product_id = p.id
+			WHERE p.distribution_id = #{sqlMap.distributionId})
+		</if>
+		<if test="sqlMap.supplierId != null and sqlMap.supplierId != ''">
+			AND a.id IN (SELECT DISTINCT orderItem.order_id
+			FROM ec_order_item orderItem
+			WHERE orderItem.supplier_id = #{sqlMap.supplierId})
+		</if>
+        <if test="sqlMap.brandId != null and sqlMap.brandId != ''">
+            AND a.id IN (SELECT DISTINCT orderItem.order_id
+            FROM ec_order_item orderItem
+            WHERE orderItem.brand_id = #{sqlMap.brandId})
+        </if>
+		<if test="paymentStatus != null and paymentStatus != ''">
+			AND a.payment_status = #{paymentStatus}
+		</if>
+		<if test="orderStatus != null and orderStatus != ''">
+			AND a.order_status = #{orderStatus}
+		</if>
+		<if test="shippingStatus != null and shippingStatus != ''">
+			AND a.shipping_status = #{shippingStatus}
+		</if>
+		<if test="orderType != null and orderType != ''">
+			AND a.id IN (SELECT DISTINCT order_id FROM ec_order_item WHERE order_item_type = #{orderType})
+		</if>
+		GROUP BY a.id
+        <if test="sqlMap.hasReturn != null and sqlMap.hasReturn == 'true'">
+            HAVING MAX(refund.id) IS NOT NULL
+        </if>
+        <if test="sqlMap.hasReturn != null and sqlMap.hasReturn == 'false'">
+            HAVING MAX(refund.id) IS NULL
+        </if>
+		<if test="sqlMap.orderBy == null or 'default' == sqlMap.orderBy">
+			ORDER BY a.payment_status ASC,a.order_status ASC,a.shipping_status ASC,a.add_date DESC
+		</if>
+		<if test="sqlMap.orderBy != null and 'g1u' == sqlMap.orderBy">
+			ORDER BY a.add_date
+		</if>
+		<if test="sqlMap.orderBy != null and 'g1d' == sqlMap.orderBy">
+			ORDER BY a.add_date DESC
+		</if>
+		<if test="sqlMap.orderBy != null and 'g2u' == sqlMap.orderBy">
+			ORDER BY supplierName
+		</if>
+		<if test="sqlMap.orderBy != null and 'g3u' == sqlMap.orderBy">
+			ORDER BY shop.name
+		</if>
+		<if test="sqlMap.orderBy != null and 'g4u' == sqlMap.orderBy">
+			ORDER BY buyer.user_name
+		</if>
+		<if test="sqlMap.orderBy != null and 'g5u' == sqlMap.orderBy">
+			ORDER BY a.total_price
+		</if>
+		<if test="sqlMap.orderBy != null and 'g5d' == sqlMap.orderBy">
+			ORDER BY a.total_price DESC
+		</if>
+		<if test="sqlMap.orderBy != null and 'g6u' == sqlMap.orderBy">
+			ORDER BY a.payment_status
+		</if>
+		<if test="sqlMap.orderBy != null and 'g7u' == sqlMap.orderBy">
+			ORDER BY a.order_status
+		</if>
+		<if test="sqlMap.orderBy != null and 'g8u' == sqlMap.orderBy">
+			ORDER BY a.shipping_status
+		</if>
+	</select>
+
+	<insert id="insert" parameterType="com.vcat.module.ec.entity.Order">
+		INSERT INTO ec_order(
+		id,
+		buyer_id,
+		customer_address_id,
+		payment_id,
+		order_status,
+		payment_status,
+		shipping_status,
+		order_number,
+		total_price,
+		note,
+		add_date,
+		buyer_del,
+		seller_del,
+		invoice_id,
+		total_coupon,
+		freight_price
+		) VALUES (
+		#{id},
+		#{buyer.id},
+		#{customerAddress.id},
+		#{payment.id},
+		#{ORDER_STATUS_TO_BE_CONFIRMED},
+		#{PAYMENT_STATUS_UNPAID},
+		#{SHIPPING_STATUS_TO_BE_SHIPPED},
+		#{orderNumber},
+		#{totalPrice},
+		#{note},
+		NOW(),
+		0,
+		0,
+		#{invoice.id},
+		#{totalCoupon},
+		#{freightPrice}
+		)
+	</insert>
+	<select id="checkAllPayment" resultType="String" parameterType="String">
+		SELECT id
+		FROM ec_order
+		WHERE payment_id=#{_parameter}
+		AND order_status!='3'
+		AND payment_status='0'
+	</select>
+	<update id="update">
+		UPDATE ec_order SET
+		total_price = #{totalPrice},
+		note = #{note}
+		WHERE id = #{id}
+	</update>
+	<update id="updateFreight">
+		UPDATE ec_order SET
+		freight_price = #{freightPrice}
+		WHERE id = #{id}
+	</update>
+	<!--<update id="updatePrice">-->
+		<!--UPDATE ec_order SET-->
+		<!--total_price = total_price-#{price},-->
+		<!--total_coupon = total_coupon - #{price}-->
+		<!--WHERE id = #{id}-->
+	<!--</update>-->
+	<update id="confirm">
+		UPDATE ec_order SET
+		order_status = #{ORDER_STATUS_CONFIRMED}
+		WHERE id = #{id}
+		AND payment_status = #{PAYMENT_STATUS_PAID}
+		AND order_status = #{ORDER_STATUS_TO_BE_CONFIRMED}
+		AND shipping_status = #{SHIPPING_STATUS_TO_BE_SHIPPED}
+	</update>
+	<update id="completedByRefund">
+		UPDATE ec_order SET
+		order_status = #{ORDER_STATUS_COMPLETED}
+		WHERE id = #{id}
+		AND 0 = (SELECT COUNT(1)
+		FROM ec_order_item a
+		LEFT JOIN ec_return ret ON a.id = ret.order_item_id
+		WHERE a.order_id = #{id}
+		AND (ret.return_status NOT IN ("3","4")
+		OR ret.refund_status NOT IN ("2","3"))
+		AND ret.is_activate = 1)
+	</update>
+
+	<update id="delivery">
+		UPDATE ec_order SET
+		shipping_status = ${SHIPPING_STATUS_SHIPPED},
+		shipping_id = #{shipping.id}
+		WHERE id = #{id}
+		AND payment_status = #{PAYMENT_STATUS_PAID}
+		AND order_status = #{ORDER_STATUS_CONFIRMED}
+		AND shipping_status = #{SHIPPING_STATUS_TO_BE_SHIPPED}
+	</update>
+	<update id="sellerDelete" parameterType="String">
+		UPDATE ec_order SET
+		seller_del = 1
+		WHERE id=#{_parameter}
+		AND order_status IN ('2','3')
+	</update>
+	<update id="buyerDelete" parameterType="String">
+		UPDATE ec_order SET
+		buyer_del = 1
+		WHERE id=#{_parameter}
+		AND order_status IN ('2','3')
+	</update>
+	<update id="cancelOrder" parameterType="String">
+		UPDATE ec_order SET
+		order_status = 3
+		WHERE id=#{_parameter}
+		AND payment_status=0
+	</update>
+	<update id="paymented" parameterType="String">
+		UPDATE ec_order SET
+		payment_status = 1,
+		order_status = 0
+		WHERE payment_id=#{paymentId}
+	</update>
+	<update id="paymentedByOrderId">
+		UPDATE ec_order SET
+		payment_id = #{paymentId},
+		order_status = 0
+		WHERE id=#{orderId}
+	</update>
+	<update id="checkShipping" parameterType="String">
+		UPDATE ec_order SET
+		order_status = 2,
+		confirm_date = NOW(),
+		shipping_status=2
+		WHERE id = #{orderId}
+	</update>
+	<select id="getTotalPriceByPaymentId" resultType="java.util.Map" parameterType="String">
+		SELECT SUM(total_price-IFNULL(total_coupon,0)+IFNULL(freight_price,0)) AS "totalPrice",
+		SUM(IFNULL(total_coupon,0)) AS "totalCouponPrice",
+		IFNULL((SELECT available_fund FROM ec_coupon_fund WHERE shop_id=buyer_id),0.00) AS "availableCouponPrice",
+		(SELECT p.name
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		LEFT JOIN ec_product_item AS pi1 ON pi1.id=oi.product_item_id
+		AND del_flag=0
+		LEFT JOIN ec_product AS p ON p.id=pi1.product_id
+		WHERE o.payment_id=#{_parameter} LIMIT 1) AS "productName",
+		(SELECT p.id
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		LEFT JOIN ec_product_item AS pi1 ON pi1.id=oi.product_item_id
+		AND del_flag=0
+		LEFT JOIN ec_product AS p ON p.id=pi1.product_id
+		WHERE o.payment_id=#{_parameter} LIMIT 1) AS "productId",
+		(
+		SELECT oi.shop_id FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		WHERE o.payment_id=#{_parameter}
+		AND oi.shop_id IS NOT NULL
+		ORDER BY oi.order_item_type
+		LIMIT 1
+		) AS "shopId",
+		(SELECT buyer_id FROM ec_order WHERE payment_id=#{_parameter} LIMIT 1) AS "buyerId",
+		(
+		SELECT
+		(
+		CASE
+		WHEN oi.order_item_type  = 2
+		THEN '2'
+		WHEN oi.order_item_type  = 1
+		THEN '1'
+		WHEN oi.order_item_type  = 3
+		THEN '3'
+		END
+		)
+		FROM
+		ec_order AS o
+		LEFT JOIN ec_order_item AS oi
+		ON oi.order_id = o.id
+		WHERE o.payment_id = #{_parameter}
+		ORDER BY oi.order_item_type
+		LIMIT 1
+		) AS "productType"
+		FROM ec_order
+		WHERE payment_id=#{_parameter}
+		AND order_status=0
+		AND payment_status=0
+		AND shipping_status=0
+	</select>
+	<!-- 查询该订单待确认销售奖励金额 -->
+	<select id="getOrderEarning" resultType="java.math.BigDecimal">
+		SELECT
+		SUM(item.sale_earning * item.quantity)
+		FROM ec_order_item item
+		WHERE item.order_id = #{id}
+	</select>
+	<select id="getShopSaled" resultType="java.math.BigDecimal" parameterType="String">
+		SELECT
+		SUM(
+		IFNULL(totalSaled, 0) - IFNULL(refund, 0)
+		)
+		FROM
+		(SELECT
+		<!--如果此商品是优惠商品,则使用真实购买数量计算-->
+		(oi.quantity * oi.item_price) AS totalSaled,
+		rr.amount AS refund
+		FROM
+		ec_order AS o
+		LEFT JOIN ec_order_item AS oi
+		ON oi.order_id = o.id
+		LEFT JOIN ec_return AS rr
+		ON rr.order_item_id = oi.id
+		AND rr.refund_status = 2
+		AND rr.is_activate = 1
+		LEFT JOIN ec_product_item AS pi1 ON pi1.id=oi.product_item_id
+		AND pi1.del_flag=0
+		LEFT JOIN ec_product AS p ON p.id=pi1.product_id
+		WHERE oi.shop_id = #{shopId}
+		AND p.id = #{productId}
+		AND o.order_status = 2
+		AND o.payment_status = 1
+		AND o.shipping_status = 2
+		AND oi.order_item_type IN (1,2,6,8,9)) AS result
+	</select>
+	<select id="getProductLoadEarning" resultType="java.math.BigDecimal" parameterType="String">
+		SELECT SUM(le.fund)
+		FROM ec_order_item AS oi
+		LEFT JOIN ec_product_item AS pi1 ON pi1.id=oi.product_item_id
+		AND pi1.del_flag=0
+		LEFT JOIN ec_load_earning AS le ON le.product_id =pi1.product_id
+		AND le.is_activate=1
+		WHERE oi.order_id=#{_parameter}
+	</select>
+	<!-- 获取总收入-->
+	<select id="getTotalSaled" resultType="java.math.BigDecimal" parameterType="String">
+		SELECT SUM(IFNULL(totalSaled,0)-IFNULL(refund,0)) AS saled
+		FROM
+		(SELECT (oi.quantity*oi.item_price) AS totalSaled,
+		rr.amount AS refund
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		LEFT JOIN ec_return AS rr ON rr.order_item_id=oi.id
+		AND rr.refund_status=2
+		AND rr.is_activate=1
+		WHERE oi.shop_id=#{_parameter}
+		AND o.order_status=2
+		AND o.payment_status=1
+		AND o.shipping_status=2) AS RESULT
+	</select>
+	<select id="getOrderListBydealTime" resultType="String" parameterType="int">
+		SELECT  DISTINCT o.id
+		FROM ec_order_item AS oi
+		LEFT JOIN ec_order AS o ON oi.order_id = o.id
+		WHERE NOW() > DATE_ADD(o.add_date, INTERVAL (SELECT IFNULL(auto_off,#{_parameter}) FROM ec_shop WHERE id = o.buyer_id) DAY)
+		AND o.order_status=0
+		AND o.payment_status=0
+		AND o.shipping_status=0
+		AND o.id NOT IN ( SELECT DISTINCT o.id
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id = o.id
+		WHERE NOW() > DATE_ADD(add_date, INTERVAL (SELECT IFNULL(auto_off,#{_parameter}) FROM ec_shop WHERE id = o.buyer_id) DAY)
+		AND o.order_status=0
+		AND o.payment_status=0
+		AND o.shipping_status=0
+		AND oi.order_item_type  IN (3,5))
+	</select>
+	<!--<select id="getCouponOrderListBydealTime" resultType="String" parameterType="int">-->
+		<!--SELECT DISTINCT o.id-->
+		<!--FROM ec_order AS o-->
+		<!--LEFT JOIN ec_order_item AS oi ON oi.order_id = o.id-->
+		<!--WHERE NOW() > DATE_ADD(add_date, INTERVAL #{_parameter} MINUTE)-->
+		<!--AND o.order_status=0-->
+		<!--AND o.payment_status=0-->
+		<!--AND o.shipping_status=0-->
+		<!--AND oi.order_item_type = 3-->
+	<!--</select>-->
+	<select id="getAutoCheckShippingList" resultType="Map">
+		SELECT
+			ord.id       AS "orderId",
+			ord.buyer_id AS "buyerId",
+			shipping.shipping_date
+		FROM ec_order ord
+			LEFT JOIN ec_shipping shipping ON ord.id = shipping.order_id
+			LEFT JOIN ec_express expres ON expres.id = shipping.express_id
+		WHERE ord.id NOT IN
+					(SELECT
+						 DISTINCT (item.order_id)
+					 FROM ec_order_item item
+						 LEFT JOIN ec_return ret ON item.id = ret.order_item_id AND ret.is_activate = 1
+					 WHERE ret.id IS NOT NULL
+								 AND (ret.return_status = 0
+											OR ret.return_status = 1
+											OR (ret.return_status = 2 AND ret.refund_status = 0)
+											OR (ret.return_status = 2 AND ret.refund_status = 1)))
+
+					AND ord.payment_status = 1
+					AND ord.order_status = 1
+					AND ord.shipping_status = 1
+					AND (( CURRENT_TIMESTAMP > DATE_ADD(shipping.shipping_date, INTERVAL #{dayLimit} DAY) AND ord.overtime = 0)
+					OR ( CURRENT_TIMESTAMP > DATE_ADD(shipping.shipping_date, INTERVAL #{dayLimit}+3 DAY) AND ord.overtime = 1));
+	</select>
+
+	<select id="getProductsBypaymentId" resultType="com.vcat.module.ec.dto.ProductItemDto" parameterType="String">
+		SELECT pi1.product_id,oi.quantity,o.buyer_id AS "buyerId"
+		FROM ec_order_item AS oi
+		LEFT JOIN ec_order AS o ON o.id=oi.order_id
+		LEFT JOIN ec_product_item AS pi1 ON pi1.id=oi.product_item_id
+		WHERE o.payment_id=#{_parameter}
+	</select>
+	<select id="getProductsByOrderId" resultType="com.vcat.module.ec.dto.ProductItemDto" parameterType="String">
+		SELECT
+			pi1.product_id as "productId",
+			pi1.id as "productItemId",
+			ep.name as "productName",
+			oi.quantity
+		FROM ec_order_item AS oi
+		LEFT JOIN ec_order AS o ON o.id=oi.order_id
+		LEFT JOIN ec_product_item AS pi1 ON pi1.id=oi.product_item_id
+		left join ec_product as ep on ep.id = oi.product_id
+		WHERE o.id=#{_parameter}
+	</select>
+	<select id="getCouponByPaymentId" resultType="com.vcat.module.ec.entity.CouponOperLog">
+		SELECT DISTINCT o.id AS "orderId",-o.total_coupon AS "fund",(cf.available_fund-o.total_coupon) AS "remainFund",
+		cf.shop_id AS "couponFund.shop.id",cf.id AS "couponFund.id"
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		LEFT JOIN ec_coupon_fund AS cf ON cf.shop_id=o.buyer_id
+		WHERE payment_id=#{_parameter}
+		AND oi.order_item_type IN ('3','4')
+
+	</select>
+	<!--<select id="countCouponProduct" resultType="int">-->
+		<!--SELECT COUNT(1)-->
+		<!--FROM ec_order AS o-->
+		<!--LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id-->
+		<!--WHERE o.buyer_id = #{buyerId}-->
+		<!--AND oi.order_item_type = #{productType}-->
+		<!--AND order_status != 3-->
+		<!--AND oi.product_item_id=#{productItemId}-->
+		<!--AND DATE_FORMAT(o.add_date,'%Y-%m-%D')=DATE_FORMAT(NOW(),'%Y-%m-%D')-->
+	<!--</select>-->
+
+	<select id="countPurchasedProduct" resultType="int">
+		SELECT sum(quantity)
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		WHERE o.buyer_id = #{buyerId}
+		AND oi.order_item_type IN (-9999
+		<foreach collection="productTypes" item="productType" separator="">
+			,#{productType}
+		</foreach>
+		)
+		AND order_status != 3
+		AND oi.product_item_id=#{productItemId}
+		<![CDATA[
+		AND DATE_FORMAT(o.add_date, '%Y-%m-%d') between DATE_FORMAT(DATE_SUB(NOW(), INTERVAL #{interval} DAY),'%Y-%m-%d')
+		AND DATE_FORMAT(NOW(), '%Y-%m-%d')
+		]]>
+	</select>
+
+	<select id="countPurchasedProductWithoutInterval" resultType="int">
+		SELECT sum(quantity)
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		WHERE o.buyer_id = #{buyerId}
+		AND oi.order_item_type IN (-9999
+		<foreach collection="productTypes" item="productType" separator="">
+			,#{productType}
+		</foreach>
+		)
+		AND order_status != 3
+		AND oi.product_item_id=#{productItemId}
+	</select>
+	
+	<select id="getProductLimit" resultType="map">
+		SELECT * FROM ec_product_limit
+		WHERE product_item_id = #{productItemId}
+		AND del_flag = 0
+		AND product_type != 7
+		 LIMIT 1
+	</select>
+
+	<select id="isProductInLimit" resultType="boolean">
+		SELECT COUNT(1) > 0 FROM ec_product_limit pl WHERE pl.product_item_id = #{productItemId}
+		<![CDATA[ AND NOW() >= pl.start_time AND NOW() <= pl.end_time AND pl.del_flag = 0 ]]>
+	</select>
+
+	<select id="getLoadEarningSpe" resultType="com.vcat.module.ec.entity.LoadEarning" >
+		SELECT * FROM ec_load_earning
+		WHERE product_id=#{productId}
+		AND convert_fund>(#{productSaled}-#{saled}) AND #{productSaled}>=convert_fund
+		AND is_activate=1
+	</select>
+	<select id="findShipOrderList" resultType="com.vcat.module.ec.entity.ShipOrder">
+		SELECT
+        distribution.name AS 'distributionName'
+        ,ord.id AS 'orderId'
+        ,ord.order_number AS 'orderNumber'
+        ,(CASE WHEN MAX(re.id) IS NULL THEN '不包含' ELSE '包含' END) AS 'hasReturn'
+        ,GROUP_CONCAT(product.name SEPARATOR '|') AS 'productName'
+        ,GROUP_CONCAT(productItem.name SEPARATOR '|') AS 'spec'
+        ,GROUP_CONCAT(orderItem.quantity SEPARATOR '|') AS 'quantity'
+        ,et.addresser_phone AS 'distributionPhone'
+        ,province.name AS 'distributionProvince'
+        ,city.name AS 'distributionCity'
+        ,district.name AS 'distributionDistrict'
+        ,et.detail_address AS 'distributionAddress'
+		,address.delivery_name AS 'deliveryName'
+		,address.delivery_phone AS 'deliveryPhone'
+		,address.province AS 'deliveryProvince'
+        ,address.city AS 'deliveryCity'
+        ,address.district AS 'deliveryDistrict'
+        ,address.detail_address AS 'detailAddress'
+		FROM ec_order_item orderItem
+		LEFT JOIN ec_return re ON (orderItem.id = re.order_item_id AND re.is_activate = 1)
+		LEFT JOIN ec_order ord ON orderItem.order_id = ord.id
+		LEFT JOIN ec_product_item productItem ON orderItem.product_item_id = productItem.id
+		LEFT JOIN ec_product product ON orderItem.product_id = product.id
+        LEFT JOIN ec_product_express_template pe ON product.id = pe.product_id
+        LEFT JOIN ec_express_template et ON pe.express_template_id = et.id
+		LEFT JOIN ec_distribution distribution ON distribution.id = product.distribution_id
+		LEFT JOIN ec_order_address address ON address.id = ord.id
+        LEFT JOIN sys_area province ON province.id = et.province
+        LEFT JOIN sys_area city ON city.id = et.city
+        LEFT JOIN sys_area district ON district.id = et.district
+		WHERE ord.payment_status = '1'
+		AND ord.order_status = '1'
+		AND ord.shipping_status = '0'
+		${sqlMap.productScope}
+		<if test="orderNumber != null and orderNumber != ''">
+			AND ord.order_number = #{orderNumber}
+		</if>
+		<if test="sqlMap.distributionId != null and sqlMap.distributionId != ''">
+			AND distribution.id = #{sqlMap.distributionId}
+		</if>
+		<if test="sqlMap.st != null and sqlMap.st != ''">
+			AND ord.add_date > STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d %H:%i:%s")
+		</if>
+		<if test="sqlMap.et != null and sqlMap.et != ''">
+			AND STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d %H:%i:%s") > ord.add_date
+		</if>
+		GROUP BY ord.id
+        <if test="sqlMap.hasReturn != null and sqlMap.hasReturn == 'true'">
+            HAVING MAX(re.id) IS NOT NULL
+        </if>
+        <if test="sqlMap.hasReturn != null and sqlMap.hasReturn == 'false'">
+            HAVING MAX(re.id) IS NULL
+        </if>
+		ORDER BY ord.add_date
+	</select>
+	<insert id="insertOrderAddress" parameterType="String">
+		INSERT INTO ec_order_address(id,delivery_phone,delivery_name,detail_address,province,province_id,city,city_id,district,district_id)
+		SELECT o.id,
+		a.delivery_phone,
+		a.delivery_name,
+		a.detail_address,
+		aa.name,
+		a.province_id,
+		bb.name,
+		a.city_id,
+		cc.name,
+		a.district_id
+		FROM ec_order AS o
+		LEFT JOIN ec_customer_address AS ca ON ca.id=o.customer_address_id
+		LEFT JOIN ec_address AS a ON a.id=ca.address_id
+		LEFT JOIN sys_area AS aa ON aa.id=a.province_id
+		LEFT JOIN sys_area AS bb ON bb.id=a.city_id
+		LEFT JOIN sys_area AS cc ON cc.id=a.district_id
+		WHERE o.id=#{_parameter}
+	</insert>
+	<select id="getOrderIdsByPaymentId" resultType="java.lang.String">
+		SELECT id FROM ec_order WHERE payment_id = #{id}
+	</select>
+	<delete id="deleteOrderActivity">
+		DELETE FROM ec_order_activity WHERE order_id = #{id}
+	</delete>
+	<delete id="deleteOrderAddress">
+		DELETE FROM ec_order_address WHERE id = #{id}
+	</delete>
+	<delete id="deleteOrderLog">
+		DELETE FROM ec_order_log WHERE order_id = #{id}
+	</delete>
+	<delete id="deleteOrderItem">
+		DELETE FROM ec_order_item WHERE order_id = #{id}
+	</delete>
+	<delete id="deleteOrder">
+		DELETE FROM ec_order WHERE id = #{id}
+	</delete>
+	<delete id="deletePaymentLog">
+		DELETE FROM ec_payment_log WHERE payment_id = #{id}
+	</delete>
+	<delete id="deletePayment">
+		DELETE FROM ec_payment WHERE id = #{id}
+	</delete>
+	<select id="getOrderType" resultType="java.util.Map" parameterType="String">
+		SELECT oi.order_item_type,egbc.group_buying_sponsor_id as "groupBuySponsorId",
+		egbc.is_sponsor  as "isSponsor"
+		FROM ec_order AS o
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		left join ec_group_buying_customer as egbc on egbc.order_id = o.id
+		LEFT JOIN ec_payment AS p ON p.id=o.payment_id
+		WHERE p.payment_no=#{_parameter}
+		LIMIT 1
+	</select>
+	<update id="batchConfirm">
+		UPDATE ec_order SET
+		order_status = 1
+		WHERE id IN (''
+		<foreach collection="orderIdArray" item="id" separator="">
+			,#{id}
+		</foreach>
+		)
+		AND payment_status = 1
+		AND order_status = 0
+		AND shipping_status = 0
+	</update>
+	<select id="getReviewProductItemList" resultType="com.vcat.module.ec.dto.ReviewDto" parameterType="String">
+		SELECT p1.id AS "productId",oi.id AS "orderItemId",p1.name AS productName,pi1.id AS "productItemId",pi1.name AS itemName,
+		(SELECT i.url
+		FROM ec_product_image AS pi2
+		LEFT JOIN ec_image AS i ON pi2.image_id=i.id
+		WHERE pi2.product_id=p1.id
+		ORDER BY pi2.display_order DESC LIMIT 1)
+		AS "mainUrl",
+		CASE WHEN rd1.id IS NULL THEN '0' ELSE '1' END AS "isReview",
+		rd2.rating AS "rating",
+		rd1.review_text AS "reviewText"
+		FROM ec_order_item AS oi
+		LEFT JOIN ec_order AS o ON o.id=oi.order_id
+		LEFT JOIN ec_product_item AS pi1 ON oi.product_item_id=pi1.id
+		LEFT JOIN ec_product AS p1 ON p1.id=pi1.product_id
+		LEFT JOIN ec_review_detail AS rd1 ON rd1.order_item_id=oi.id
+		LEFT JOIN ec_rating_detail AS rd2 ON rd2.id=rd1.id
+		WHERE o.id=#{_parameter}
+	</select>
+	<select id="getOrderByItemId" resultType="java.util.Map" parameterType="String">
+		SELECT
+			oi.order_id as "orderId",
+			oi.id ,
+			oi.product_id AS "productId",
+			(SELECT count(1)
+			 FROM ec_order_item AS eoi
+			 WHERE eoi.order_id = o.id) AS "orderItemCount"
+		FROM ec_order_item AS oi
+			LEFT JOIN ec_order AS o ON o.id = oi.order_id
+		WHERE 1 = 1
+			AND payment_status = 1
+			AND order_status = 2
+			AND shipping_status = 2
+			AND oi.id=#{_parameter}
+	</select>
+	<select id="getCheckShippingEarningList" resultType="Map">
+		SELECT
+		o1.id AS "orderId",
+		o1.buyer_id AS "buyerId"
+		FROM
+		ec_order AS o1
+		LEFT JOIN ec_shipping shipping
+		ON o1.id = shipping.order_id
+		LEFT JOIN ec_express expres
+		ON expres.id = shipping.express_id
+		WHERE o1.id NOT IN
+		(SELECT DISTINCT
+		(item.order_id)
+		FROM
+		ec_order_item item
+		LEFT JOIN ec_return ret
+		ON item.id = ret.order_item_id
+		AND ret.is_activate = 1
+		WHERE ret.id IS NOT NULL
+		AND (
+		ret.return_status = 0
+		OR ret.return_status = 1
+		OR (
+		ret.return_status = 2
+		AND ret.refund_status = 0
+		)
+		OR (
+		ret.return_status = 2
+		AND ret.refund_status = 1
+		)
+		))
+		AND o1.payment_status = 1
+		AND o1.order_status = 2
+		AND o1.shipping_status = 2
+		AND o1.is_fund = 0
+		AND o1.confirm_date IS NOT NULL
+		AND NOW() >
+		(SELECT
+		IF(
+		(SELECT api.receiving_date FROM ec_express_api api WHERE api.express_code
+		= ee.code AND api.shipping_no = s.shipping_number
+		AND api.state = 3 ORDER BY api.update_date DESC LIMIT 1) IS NOT NULL,
+		DATE_ADD((SELECT api.receiving_date FROM ec_express_api api WHERE api.express_code
+		= ee.code AND api.shipping_no = s.shipping_number
+		AND api.state = 3 ORDER BY api.update_date DESC LIMIT 1), INTERVAL #{dayLimit} DAY),
+		DATE_ADD(o.confirm_date, INTERVAL #{dayLimit} DAY)
+		)
+		FROM
+		ec_order AS o
+		LEFT JOIN ec_shipping AS s
+		ON s.id = o.shipping_id
+		LEFT JOIN ec_express AS ee
+		ON ee.id = s.express_id
+		WHERE o.id = o1.id)
+	</select>
+	<update id="updateIsFund" parameterType="String">
+		UPDATE ec_order
+		SET is_fund = 1
+		WHERE id = #{_parameter}
+	</update>
+	<update id="updateOrderStatus">
+		update ec_order
+		set order_status  = #{orderStatus},
+            payment_status = #{paymentStatus},
+            shipping_status = #{shippingStatus},
+            confirm_date = now()
+        where payment_id = #{payment.id}
+	</update>
+	<update id="extendReceiptDate">
+		update ec_order
+		set overtime = 1
+		where id = #{orderId}
+	</update>
+	<update id="changeOrderAddress">
+		UPDATE ec_order_address
+		set delivery_phone = #{deliveryPhone},
+		 delivery_name = #{deliveryName},
+		 detail_address = #{detailAddress},
+		 province = #{province},
+		 province_id = #{provinceId},
+		 city = #{city},
+		 city_id = #{cityId},
+		 district = #{district},
+		 district_id = #{districtId}
+		where id = #{orderId}
+	</update>
+	<select id="getOrderNumberList" resultType="Order">
+		SELECT id,order_number AS "orderNumber"
+		FROM ec_order
+		WHERE id IN (''
+		<foreach collection="idArray" item="id">
+			,#{id}
+		</foreach>
+		)
+	</select>
+	<select id="isSuperReserve" resultType="java.lang.Boolean">
+		select count(eo.id)  from ec_order as eo
+			join ec_order_item as eoi on eo.id = eoi.order_id
+			join view_all_recommend as var on var.productId = eoi.product_id
+			and var.endTime is not null
+		where eo.payment_id = #{paymentId}
+	</select>
+	<select id="getOrderInfoByPayment" resultType="com.vcat.module.ec.dto.OrderDto" parameterType="com.vcat.module.ec.entity.Payment">
+		select eo.id "id",eo.order_number as "orderNum", eo.buyer_id as "buyerId"
+		from ec_order as eo
+		where 1=1
+		<if test="id != null and id != ''">
+			and eo.payment_id = #{id}
+		</if>
+	</select>
+	<select id="getOrderReserveLogs" resultType="com.vcat.module.ec.dto.OrderReserveLogDto">
+		select eoi.order_id as "orderId",
+			(case when eorl.type = 0 then '进货'
+				  when eorl.type = 1 then '提货'
+			 	  when eorl.type = 2 then '取消提货'
+			 	  when eorl.type = 3 then '客户购买'
+			 	  when eorl.type = 4 then '客户取消订单'
+			  end ) as "type",
+			eorl.quantity as "quantity",
+			date_format(eorl.add_date,'%Y/%m/%d %H:%i:%s') as "addTime"
+		from ec_order_reserve_log as eorl
+			left join ec_order_item as eoi on eoi.id = eorl.order_item_id
+		where eoi.shop_id = #{shopId}
+			and eoi.product_item_id = #{productItemId}
+		order by eorl.add_date desc
+	</select>
+	<select id="countGroupBuyProduct" resultType="java.lang.Integer">
+		-- 同一个团购商品 只能购买一次
+
+	</select>
+	<select id="checkGroupBuyOrder" resultType="java.lang.Boolean">
+		SELECT count(1)
+			FROM ec_order AS eo
+			left join ec_order_item as eoi on eo.id = eoi.order_id
+			left join ec_product_item as epi on eoi.product_item_id = epi.id
+			where epi.product_item_type = 1
+			and eo.payment_id = #{paymentId}
+			and eo.payment_status = 1
+		limit 1
+	</select>
+	<select id="getMyOrderCount" resultType="java.util.Map">
+		SELECT
+		  (SELECT count(1)
+		   FROM ec_order AS o
+			 LEFT JOIN ec_order_item AS oi ON o.id = oi.order_id
+			 LEFT JOIN ec_group_buying_customer AS egbc ON egbc.order_id = o.id
+			 LEFT JOIN ec_group_buying_sponsor AS egbs ON egbc.group_buying_sponsor_id = egbs.id
+			 LEFT JOIN ec_review_detail AS erd ON oi.id = erd.order_item_id
+		   WHERE o.buyer_id = #{customerId}
+				 AND o.order_status = 0
+				 AND o.payment_status = 0
+				 AND o.shipping_status = 0
+				 AND o.buyer_del = 0
+				 AND oi.order_item_type NOT IN (3, 4, 5)
+				 <![CDATA[ and now() <= (SELECT DISTINCT
+					(CASE WHEN egbs.id IS NOT NULL
+					THEN date_add(o.add_date, INTERVAL (SELECT sys_dict.value
+					FROM sys_dict
+					WHERE type = 'ec_auto_close_group_buy_limit') MINUTE) -- 自动取消团购订单时间
+					when egbs.id IS NULL
+					then date_add(o.add_date, INTERVAL (SELECT sys_dict.value
+					FROM sys_dict
+					WHERE type = 'ec_auto_close_order_day_limit') DAY)     -- 自动取消普通订单时间
+					END)) ]]>
+		   )                                             AS "noPay",
+
+		  (SELECT count(1)
+		   FROM ec_order AS o
+			 LEFT JOIN ec_order_item AS oi ON o.id = oi.order_id
+		   WHERE o.buyer_id = #{customerId}
+				 AND o.order_status IN ('0', '1')
+				 AND o.payment_status = 1
+				 AND o.shipping_status = 0
+				 AND o.buyer_del = 0
+				 AND oi.order_item_type NOT IN (3, 4, 5)) AS "noSend",
+
+		  (SELECT count(1)
+		   FROM ec_order AS o
+			 LEFT JOIN ec_order_item AS oi ON o.id = oi.order_id
+		   WHERE o.buyer_id = #{customerId}
+				 AND o.order_status = 1
+				 AND o.payment_status = 1
+				 AND o.shipping_status = 1
+				 AND o.buyer_del = 0
+				 AND oi.order_item_type NOT IN (3, 4, 5)) AS "noReceiving",
+
+		  (SELECT count(1)
+		   FROM ec_order AS o
+			 LEFT JOIN ec_order_item AS oi ON o.id = oi.order_id
+			 LEFT JOIN ec_review_detail AS erd ON oi.id = erd.order_item_id
+		   WHERE o.buyer_id = #{customerId}
+				 AND o.order_status = 2
+				 AND o.payment_status = 1
+				 AND o.shipping_status = 2
+				 AND o.buyer_del = 0
+				 AND erd.id IS NULL
+				 AND oi.order_item_type NOT IN (3, 4, 5)
+				 AND date_add(o.confirm_date, INTERVAL 7 DAY) >= now()
+		  )                                               AS "noReview"
+	</select>
+	<select id="countBySellerId" resultType="java.lang.Integer">
+		SELECT COUNT(DISTINCT o.id)
+		FROM ec_order AS o
+		LEFT JOIN ec_order_address AS eoa ON o.id = eoa.id
+		LEFT JOIN ec_order_item AS oi ON oi.order_id=o.id
+		LEFT JOIN ec_customer_address AS eca ON o.customer_address_id = eca.id
+		LEFT JOIN ec_address AS ea ON eca.address_id = ea.id
+		LEFT JOIN ec_product_item AS epi ON oi.product_item_id = epi.id
+		LEFT JOIN ec_product AS ep ON epi.product_id = ep.id
+		LEFT JOIN ec_group_buying_customer AS egbc ON egbc.order_id = o.id
+		LEFT JOIN ec_group_buying_sponsor AS egbs ON egbc.group_buying_sponsor_id = egbs.id
+		left join ec_review_detail as erd on oi.id = erd.order_item_id
+		<if test="orderType == 6">
+			JOIN ec_return AS rr ON rr.order_item_id=oi.id
+			AND rr.is_activate=1
+			AND rr.return_status!='4'
+			AND rr.refund_status!='3'
+		</if>
+		WHERE o.buyer_id=#{buyerId}
+		<!-- 未付款 -->
+		<if test="orderType == 2">
+			AND o.order_status=0
+			AND o.payment_status=0
+			AND o.shipping_status=0
+			<![CDATA[ and now() <= (SELECT DISTINCT
+			(CASE WHEN egbs.id IS NOT NULL
+			THEN date_add(o.add_date, INTERVAL (SELECT sys_dict.value
+			FROM sys_dict
+			WHERE type = 'ec_auto_close_group_buy_limit') MINUTE) -- 自动取消团购订单时间
+			when egbs.id IS NULL
+			then date_add(o.add_date, INTERVAL (SELECT sys_dict.value
+			FROM sys_dict
+			WHERE type = 'ec_auto_close_order_day_limit') DAY)     -- 自动取消普通订单时间
+			END)) ]]>
+
+		</if>
+		<!-- 已支付未发货 -->
+		<if test="orderType == 3">
+			AND o.order_status IN ('0','1')
+			AND o.payment_status=1
+			AND o.shipping_status=0
+		</if>
+		<!-- 已支付已发货 -->
+		<if test="orderType == 4">
+			AND o.order_status=1
+			AND o.payment_status=1
+			AND o.shipping_status=1
+		</if>
+		<if test="orderType == 5">
+			AND o.order_status=2
+			AND o.payment_status=1
+			AND o.shipping_status=2
+			and date_add(o.confirm_date , INTERVAL 7 DAY) >= now()
+			and erd.id is null
+		</if>
+		<if test="orderType ==6">
+			AND o.order_status IN ('0','1','2')
+			AND o.payment_status=1
+		</if>
+		AND o.buyer_del=0
+		AND oi.order_item_type not in  (3,4,5)
+		<if test="condition != null and condition != ''">
+			AND
+			(eoa.delivery_name LIKE CONCAT('%', #{condition} ,'%') OR eoa.delivery_phone LIKE CONCAT('%', #{condition} ,'%') OR ep.name LIKE CONCAT('%', #{condition} ,'%'))
+		</if>
+	</select>
+
+	<select id="getSellerOrderList" resultType="com.vcat.module.ec.dto.OrderDto">
+		SELECT *
+		FROM (
+			   SELECT DISTINCT
+				 (CASE WHEN egbs.id IS NOT NULL
+				   THEN date_add(o.add_date, INTERVAL (SELECT sys_dict.value
+													   FROM sys_dict
+													   WHERE type = 'ec_auto_close_group_buy_limit') MINUTE) -- 自动取消团购订单时间
+				  when egbs.id IS NULL
+					then date_add(o.add_date, INTERVAL (SELECT sys_dict.value
+													  FROM sys_dict
+													  WHERE type = 'ec_auto_close_order_day_limit') DAY)     -- 自动取消普通订单时间
+				  END)                                              AS "autoCancelDate",
+				(select date_add(shipping_date, INTERVAL (SELECT sys_dict.value
+					FROM sys_dict
+					WHERE type = 'ec_auto_check_shipping_day_limit') DAY) ) as "autoReceiptDate", -- 自动收货时间
+				 o.id,
+				 o.is_fund                                          AS "isFund",
+				 o.order_number                                     AS "orderNum",
+				 o.add_date                                         AS "createDate",
+				 o.payment_id                                       AS "paymentId",
+				 o.customer_address_id AS "customerAddressId",
+				 egbs.status                                        AS "groupBuyStatus",
+				 egbs.id                                            AS "groupBuySponsorId",
+				 egb.id											    AS "groupBuyId",
+				 egt.name                                           AS "payWay",
+				 sh.shipping_number                                 AS "deliveryNum",
+				 ex.code                                            AS "expressCode",
+				 oa.delivery_name                                   AS "receiveUserName",
+				 oa.detail_address                                  AS "receiveDetailAddress",
+				 oa.delivery_phone                                  AS "receivePhoneNum",
+				 o.shipping_status                                  AS "shippingStatus",
+				 o.buyer_id                                         AS "buyerId",
+				 o.confirm_date									    AS "confirmDate",
+		         o.overtime											AS "isExtended",
+				 (SELECT SUM(oi.quantity + oi.promotion_quantity)
+				  FROM ec_order_item AS oi
+				  WHERE oi.order_id = o.id)                         AS "totalProductNum",
+				 (CASE WHEN (
+				 (SELECT eoi.id
+				 FROM ec_order AS eo LEFT JOIN ec_order_item AS eoi ON eo.id = eoi.order_id
+				 WHERE eo.id = o.id
+				 LIMIT 1) IN (SELECT erd.order_item_id
+				 FROM ec_review_detail 								AS erd
+				 WHERE erd.buyer_id = o.buyer_id))
+				 THEN 1
+				 ELSE 0
+				 END)                                               AS "isReviewed",
+				 o.total_coupon                                     AS "totalCoupon",
+				 o.freight_price                                    AS "freightPrice",
+				 (o.total_price - o.total_coupon + o.freight_price) AS "totalPrice",
+				 oa.province                                        AS "province",
+				 oa.city                                            AS "city",
+				 oa.district                                        AS "district",
+				 i.title                                            AS "invoice.title",
+				 i.type                                             AS "invoice.type",
+				 o.order_status										as "orderStatus",
+				 (CASE
+				  WHEN o.order_status = 0 AND o.payment_status = 0 AND o.shipping_status = 0
+					THEN '2'
+				  WHEN o.order_status IN ('0', '1') AND o.payment_status = 1 AND o.shipping_status = 0
+					THEN '3'
+				  WHEN o.order_status = 1 AND o.payment_status = 1 AND o.shipping_status = 1
+					THEN '4'
+				  WHEN o.order_status = 2 AND o.payment_status = 1 AND o.shipping_status = 2
+					THEN '5'
+				  WHEN o.order_status = 3 AND o.payment_status = 0 AND o.shipping_status = 0
+					THEN '7'
+				  else '0'
+				  END)                                              AS "orderType",
+
+				(SELECT COUNT(oo.id)
+				FROM ec_order AS oo
+				LEFT JOIN ec_order_item AS oi ON oi.order_id=oo.id
+				JOIN ec_return AS rr ON rr.order_item_id=oi.id
+				AND rr.is_activate=1
+				AND rr.return_status!='4'
+				AND rr.refund_status!='3'
+				WHERE oo.id=o.id) 									AS reFundcount,
+				eoa.delivery_name,
+				eoa.delivery_phone,
+				(SELECT group_concat(epp.name)
+				FROM ec_product as epp left join ec_product_item as eppi on epp.id = eppi.product_id left join ec_order_item as eooi on eppi.id = eooi.product_item_id
+				where eooi.order_id = o.id
+				) as "name"
+
+				FROM ec_order AS o
+				LEFT JOIN ec_order_address AS eoa ON o.id = eoa.id
+				LEFT JOIN ec_group_buying_customer AS egbc ON egbc.order_id = o.id
+				LEFT JOIN ec_group_buying_sponsor AS egbs ON egbc.group_buying_sponsor_id = egbs.id
+				LEFT JOIN ec_group_buying AS egb ON egbs.group_buying_id = egb.id
+				LEFT JOIN ec_shipping AS sh ON o.shipping_id = sh.id
+				LEFT JOIN ec_order_item AS oi ON oi.order_id = o.id
+				LEFT JOIN ec_express AS ex ON ex.id = sh.express_id
+				LEFT JOIN ec_customer_address AS ca ON ca.id = o.customer_address_id
+				LEFT JOIN ec_address AS aa ON aa.id = ca.address_id
+				LEFT JOIN ec_order_address AS oa ON oa.id = o.id
+				LEFT JOIN ec_customer AS cc ON cc.id = ca.customer_id
+				LEFT JOIN ec_invoice AS i ON i.id = o.invoice_id
+				LEFT JOIN ec_payment AS ep ON o.payment_id = ep.id
+				LEFT JOIN ec_gateway_type AS egt ON egt.id = ep.gateway_type_id
+			   WHERE 1 = 1
+					AND o.buyer_del= 0
+					<if test="null != buyerId and '' != buyerId">
+						AND o.buyer_id=#{buyerId}
+					</if>
+					<if test="null != shopId and '' != shopId">
+						AND oi.shop_id=#{shopId}
+					</if>
+					<!-- 全部 -->
+					<if test="orderType == 1">
+					</if>
+					<!-- 未付款 -->
+					<if test="orderType == 2">
+						AND o.order_status=0
+						AND o.payment_status=0
+						AND o.shipping_status=0
+					</if>
+					<!-- 已支付未发货 -->
+					<if test="orderType == 3">
+						AND o.order_status IN ('0','1')
+						AND o.payment_status=1
+						AND o.shipping_status=0
+					</if>
+					<!-- 已支付已发货 -->
+					<if test="orderType == 4">
+						AND o.order_status=1
+						AND o.payment_status=1
+						AND o.shipping_status=1
+					</if>
+					<!-- 已完成 -->
+					<if test="orderType == 5">
+						AND o.order_status=2
+						AND o.payment_status=1
+						AND o.shipping_status=2
+					</if>
+					<if test="orderId != null and orderId != ''">
+						AND o.id = #{orderId}
+					</if>
+					<if test="orderNumber != null and orderNumber != ''">
+						AND o.order_number = #{orderNumber}
+					</if>
+					AND o.buyer_del = 0
+					AND oi.order_item_type not in  (3,4,5)
+			   ) AS result
+				where 1=1
+					<if test="orderType == 2">
+						<![CDATA[ and now() <= autoCancelDate ]]>
+					</if>
+					<if test="orderType == 5">
+						and result.isReviewed = 0
+						and date_add(result.confirmDate , INTERVAL 7 DAY) >= now()
+					</if>
+					<if test="condition != null and condition != ''">
+						AND
+						(result.delivery_name LIKE CONCAT('%', #{condition} ,'%') OR result.delivery_phone LIKE CONCAT('%', #{condition} ,'%') OR result.name LIKE CONCAT('%', #{condition} ,'%'))
+					</if>
+		ORDER BY result.createDate DESC,result.orderNum DESC
+		LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+
+
+	<select id="getOrderItemsInfo" resultType="com.vcat.module.ec.dto.ProductItemDto" parameterType="String">
+		SELECT
+		  p1.id                         AS "productId",
+		  (case when egb.id is null then "" else egb.id end) AS "groupBuyId",
+		  oi.id                         AS "orderItemId",
+		  p1.name                       AS "productName",
+		  pi1.id                        AS "productItemId",
+		  pi1.name                      AS "itemName",
+		  oi.item_price                 AS "itemPrice",
+		  oi.quantity,
+		  oi.promotion_quantity         AS "promotionQuantity",
+		  ss.id                         AS "shopId",
+		  oi.parent_id                  AS "parentShopId",
+		  oi.grandfather_id             AS "parentParentShopId",
+		  ss.shop_num                   AS "shopNum",
+		  ll.url                        AS "levelUrl",
+		  oi.order_item_type            AS "productType",
+		  (case when oi.order_item_type = 8 or oi.order_item_type = 9 then 1 else 0 end)  AS "isGroupBuyProduct",
+		  p1.archived					AS "archived",
+		  (CASE
+		   WHEN o.order_status = 0 AND o.payment_status = 0 AND o.shipping_status = 0
+			 THEN '2'
+		   WHEN o.order_status IN ('0', '1') AND o.payment_status = 1 AND o.shipping_status = 0
+			 THEN '3'
+		   WHEN o.order_status = 1 AND o.payment_status = 1 AND o.shipping_status = 1
+			 THEN '4'
+		   WHEN o.order_status = 2 AND o.payment_status = 1 AND o.shipping_status = 2 AND
+				NOW() > (SELECT IF(ea.receiving_date IS NOT NULL, DATE_ADD(ea.receiving_date, INTERVAL 7 DAY),
+								   DATE_ADD(o.confirm_date, INTERVAL 7 DAY))
+						 FROM ec_order AS o
+						   LEFT JOIN ec_shipping AS s ON s.id = o.shipping_id
+						   LEFT JOIN ec_express AS ee ON ee.id = s.express_id
+						   LEFT JOIN ec_express_api AS ea ON ea.express_code = ee.code
+															 AND ea.shipping_no = s.shipping_number
+															 AND ea.state = 3
+						 WHERE o.id = oi.order_id
+						 ORDER BY ea.update_date DESC
+						 LIMIT 1)
+			 THEN '5'
+		   WHEN o.order_status = 3 AND o.payment_status = 0 AND o.shipping_status = 0
+			 THEN '7'
+
+		   WHEN oi.order_item_type = 7 AND o.order_status = 2 AND o.payment_status = 1 AND o.shipping_status = 2
+				AND (
+					  SELECT DATE_ADD(o.confirm_date, INTERVAL 7 DAY)
+					  FROM ec_order AS oo
+					  WHERE oo.id = o.id
+					  LIMIT 1) > NOW()
+			 THEN '9'
+		   WHEN o.order_status = 2 AND o.payment_status = 1 AND o.shipping_status = 2 AND
+				(SELECT IF(ea.receiving_date IS NOT NULL, DATE_ADD(ea.receiving_date, INTERVAL 7 DAY),
+						   DATE_ADD(o.confirm_date, INTERVAL 7 DAY))
+				 FROM ec_order AS o
+				   LEFT JOIN ec_shipping AS s ON s.id = o.shipping_id
+				   LEFT JOIN ec_express AS ee ON ee.id = s.express_id
+				   LEFT JOIN ec_express_api AS ea ON ea.express_code = ee.code
+													 AND ea.shipping_no = s.shipping_number
+													 AND ea.state = 3
+				 WHERE o.id = oi.order_id
+				 ORDER BY ea.update_date DESC
+				 LIMIT 1) > NOW()
+			 THEN '8'
+		   END)                         AS "type",
+		  (SELECT i.url
+		   FROM ec_product_image AS pi2
+			 LEFT JOIN ec_image AS i ON pi2.image_id = i.id
+		   WHERE pi2.product_id = p1.id
+		   ORDER BY pi2.display_order DESC
+		   LIMIT 1)
+										AS "mainUrl",
+		  rr.return_status              AS "returnStatus",
+		  rr.refund_status              AS "refundStatus",
+		  rr.quantity                   AS "requantity",
+		  rr.id                         AS "refundId",
+		  rr.is_activate                AS "returnActivate",
+		  oi.sale_earning               AS "itemSaleEarning",
+		  oi.bonus_earning              AS "itemBonusEarning",
+		  oi.first_bonus_earning        AS "itemFirstBonusEarning",
+		  oi.second_bonus_earning       AS "itemSecondBonusEarning",
+		  p1.can_refund                 AS "canRefund",
+		  (CASE
+		   WHEN oi.order_item_type = 2 OR oi.order_item_type = 3 OR oi.order_item_type = 4 OR oi.order_item_type = 6 OR
+				oi.order_item_type = 7 OR oi.order_item_type = 8
+			 THEN 'V猫商场'
+		   WHEN oi.order_item_type = 1 OR oi.order_item_type = 9
+			 THEN CONCAT(cc.user_name, "的V猫小店")
+		   END)                         AS "shopName",
+		  oi.single_coupon              AS "couponValue",
+		  (SELECT IF(COUNT(id) > 0, '1', '0')
+		   FROM ec_return
+		   WHERE order_item_id = oi.id) AS "checkRefundStatus"
+		FROM ec_order_item AS oi
+		  LEFT JOIN ec_order AS o ON o.id = oi.order_id
+		  left join ec_group_buying_customer as egbc on egbc.order_item_id = oi.id
+		  left join ec_group_buying_sponsor as egbs on egbs.id = egbc.group_buying_sponsor_id
+		  left join ec_group_buying as egb on egb.id = egbs.group_buying_id
+		  LEFT JOIN ec_product_item AS pi1 ON oi.product_item_id = pi1.id
+		  LEFT JOIN ec_product AS p1 ON p1.id = pi1.product_id
+		  LEFT JOIN ec_shop AS ss ON ss.id = oi.shop_id
+		  LEFT JOIN ec_level AS ll ON ll.id = ss.level_id
+		  LEFT JOIN ec_customer AS cc ON cc.id = oi.shop_id
+		  LEFT JOIN ec_brand brand ON brand.id = p1.brand_id
+		  LEFT JOIN ec_supplier AS su ON su.id = brand.supplier_id
+		  LEFT JOIN ec_return AS rr ON oi.id = rr.order_item_id
+									   AND rr.is_activate = 1
+									   AND rr.return_status != '4'
+									   AND rr.refund_status != '3'
+		WHERE o.id = #{orderId}
+		order by oi.order_item_type desc
+	</select>
+	<select id="countSellerRefundOrder" resultType="java.lang.Integer">
+		SELECT count(1)
+		FROM ec_return as er
+		where er.customer_id = #{customerId}
+		AND er.is_del = 0
+	</select>
+	<select id="getSellerRefundOrderList" resultType="com.vcat.module.ec.dto.ProductItemDto">
+		SELECT
+			(SELECT i.url
+			 FROM ec_product_image AS pi2
+				 LEFT JOIN ec_image AS i ON pi2.image_id = i.id
+			 WHERE pi2.product_id = ep.id
+			 ORDER BY pi2.display_order DESC
+			 LIMIT 1)
+														AS "mainUrl",
+			(CASE
+			 WHEN eoi.order_item_type = 2 OR eoi.order_item_type = 3 OR eoi.order_item_type = 4 OR eoi.order_item_type = 6 OR
+						eoi.order_item_type = 7 OR eoi.order_item_type = 8
+				 THEN 'V猫商场'
+			 WHEN eoi.order_item_type = 1 OR eoi.order_item_type = 9
+				 THEN CONCAT(cc.user_name, "的V猫小店")
+			 END)                 AS "shopName",
+			eoi.id                AS "orderItemId",
+			ep.name               AS "productName",
+			epi.name              AS "itemName",
+			eoi.item_price        AS "itemPrice",
+			eoi.quantity,
+			eoi.promotion_quantity as "promotionQuantity",
+			er.quantity           AS "reQuantity",
+			er.amount,
+			(case when eoi.order_item_type = 8 or eoi.order_item_type = 9 then 1 else 0 end)  AS "isGroupBuyProduct",
+			er.return_status      AS "returnStatus",
+			er.refund_status      AS "refundStatus",
+			er.id                 AS "refundId",
+			er.is_activate        AS "returnActivate",
+			epi.id                AS "productItemId",
+			ep.id                 AS "productId",
+			egbs.status           AS "groupBuyStatus",
+			egbs.group_buying_id  AS "groupBuyId",
+			eoi.order_item_type   AS "productType",
+			ep.can_refund as "canRefund"
+		FROM ec_return AS er
+			LEFT JOIN ec_order_item AS eoi ON er.order_item_id = eoi.id
+			LEFT JOIN ec_order AS eo ON eoi.order_id = eo.id
+			LEFT JOIN ec_customer AS cc ON cc.id = eoi.shop_id
+			LEFT JOIN ec_product_item AS epi ON eoi.product_item_id = epi.id
+			LEFT JOIN ec_product AS ep ON eoi.product_id = ep.id
+			LEFT JOIN ec_group_buying_customer AS egbc ON eo.id = egbc.order_id
+			LEFT JOIN ec_group_buying_sponsor AS egbs ON egbc.group_buying_sponsor_id = egbs.id
+		WHERE eo.buyer_id = #{customerId}
+					AND er.is_del = 0
+		order by er.oper_date desc
+		LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+    <select id="select" resultType="com.vcat.module.ec.entity.Order">
+        SELECT
+            a.id AS "id",
+            a.order_number AS "orderNumber",
+            a.total_price AS "totalPrice",
+            a.note AS "note",
+            a.add_date AS "addDate",
+            a.confirm_date AS "confirmDate",
+            a.order_status AS "orderStatus",
+            a.payment_status AS "paymentStatus",
+            a.shipping_status AS "shippingStatus",
+            a.total_coupon AS "totalCoupon",
+            a.freight_price AS "freightPrice"
+        FROM ec_order a
+        WHERE a.id = #{id}
+    </select>
+	<select id="getRefundCount" resultType="java.util.Map">
+		SELECT
+        (
+                SELECT count(1)
+                FROM ec_order AS eo
+                        LEFT JOIN ec_order_item AS eoi ON eo.id = eoi.order_id
+                        LEFT JOIN ec_return AS er ON eoi.id = er.order_item_id
+                WHERE eo.id = #{orderId}
+                      AND er.id IS not NULL and er.is_activate = 1 and er.refund_status != 3 and er.return_status != 4
+        )                                                  AS "refundCount",
+        (SELECT count(1)
+         FROM ec_order AS eo
+                 LEFT JOIN ec_order_item AS eoi ON eo.id = eoi.order_id
+                 left join ec_product_item as epi on eoi.product_item_id = epi.id
+                 left join ec_product as ep on eoi.product_id = ep.id
+         WHERE eo.id = #{orderId}
+         and ep.can_refund = 1) AS "orderItemCount",
+		  (SELECT count(1)
+		   FROM ec_order AS eo
+			 LEFT JOIN ec_order_item AS eoi ON eo.id = eoi.order_id
+			 LEFT JOIN ec_return AS er ON eoi.id = er.order_item_id
+		   WHERE eo.id = #{orderId}
+				 AND er.id IS NOT NULL AND er.is_activate = 1 AND er.refund_status != 3 AND er.return_status != 4
+				 AND er.has_freight_price = 1) AS "hasFreightPriceCount"
+	</select>
+	<select id="isGroupBuyProductNormalBuy" resultType="java.util.Map">
+		SELECT egb.id as "groupBuyId"
+			FROM ec_order_item AS oi
+					  LEFT JOIN ec_order AS o ON o.id = oi.order_id
+					  LEFT JOIN ec_product_item AS pi1 ON oi.product_item_id = pi1.id
+					  LEFT JOIN ec_product AS p1 ON p1.id = pi1.product_id
+				  left join ec_group_buying as egb on p1.id = egb.product_id
+			where oi.id = #{orderItemId} limit 1
+	</select>
+	<select id="getWeixinInfoByPayment" resultType="java.util.Map">
+		SELECT
+		  eo.id                         AS "id",
+		  eo.order_number               AS "orderNumber",
+		  eo.total_price                AS "price",
+		  e3.unique_id                  AS "openId",
+		  egbs.id                       AS "groupBuySponsorId",
+		  (SELECT concat(left(group_concat(epp.name), 30),"...")
+		   FROM ec_product AS epp LEFT JOIN ec_product_item AS eppi ON epp.id = eppi.product_id
+			 LEFT JOIN ec_order_item AS eooi ON eppi.id = eooi.product_item_id
+		   WHERE eooi.order_id = eo.id) AS "productName"
+		FROM ec_order AS eo
+		  LEFT JOIN ec_group_buying_customer AS egbc ON egbc.order_id = eo.id
+		  LEFT JOIN ec_group_buying_sponsor AS egbs ON egbc.group_buying_sponsor_id = egbs.id
+		  LEFT JOIN ec_customer AS ec ON eo.buyer_id = ec.id
+		  LEFT JOIN ec_3rd AS e3 ON ec.id = e3.customer_id
+		  LEFT JOIN ec_3rd_type AS e3t ON e3.type = e3t.id
+		WHERE eo.payment_id = #{id}
+		and e3t.code = 'Wechat'
+	</select>
+</mapper>

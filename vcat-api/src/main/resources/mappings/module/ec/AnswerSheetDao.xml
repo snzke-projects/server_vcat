@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.AnswerSheetDao">
+    <sql id="answerSheetColumns">
+        a.id AS "id",
+        a.customer_id AS "customer.id",
+        customer.user_name AS "customer.userName",
+        a.questionnaire_id AS "questionnaire.id",
+        questionnaire.title AS "questionnaire.title",
+        a.answer_time AS "answerTime"
+    </sql>
+    <sql id="answerSheetJoins">
+        LEFT JOIN ec_customer customer ON customer.id = a.customer_id
+        LEFT JOIN ec_questionnaire questionnaire ON questionnaire.id = a.questionnaire_id
+    </sql>
+    <select id="get" resultType="AnswerSheet">
+        SELECT
+        <include refid="answerSheetColumns"></include>
+        FROM ec_answer_sheet a
+        <include refid="answerSheetJoins"></include>
+        WHERE 1=1
+        <if test="id != null and id != ''">
+            AND a.id = #{id}
+        </if>
+        <if test="customer != null and customer != null and customer.id != ''">
+            AND a.customer_id = #{customer.id}
+        </if>
+        <if test="questionnaire != null and questionnaire != null and questionnaire.id != ''">
+            AND a.questionnaire_id = #{questionnaire.id}
+        </if>
+        <if test="sqlMap.activityId != null and sqlMap.activityId != ''">
+            AND a.id IN (SELECT answer_sheet_id FROM  ec_activity_answer_sheet WHERE activity_id = #{sqlMap.activityId})
+        </if>
+    </select>
+    <select id="select" resultType="AnswerSheet">
+        SELECT
+        <include refid="answerSheetColumns"></include>
+        FROM ec_answer_sheet a
+        <include refid="answerSheetJoins"></include>
+        WHERE a.id = #{id}
+    </select>
+    <select id="findList" resultType="AnswerSheet">
+        SELECT
+          <include refid="answerSheetColumns"></include>
+        FROM ec_answer_sheet a
+        <include refid="answerSheetJoins"></include>
+        ORDER BY a.create_date ASC
+    </select>
+    <insert id="insert">
+        INSERT INTO ec_answer_sheet(
+        id,
+        customer_id,
+        questionnaire_id,
+        answer_time
+        ) VALUES (
+        #{id},
+        #{customer.id},
+        #{questionnaire.id},
+      	NOW()
+        )
+    </insert>
+    <select id="getAnswerSheet" resultType="AnswerSheet">
+    SELECT she.*
+	FROM ec_activity_answer_sheet AS aas
+	LEFT JOIN ec_answer_sheet AS she ON she.id=aas.answer_sheet_id
+	WHERE she.customer_id = #{customerId}
+	AND aas.activity_id = #{activityId}
+    </select>
+</mapper>

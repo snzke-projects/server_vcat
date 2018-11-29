@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ProductPropertyDao">
+	<select id="get" resultType="ProductProperty">
+		SELECT
+			pk.id AS "id",
+			pk.name as "name"
+		FROM ec_property_key pk
+		WHERE 1=1
+		<if test="id != null and '' != id">
+			AND pk.id = #{id}
+		</if>
+		<if test="name != null and '' != name">
+			AND pk.name = #{name}
+		</if>
+	</select>
+	
+	<select id="findList" resultType="ProductProperty">
+		SELECT
+			pk.id AS "id",
+			pk.name as "name",
+			pv.value as "value",
+			pv.product_id as "product.id",
+			cp.category_id as "category.id"
+		FROM ec_property_value pv
+		LEFT JOIN ec_property_key pk on pv.property_key_id = pk.id
+		LEFT JOIN ec_category_property cp on pk.id = cp.property_key_id
+		WHERE 1=1
+		<if test="product != null and product.id != null and product.id != ''">
+			AND pv.product_id = #{product.id}
+		</if>
+		<if test="category != null and category.id != null and category.id != ''">
+			AND cp.category_id = #{category.id}
+		</if>
+		ORDER BY pv.display_order ASC
+	</select>
+	<select id="findListByCategory" resultType="com.vcat.module.ec.entity.ProductProperty">
+		SELECT
+			pk.id AS "id",
+			pk.name AS "name",
+			"false" AS "isCustom",
+			'${editable}' AS "editable"
+		FROM
+			ec_category_property cp
+		LEFT JOIN ec_property_key pk ON cp.property_key_id = pk.id
+		WHERE cp.category_id = #{category.id}
+		ORDER BY pk.name DESC
+	</select>
+	<select id="findListByProduct" resultType="com.vcat.module.ec.entity.ProductProperty">
+		SELECT
+			pk.id AS "id",
+			pk.name AS "name",
+			pv.value AS "value",
+			"true" AS "isCustom"
+		FROM
+			ec_property_value pv
+		LEFT JOIN ec_property_key pk ON pk.id = pv.property_key_id
+		WHERE pv.product_id = #{id}
+		ORDER BY pv.display_order ASC
+	</select>
+
+	<select id="findAll" resultType="com.vcat.module.ec.entity.ProductProperty">
+		SELECT
+		pk.id AS "id",
+		pk.name as "name"
+		FROM ec_property_key pk
+		ORDER BY pk.name ASC
+	</select>
+
+	<update id="update">
+		UPDATE ec_property_key
+		SET name = #{name}
+		WHERE id = #{id}
+	</update>
+	
+	<insert id="insert">
+		INSERT INTO ec_property_key(
+			id,
+			name
+		) VALUES (
+			#{id},
+			#{name}
+		)
+	</insert>
+
+	<insert id="insertCategoryProperty">
+		INSERT INTO ec_category_property(
+			id,
+			category_id,
+			property_key_id
+		) VALUES (
+			#{sqlMap.categoryPropertyId},
+			#{sqlMap.categoryId},
+			#{id}
+		)
+	</insert>
+
+	<insert id="insertProductProperty">
+		INSERT INTO ec_property_value(
+			id,
+			property_key_id,
+			product_id,
+			value,
+			display_order
+		) VALUES (
+			#{sqlMap.productValueId},
+			#{id},
+			#{sqlMap.productId},
+			#{value},
+			#{displayOrder}
+		)
+	</insert>
+
+	<delete id="deleteCategoryProperty">
+		DELETE FROM ec_category_property
+		WHERE category_id = #{category.id}
+	</delete>
+
+	<delete id="deleteProductProperty">
+		DELETE FROM ec_property_value
+		WHERE product_id = #{product.id}
+	</delete>
+</mapper>

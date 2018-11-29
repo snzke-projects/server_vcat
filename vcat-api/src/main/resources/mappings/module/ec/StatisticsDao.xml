@@ -1,0 +1,424 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.StatisticsDao">
+	<select id="overview" resultType="Map">
+        SELECT
+		(SELECT COUNT(1) FROM ec_order where add_date >= #{st} AND #{et} > add_date AND order_status != 3 AND payment_status != 0)
+		AS 'orderCount'
+		,IFNULL((SELECT SUM(total_price) FROM ec_order where add_date >= #{st} AND #{et} > add_date AND order_status != 3 AND payment_status != 0 AND id not in (select item.order_id from ec_return ret LEFT JOIN ec_order_item item on ret.order_item_id = item.id where refund_status = 2 AND is_activate = 1)),0)
+		AS 'totalPrice'
+		,IFNULL((SELECT SUM(total_coupon) FROM ec_order where add_date >= #{st} AND #{et} > add_date AND order_status != 3 AND payment_status != 0 AND id not in (select item.order_id from ec_return ret LEFT JOIN ec_order_item item on ret.order_item_id = item.id where refund_status = 2 AND is_activate = 1)),0)
+		AS 'totalCoupon'
+		,ROUND(IFNULL((SELECT avg(a.buyPrice) from (select SUM(total_price) AS 'buyPrice' from ec_order where add_date >= #{st} AND #{et} > add_date AND order_status != 3 AND payment_status != 0 GROUP BY buyer_id) a),0),3)
+		AS 'avgPrice'
+		,(select count(1) from ec_customer customer where customer.is_registered = 1 AND id IN (select customer_id FROM ec_customer_role cr LEFT JOIN ec_role r ON cr.role_id = r.id WHERE r.role_name = 'seller') AND create_date >= #{st} AND #{et} > create_date)
+		AS 'newSeller'
+		,(select count(1) from ec_customer customer where customer.is_registered = 2 AND create_date >= #{st} AND #{et} > create_date)
+		AS 'quasiSeller'
+		,(select count(1) from ec_customer customer where (customer.is_registered is null or customer.is_registered = 0) AND id IN (select customer_id FROM ec_customer_role cr LEFT JOIN ec_role r ON cr.role_id = r.id WHERE r.role_name = 'buyer') AND create_date >= #{st} AND #{et} > create_date)
+		AS 'newBuyer'
+		,IFNULL((SELECT count(1) from ec_order ord WHERE ord.id IN (SELECT DISTINCT order_id FROM ec_order_item item WHERE item.order_id = ord.id AND item.order_item_type = 1) AND payment_status = 1 AND add_date >= #{st} AND #{et} > add_date),0)
+		AS 'normalOrderCount'
+		,IFNULL((SELECT count(1) from ec_order ord WHERE ord.id IN (SELECT DISTINCT order_id FROM ec_order_item item WHERE item.order_id = ord.id AND item.order_item_type = 2) AND payment_status = 1 AND add_date >= #{st} AND #{et} > add_date),0)
+		AS 'simpleOrderCount'
+		,IFNULL((SELECT count(1) from ec_order ord WHERE ord.id IN (SELECT DISTINCT order_id FROM ec_order_item item WHERE item.order_id = ord.id AND item.order_item_type = 3) AND payment_status = 1 AND add_date >= #{st} AND #{et} > add_date),0)
+		AS 'fullDeductionOrderCount'
+		,IFNULL((SELECT count(1) from ec_order ord WHERE ord.id IN (SELECT DISTINCT order_id FROM ec_order_item item WHERE item.order_id = ord.id AND item.order_item_type = 4) AND payment_status = 1 AND add_date >= #{st} AND #{et} > add_date),0)
+		AS 'partialDeductionOrderCount'
+		,IFNULL((SELECT count(1) from ec_order ord WHERE ord.id IN (SELECT DISTINCT order_id FROM ec_order_item item WHERE item.order_id = ord.id AND item.order_item_type = 5)  AND payment_status = 1 AND add_date >= #{st} AND #{et} > add_date),0)
+		AS 'activityOrderCount'
+		,IFNULL((select count(1) from ec_order ord WHERE ord.id IN (SELECT DISTINCT order_id FROM ec_order_item item WHERE item.order_id = ord.id AND item.order_item_type IN (1,2,3,4))  AND payment_status = 1 AND add_date >= #{st} AND #{et} > add_date),0)
+		AS 'paidOrderCount'
+		,(SELECT count(1) from ec_share_earning_log WHERE share_date >= #{st} AND #{et} > share_date)
+		AS 'shareCount'
+		,(SELECT COUNT(1) FROM ec_order)
+		AS 'allOrderCount'
+		,(SELECT COUNT(1) FROM ec_order where order_status = 3)
+		AS 'cancelOrderCount'
+		,(select count(1) from ec_order where payment_status = 0 AND shipping_status = 0 AND order_status = 0)
+		AS 'nonPayment'
+		,(select count(1) from ec_order where payment_status = 1 AND shipping_status = 0 AND order_status = 0)
+		AS 'toBeConfirmed'
+		,(select count(1) from ec_order where payment_status = 1 AND shipping_status = 0 AND order_status = 1)
+		AS 'toBeShipped'
+		,(select count(1) from ec_order where payment_status = 1 AND shipping_status = 1 AND order_status = 1)
+		AS 'shipped'
+		,(select count(1) from ec_order where payment_status = 1 AND order_status = 2)
+		AS 'completed'
+		,(select count(1) from ec_product where archived = 0)
+		AS 'productCount'
+		,(select count(a.productId) from (select product.id as 'productId' from ec_product_item item LEFT JOIN ec_product product on item.product_id = product.id where item.del_flag = 0 AND archived = 0 GROUP BY product.id HAVING sum(inventory) = 0) a)
+		AS 'outStockProductCount'
+	</select>
+    <select id="productStatistics" resultType="ProductStatistics">
+        SELECT a.* FROM (
+            SELECT
+            @rowNum:=@rowNum + 1 AS "salesRanking"
+            ,b.*
+            ,IFNULL(c.repeatCount,0) 'repeatCount'
+            ,IFNULL(d.buyerCount,0) 'buyerCount'
+            ,IFNULL(e.sellerCount,0) 'sellerCount'
+            ,IFNULL(f.proxyCount,0) 'proxyCount'
+            FROM (SELECT
+            eoi.supplier_id AS "supplierId",
+            eoi.brand_id AS "brandId",
+            ep.id,
+            es.name AS "supplierName",
+            eb.name AS "brandName",
+            ep.name,
+            CONCAT(MIN(eoi.item_price),'-',MAX(eoi.item_price)) AS "retailPrice",
+            CONCAT(MIN(eoi.sale_earning),'-',MAX(eoi.sale_earning)) AS "saleEarning",
+            MAX(eoi.item_price) AS "maxRetailPrice",
+            MAX(eoi.sale_earning) AS "maxSaleEarning",
+            MIN(eoi.item_price) AS "minRetailPrice",
+            MIN(eoi.sale_earning) AS "minSaleEarning",
+            SUM(eoi.quantity * eoi.item_price) AS "totalReturns",
+            SUM(eoi.quantity) AS "totalSales",
+            SUM(CASE eoi.order_item_type WHEN 1 THEN 1 ELSE 0 END) AS "normalOrderCount",
+            SUM(CASE eoi.order_item_type WHEN 2 THEN 1 ELSE 0 END) AS "sampleOrderCount"
+            FROM ec_order_item eoi
+            LEFT JOIN ec_return er ON (er.order_item_id = eoi.id AND er.is_activate = 1)
+            LEFT JOIN ec_order eo ON eoi.order_id = eo.id
+            LEFT JOIN ec_payment epa ON eo.payment_id = epa.id
+            LEFT JOIN ec_product ep ON eoi.product_id = ep.id
+            LEFT JOIN ec_brand eb ON eoi.brand_id = eb.id
+            LEFT JOIN ec_supplier es ON eoi.supplier_id = es.id
+            WHERE eo.payment_status = 1
+            AND (er.id IS NULL OR (er.return_status = 3 AND er.refund_status = 2))
+            AND eoi.order_item_type IN (1,2)
+            <if test="sqlMap != null and sqlMap.supplierId != null and sqlMap.supplierId != ''">
+                AND eoi.supplier_id = #{sqlMap.supplierId}
+            </if>
+            <if test="sqlMap != null and sqlMap.brandId != null and sqlMap.brandId != ''">
+                AND eoi.brand_id = #{sqlMap.brandId}
+            </if>
+            <if test="sqlMap != null and sqlMap.ost != null and sqlMap.ost != ''">
+                AND eo.add_date >= STR_TO_DATE(#{sqlMap.ost},"%Y-%m-%d")
+            </if>
+            <if test="sqlMap != null and sqlMap.oet != null and sqlMap.oet != ''">
+                AND ADDDATE(STR_TO_DATE(#{sqlMap.oet},"%Y-%m-%d"),INTERVAL 1 DAY) > eo.add_date
+            </if>
+            <if test="sqlMap != null and sqlMap.keyWord != null and sqlMap.keyWord != ''">
+                AND ep.name LIKE '%${sqlMap.keyWord}%'
+            </if>
+            GROUP BY eoi.supplier_id,eoi.brand_id,eoi.product_id
+            ORDER BY SUM(eoi.quantity) DESC
+            ) b
+            LEFT JOIN
+                (SELECT d.supplierId,d.brandId,d.productId,sum(d.repeatCount) 'repeatCount' FROM(
+                    SELECT oi.supplier_id 'supplierId',oi.brand_id 'brandId',oi.product_id 'productId',count(1) - 1 'repeatCount' FROM ec_order_item oi
+                    LEFT JOIN ec_order o ON oi.order_id = o.id
+                    LEFT JOIN ec_return r ON oi.id = r.order_item_id AND r.is_activate = 1
+                    WHERE o.buyer_id IS NOT NULL
+                    AND o.buyer_id != ''
+                    AND (r.id IS NULL OR r.return_status = 4 OR r.refund_status = 3)
+                    AND o.payment_status = 1
+                    GROUP BY oi.supplier_id,oi.brand_id,oi.product_id,o.buyer_id
+                    HAVING count(1) > 1
+                )d GROUP BY d.supplierId,d.brandId,d.productId) c ON (c.supplierId = b.supplierId AND c.brandId = b.brandId AND c.productId = b.id)
+            LEFT JOIN
+                (SELECT oi.supplier_id 'supplierId',oi.brand_id 'brandId',oi.product_id 'productId',count(DISTINCT o.buyer_id) 'buyerCount' FROM ec_order_item oi
+                INNER JOIN ec_order o ON oi.order_id = o.id
+                LEFT JOIN ec_return r ON oi.id = r.order_item_id AND r.is_activate = 1
+                WHERE o.buyer_id IS NOT NULL
+                AND o.buyer_id != ''
+                AND (r.id IS NULL OR r.return_status = 4 OR r.refund_status = 3)
+                AND o.payment_status = 1
+                GROUP BY oi.supplier_id,oi.brand_id,oi.product_id
+                ORDER BY buyerCount DESC) d ON (d.supplierId = b.supplierId AND d.brandId = b.brandId AND d.productId = b.id)
+            LEFT JOIN
+                (SELECT oi.supplier_id 'supplierId',oi.brand_id 'brandId',oi.product_id 'productId',count(DISTINCT oi.shop_id) 'sellerCount' FROM ec_order_item oi
+                INNER JOIN ec_order o ON oi.order_id = o.id
+                LEFT JOIN ec_return r ON oi.id = r.order_item_id AND r.is_activate = 1
+                WHERE oi.shop_id IS NOT NULL
+                AND oi.shop_id != ''
+                AND (r.id IS NULL OR r.return_status = 4 OR r.refund_status = 3)
+                AND o.payment_status = 1
+                GROUP BY oi.supplier_id,oi.brand_id,oi.product_id) e ON (e.supplierId = b.supplierId AND e.brandId = b.brandId AND e.productId = b.id)
+            LEFT JOIN (select product_id 'id',count(1) 'proxyCount' from ec_shop_product GROUP BY product_id) f ON f.id = b.id
+            ,(SELECT @rowNum:=0) g
+        ) a
+        <if test="sqlMap.orderBy == null or sqlMap.orderBy == '' or sqlMap.orderBy == 1">
+            ORDER BY a.totalSales DESC,a.salesRanking
+        </if>
+        <if test="sqlMap.orderBy == 2">
+            ORDER BY a.totalSales,a.salesRanking DESC
+        </if>
+        <if test="sqlMap.orderBy == 3">
+            ORDER BY a.maxRetailPrice DESC
+        </if>
+        <if test="sqlMap.orderBy == 4">
+            ORDER BY a.minRetailPrice
+        </if>
+        <if test="sqlMap.orderBy == 5">
+            ORDER BY a.maxSaleEarning DESC
+        </if>
+        <if test="sqlMap.orderBy == 6">
+            ORDER BY a.minSaleEarning
+        </if>
+    </select>
+
+    <select id="buyerList" resultType="ProductBuyer">
+        SELECT
+            oi.product_id AS 'id',
+            o.buyer_id AS 'buyerId',
+            GROUP_CONCAT(o.id) AS 'orderId',
+            p.name AS 'productName',
+            c.user_name AS 'buyerName',
+            c.phone_number AS 'buyerPhone',
+            count(1) - 1 AS 'repeatCount',
+            IFNULL((SELECT 'true' FROM ec_customer_role cr
+            LEFT JOIN ec_role role ON cr.role_id = role.id
+            WHERE role.role_name = 'seller' AND cr.customer_id = o.buyer_id
+            ),'false') AS 'isSeller',
+            IFNULL((SELECT 'true' FROM ec_customer_role cr
+                LEFT JOIN ec_role role ON cr.role_id = role.id
+            WHERE role.role_name = 'buyer' AND cr.customer_id = o.buyer_id
+            ),'false') AS 'isBuyer'
+        FROM ec_order_item oi
+        LEFT JOIN ec_product p ON oi.product_id = p.id
+        LEFT JOIN ec_order o ON oi.order_id = o.id
+        LEFT JOIN ec_customer c ON o.buyer_id = c.id
+        LEFT JOIN ec_return r ON oi.id = r.order_item_id AND r.is_activate = 1
+        WHERE o.buyer_id IS NOT NULL
+          AND o.buyer_id != ''
+          AND (r.id IS NULL OR r.return_status = 4 OR r.refund_status = 3)
+          AND oi.supplier_id = #{supplierId}
+          AND oi.brand_id = #{brandId}
+          AND oi.product_id = #{id}
+          AND o.payment_status = 1
+        <if test="sqlMap != null and sqlMap.keyWord != null and sqlMap.keyWord != ''">
+            AND (c.user_name LIKE '%${sqlMap.keyWord}%' OR c.phone_number LIKE '%${sqlMap.keyWord}%')
+        </if>
+        <if test="sqlMap != null and sqlMap.ost != null and sqlMap.ost != ''">
+            AND o.add_date >= #{sqlMap.ost}
+        </if>
+        <if test="sqlMap != null and sqlMap.oet != null and sqlMap.oet != ''">
+            AND #{sqlMap.oet} > o.add_date
+        </if>
+        <if test="sqlMap != null and sqlMap.role != null and sqlMap.role == 'seller'">
+            AND c.id IN (
+            SELECT cr.customer_id FROM ec_customer_role cr
+            LEFT JOIN ec_role role ON cr.role_id = role.id
+            WHERE role.role_name = 'seller')
+        </if>
+        <if test="sqlMap != null and sqlMap.role != null and sqlMap.role == 'buyer'">
+            AND c.id IN (
+            SELECT cr.customer_id FROM ec_customer_role cr
+            LEFT JOIN ec_role role ON cr.role_id = role.id
+            WHERE role.role_name = 'buyer')
+            AND c.id NOT IN (
+            SELECT cr.customer_id FROM ec_customer_role cr
+            LEFT JOIN ec_role role ON cr.role_id = role.id
+            WHERE role.role_name = 'seller')
+        </if>
+        GROUP BY oi.product_id,o.buyer_id
+        ORDER BY c.user_name
+    </select>
+
+    <select id="sellerList" resultType="ProductSeller">
+        SELECT
+            esp.product_id AS 'id',
+            esp.shop_id AS 'sellerId',
+            p.name AS 'productName',
+            c.user_name AS 'sellerName',
+            c.phone_number AS 'phone',
+            IFNULL((esp.del_flag = 0 AND esp.archived = 0),0) AS 'isProxy',
+            SUM((CASE WHEN o.payment_status = 1 THEN oi.quantity ELSE 0 END) - IFNULL(r.quantity,0)) > 0 AS 'isSale',
+            SUM((CASE WHEN o.payment_status = 1 THEN oi.quantity ELSE 0 END) - IFNULL(r.quantity,0)) AS 'sales'
+        FROM ec_shop_product esp
+        LEFT JOIN ec_customer c ON esp.shop_id = c.id
+        LEFT JOIN ec_order_item oi ON (oi.shop_id = esp.shop_id AND oi.product_id = esp.product_id)
+        LEFT JOIN ec_product p ON esp.product_id = p.id
+        LEFT JOIN ec_order o ON oi.order_id = o.id
+        LEFT JOIN ec_return r ON oi.id = r.order_item_id AND r.is_activate = 1
+        WHERE oi.shop_id != ''
+        AND oi.shop_id IS NOT NULL
+        AND oi.supplier_id = #{supplierId}
+        AND oi.brand_id = #{brandId}
+        AND p.id = #{id}
+        AND (r.id IS NULL OR r.return_status = 4 OR r.refund_status = 3)
+        <if test="sqlMap != null and sqlMap.keyWord != null and sqlMap.keyWord != ''">
+            AND (c.user_name LIKE '%${sqlMap.keyWord}%' OR c.phone_number LIKE '%${sqlMap.keyWord}%')
+        </if>
+        <if test="sqlMap != null and sqlMap.ost != null and sqlMap.ost != ''">
+            AND o.add_date >= #{sqlMap.ost}
+        </if>
+        <if test="sqlMap != null and sqlMap.oet != null and sqlMap.oet != ''">
+            AND #{sqlMap.oet} > o.add_date
+        </if>
+        <if test="sqlMap != null and sqlMap.isProxy != null and sqlMap.isProxy != '' and sqlMap.isProxy == 1">
+            AND esp.del_flag = 0 AND esp.archived = 0
+        </if>
+        <if test="sqlMap != null and sqlMap.isProxy != null and sqlMap.isProxy != '' and sqlMap.isProxy == 0">
+            AND (esp.id IS NULL OR esp.del_flag = 1 OR esp.archived = 1)
+        </if>
+        GROUP BY esp.product_id,esp.shop_id
+        <if test="sqlMap != null and sqlMap.isSale != null and sqlMap.isSale != '' and sqlMap.isSale == 1">
+            HAVING SUM(IFNULL(oi.quantity,0) - IFNULL(r.quantity,0)) > 0
+        </if>
+        <if test="sqlMap != null and sqlMap.isSale != null and sqlMap.isSale != '' and sqlMap.isSale == 0">
+            HAVING SUM(IFNULL(oi.quantity,0) - IFNULL(r.quantity,0)) = 0
+        </if>
+        ORDER BY sales DESC
+    </select>
+
+    <select id="shopStatistics" resultType="ShopStatistics">
+        SELECT
+        es.id,
+        es.name,
+        ec.phone_number AS 'phone',
+        SUM(eoi.quantity * eoi.item_price) AS "totalReturns",
+        SUM(eoi.quantity) AS "totalSales",
+        SUM(eoi.sale_earning * eoi.quantity) AS "saleEarning",
+        IFNULL(bonus.bonus_earning ,0) AS "bonusEarning",
+        IFNULL(second_bonus.second_bonus_earning,0) AS "secondBonusEarning"
+        FROM ec_order_item eoi
+        LEFT JOIN ec_return er ON (er.order_item_id = eoi.id AND er.is_activate = 1)
+        LEFT JOIN ec_order eo ON eoi.order_id = eo.id
+        LEFT JOIN ec_payment epa ON eo.payment_id = epa.id
+        LEFT JOIN ec_shop es ON es.id = eoi.shop_id
+        LEFT JOIN ec_customer ec ON ec.id = eoi.shop_id
+        LEFT JOIN (
+            SELECT
+            eoi.parent_id,
+            SUM(eoi.bonus_earning * eoi.quantity) AS "bonus_earning"
+            FROM ec_order_item eoi
+            LEFT JOIN ec_return er ON (er.order_item_id = eoi.id AND er.is_activate = 1)
+            LEFT JOIN ec_order eo ON eoi.order_id = eo.id
+            LEFT JOIN ec_payment epa ON eo.payment_id = epa.id
+            LEFT JOIN ec_shop es ON es.id = eoi.shop_id
+            LEFT JOIN ec_customer ec ON ec.id = eoi.shop_id
+            WHERE eo.payment_status = 1
+            AND (er.id IS NULL OR (er.return_status = 3 AND er.refund_status = 2))
+            AND eoi.order_item_type IN (1,2)
+            AND eoi.parent_id IS NOT NULL
+            AND eoi.bonus_earning > 0
+            <if test="sqlMap != null and sqlMap.ost != null and sqlMap.ost != ''">
+                AND eo.add_date >= STR_TO_DATE(#{sqlMap.ost},"%Y-%m-%d")
+            </if>
+            <if test="sqlMap != null and sqlMap.oet != null and sqlMap.oet != ''">
+                AND ADDDATE(STR_TO_DATE(#{sqlMap.oet},"%Y-%m-%d"),INTERVAL 1 DAY) > eo.add_date
+            </if>
+            <if test="sqlMap != null and sqlMap.keyWord != null and sqlMap.keyWord != ''">
+                AND (es.name LIKE '%${sqlMap.keyWord}%' OR ec.phone_number LIKE '%${sqlMap.keyWord}%')
+            </if>
+            GROUP BY eoi.parent_id
+        ) bonus ON bonus.parent_id = eoi.shop_id -- 查询分红奖励
+        LEFT JOIN (
+            SELECT
+            eoi.grandfather_id,
+            SUM(eoi.second_bonus_earning * eoi.quantity) AS "second_bonus_earning"
+            FROM ec_order_item eoi
+            LEFT JOIN ec_return er ON (er.order_item_id = eoi.id AND er.is_activate = 1)
+            LEFT JOIN ec_order eo ON eoi.order_id = eo.id
+            LEFT JOIN ec_payment epa ON eo.payment_id = epa.id
+            LEFT JOIN ec_shop es ON es.id = eoi.shop_id
+            LEFT JOIN ec_customer ec ON ec.id = eoi.shop_id
+            WHERE eo.payment_status = 1
+            AND (er.id IS NULL OR (er.return_status = 3 AND er.refund_status = 2))
+            AND eoi.order_item_type IN (1,2)
+            AND eoi.grandfather_id IS NOT NULL
+            AND eoi.second_bonus_earning > 0
+            <if test="sqlMap != null and sqlMap.ost != null and sqlMap.ost != ''">
+                AND eo.add_date >= STR_TO_DATE(#{sqlMap.ost},"%Y-%m-%d")
+            </if>
+            <if test="sqlMap != null and sqlMap.oet != null and sqlMap.oet != ''">
+                AND ADDDATE(STR_TO_DATE(#{sqlMap.oet},"%Y-%m-%d"),INTERVAL 1 DAY) > eo.add_date
+            </if>
+            <if test="sqlMap != null and sqlMap.keyWord != null and sqlMap.keyWord != ''">
+                AND (es.name LIKE '%${sqlMap.keyWord}%' OR ec.phone_number LIKE '%${sqlMap.keyWord}%')
+            </if>
+            GROUP BY eoi.grandfather_id
+        ) second_bonus ON second_bonus.grandfather_id = eoi.shop_id  -- 查询二级分红奖励
+        WHERE eo.payment_status = 1
+        AND (er.id IS NULL OR (er.return_status = 3 AND er.refund_status = 2))
+        AND eoi.order_item_type IN (1,2)
+        <if test="sqlMap != null and sqlMap.ost != null and sqlMap.ost != ''">
+            AND eo.add_date >= STR_TO_DATE(#{sqlMap.ost},"%Y-%m-%d")
+        </if>
+        <if test="sqlMap != null and sqlMap.oet != null and sqlMap.oet != ''">
+            AND ADDDATE(STR_TO_DATE(#{sqlMap.oet},"%Y-%m-%d"),INTERVAL 1 DAY) > eo.add_date
+        </if>
+        <if test="sqlMap != null and sqlMap.keyWord != null and sqlMap.keyWord != ''">
+            AND (es.name LIKE '%${sqlMap.keyWord}%' OR ec.phone_number LIKE '%${sqlMap.keyWord}%')
+        </if>
+        GROUP BY eoi.shop_id
+        <if test="sqlMap.orderBy == null or sqlMap.orderBy == '' or sqlMap.orderBy == 1">
+            ORDER BY totalSales DESC,totalReturns DESC
+        </if>
+        <if test="sqlMap.orderBy == 2">
+            ORDER BY totalSales,totalReturns
+        </if>
+        <if test="sqlMap.orderBy == 3">
+            ORDER BY totalReturns DESC
+        </if>
+        <if test="sqlMap.orderBy == 4">
+            ORDER BY totalReturns
+        </if>
+        <if test="sqlMap.orderBy == 5">
+            ORDER BY saleEarning DESC
+        </if>
+        <if test="sqlMap.orderBy == 6">
+            ORDER BY (bonusEarning + secondBonusEarning) DESC
+        </if>
+    </select>
+    <select id="kpiToColumn" resultType="Map">
+        SELECT
+            CONCAT(d.label) 'y'
+            <if test="sqlMap['dimensions'] == 'year'">
+                ,DATE_FORMAT(o.add_date,'%Y年') 'x'
+            </if>
+            <if test="sqlMap['dimensions'] == 'month'">
+                ,DATE_FORMAT(o.add_date,'%Y年%m月') 'x'
+            </if>
+            <if test="sqlMap['dimensions'] == 'day'">
+                ,DATE_FORMAT(o.add_date,'%Y年%m月%d日') 'x'
+            </if>
+            <if test="sqlMap['content'] == 'sales'">
+                ,SUM(oi.quantity * oi.item_price) 'value'
+            </if>
+            <if test="sqlMap['content'] == 'refund'">
+                ,SUM(IFNULL(r.quantity,0) * oi.item_price) 'value'
+            </if>
+            <if test="sqlMap['content'] == 'earning'">
+                ,SUM((oi.quantity - IFNULL(r.quantity,0)) * (IFNULL(oi.sale_earning,0) + IFNULL(oi.second_bonus_earning,0) + IFNULL(oi.bonus_earning,0))) 'value'
+            </if>
+            <if test="sqlMap['content'] == 'point'">
+                ,SUM((oi.quantity - IFNULL(r.quantity,0)) * oi.point) 'value'
+            </if>
+            <if test="sqlMap['content'] == 'orders'">
+                ,SUM(1) 'value'
+            </if>
+        FROM ec_order_item oi
+        LEFT JOIN ec_order o ON oi.order_id = o.id
+        LEFT JOIN ec_product p ON oi.product_id = p.id
+        LEFT JOIN ec_customer c ON o.buyer_id = c.id
+        LEFT JOIN ec_return r ON (oi.id = r.order_item_id AND r.is_activate = 1)
+        LEFT JOIN sys_dict d ON (oi.order_item_type = d.value AND d.type = 'ec_order_type')
+        WHERE o.payment_status = 1
+        AND (r.id IS NULL OR (r.return_status = 3 AND r.refund_status = 2))
+        <if test="sqlMap['st'] != null and sqlMap['st'] != ''">
+        AND o.add_date >= STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d")
+        </if>
+        <if test="sqlMap['et'] != null and sqlMap['et'] != '' and sqlMap['dimensions'] == 'year'">
+            AND ADDDATE(STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d"),INTERVAL 1 YEAR) > o.add_date
+        </if>
+        <if test="sqlMap['et'] != null and sqlMap['et'] != '' and sqlMap['dimensions'] == 'month'">
+            AND ADDDATE(STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d"),INTERVAL 1 MONTH) > o.add_date
+        </if>
+        <if test="sqlMap['et'] != null and sqlMap['et'] != '' and sqlMap['dimensions'] == 'day'">
+            AND ADDDATE(STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d"),INTERVAL 1 DAY) > o.add_date
+        </if>
+        GROUP BY oi.order_item_type
+        <if test="sqlMap['dimensions'] == 'year'">
+            ,DATE_FORMAT(o.add_date,'%Y')
+        </if>
+        <if test="sqlMap['dimensions'] == 'month'">
+            ,DATE_FORMAT(o.add_date,'%Y%m')
+        </if>
+        <if test="sqlMap['dimensions'] == 'day'">
+            ,DATE_FORMAT(o.add_date,'%Y%m%d')
+        </if>
+    </select>
+</mapper>

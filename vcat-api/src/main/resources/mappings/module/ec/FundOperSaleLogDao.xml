@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.FundOperSaleLogDao">
+<insert id="insert" parameterType="com.vcat.module.ec.entity.FundOperSaleLog">
+	INSERT INTO ec_fund_oper_sale_log(
+	id,
+	shop_fund_id,
+	fund_field_type_id,
+	fund,
+	remain_fund,
+	note,
+	oper_by,
+	oper_date,
+	relate_id,
+	fund_type
+	) VALUES (
+	#{id},
+	#{shopFundId},
+	(SELECT s.id  FROM ec_fund_field_type AS s WHERE s.value=#{fundFieldType.code} LIMIT 1),
+	#{fund},
+	#{remainFund},
+	#{note},
+	#{createBy.id},
+	NOW(),
+	#{relateId},
+	#{fundType}
+	)
+ 
+</insert>
+<select id="get" resultType="com.vcat.module.ec.entity.FundOperSaleLog" parameterType="com.vcat.module.ec.entity.FundOperSaleLog">
+	SELECT fol.* FROM ec_fund_oper_sale_log AS fol
+	LEFT JOIN ec_fund_field_type AS fft ON fft.id=fol.fund_field_type_id
+	WHERE fol.shop_fund_id=#{shopFundId}
+	AND fft.value=#{fundFieldType.code}
+	AND fol.relate_id=#{relateId}
+	AND fol.fund_type=1
+	AND fol.note LIKE CONCAT('%',#{note},'%')
+</select>
+</mapper>

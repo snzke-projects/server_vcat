@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.FavoritesDao">
+<sql id="Base_Column_List">
+	id as "id",
+	customer_id as "customer.id",
+	shop_id as "shop.id",
+	product_id as "product.id",
+	fav_type as "favType",
+	group_buying_id as "groupBuy.id"
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="customer.id!=null and customer.id!=''">
+			AND customer_id = #{customer.id}
+		</if>
+		<!--收藏小店-->
+		<if test="shop.id!=null and shop.id!='' and (product.id==null or product.id == '')">
+			AND shop_id = #{shop.id}
+			AND (product_id IS NULL OR product_id = '')
+		</if>
+		<!--app内收藏团购商品-->
+		<if test="product.id!=null and product.id!='' and groupBuy.id!=null and groupBuy.id!='' and (shop.id==null or shop.id=='' )">
+			AND product_id =#{product.id}
+			and group_buying_id = #{groupBuy.id}
+			AND fav_type=#{favType}
+		</if>
+		<!--app外收藏团购商品-->
+		<if test="product.id!=null and product.id!='' and groupBuy.id!=null and groupBuy.id!='' and shop.id!=null and shop.id!=''">
+			AND product_id =#{product.id}
+			and group_buying_id = #{groupBuy.id}
+			AND shop_id = #{shop.id}
+			AND fav_type=#{favType}
+		</if>
+		<!--app外收藏普通商品-->
+		<if test="product.id!=null and product.id!='' and shop.id!=null and shop.id!='' and (groupBuy.id==null or groupBuy.id=='' )">
+			AND product_id = #{product.id}
+			AND shop_id = #{shop.id}
+			AND fav_type=#{favType}
+		</if>
+		<!--app内收藏拿样商品-->
+		<if test="product.id!=null and product.id!='' and (shop.id==null or shop.id=='' ) and (groupBuy.id==null or groupBuy.id=='' )">
+			AND product_id =#{product.id}
+			AND fav_type=#{favType}
+		</if>
+	</where>
+</sql>
+<select id="get" resultType="com.vcat.module.ec.entity.Favorites" parameterType="com.vcat.module.ec.entity.Favorites">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_favorites
+	<include refid="Base_Where_Clause" />
+</select>
+<select id="findFavoritesCount" resultType="int" parameterType="String">
+	SELECT
+	count(id)
+	FROM ec_favorites
+	where 1=1 AND shop_id = #{_parameter}
+	AND (product_id IS NULL or product_id = '')
+</select>
+
+<select id="countShopCollect" resultType="int" parameterType="String">
+	SELECT
+	count(id)
+	FROM ec_favorites
+	where 1=1 AND customer_id = #{_parameter}
+	AND shop_id IS NOT NULL
+	AND (product_id IS  NULL OR product_id = '' )
+</select>
+<select id="countProductCollect" resultType="int" parameterType="String">
+	SELECT
+	count(id)
+	FROM ec_favorites
+	where 1=1 AND customer_id = #{_parameter}
+	AND product_id IS NOT NULL AND product_id != ''
+</select>
+
+<select id="getShopCollect" resultType="com.vcat.module.ec.dto.ShopCollectDto" parameterType="java.util.Map">
+	SELECT s.id AS "shopId",c.user_name AS "shopName",c.avatar_url AS "avatarUrl",
+	s.shop_num AS "shopNum",l.url AS "levelLogo",f.fav_type AS "productType"
+	FROM ec_favorites AS f
+	LEFT JOIN ec_shop AS s ON s.id=f.shop_id
+	LEFT JOIN ec_customer AS c ON c.id=f.shop_id
+	LEFT JOIN ec_level AS l ON l.id=s.level_id
+	WHERE 1=1
+	AND f.customer_id=#{buyerId}
+	AND f.shop_id IS NOT NULL
+	AND (f.product_id IS  NULL OR f.product_id = '')
+	ORDER BY f.create_date DESC
+	LIMIT #{page.pageOffset},#{page.pageSize}
+</select>
+
+<select id="getProductCollect" resultType="com.vcat.module.ec.dto.ProductDto" parameterType="java.util.Map">
+	SELECT p.id,p.name,egb.id as "groupBuyId",
+			(CASE
+				WHEN f.fav_type=2 THEN 	(SELECT MIN(retail_price)
+			FROM ec_product_item
+			WHERE product_id = p.id
+				AND del_flag = 0)
+				WHEN f.fav_type!=2 THEN (SELECT MIN(retail_price)
+			FROM ec_product_item
+			WHERE product_id = p.id
+				AND del_flag = 0)
+			END) AS "price",
+			(SELECT i.url
+			FROM ec_product_image AS pi1
+			LEFT JOIN ec_image AS i ON pi1.image_id=i.id
+			WHERE pi1.product_id=p.id
+			ORDER BY pi1.display_order DESC LIMIT 1)
+			AS "mainUrl",
+			f.shop_id AS "shopId",
+			f.fav_type AS "productType"
+	FROM ec_favorites AS f
+	LEFT JOIN ec_product AS p ON p.id=f.product_id
+  	LEFT JOIN ec_group_buying as egb on f.group_buying_id = egb.id
+	WHERE 1=1
+	AND f.customer_id=#{buyerId}
+	AND f.product_id IS NOT NULL AND f.product_id != ''
+	ORDER BY f.create_date
+	LIMIT #{page.pageOffset},#{page.pageSize}
+</select>
+
+<insert id="insert" parameterType="com.vcat.module.ec.entity.Favorites">
+	INSERT INTO ec_favorites(
+	id,
+	customer_id,
+	shop_id,
+	product_id,
+	group_buying_id,
+	create_date,
+	fav_type
+	) VALUES (
+	#{id},
+	#{customer.id},
+
+	<choose>
+		<when test="shop.id == null">
+			'',
+		</when>
+		<otherwise>
+			#{shop.id},
+		</otherwise>
+	</choose>
+
+	<choose>
+		<when test="product.id == null">
+			'',
+		</when>
+		<otherwise>
+			#{product.id},
+		</otherwise>
+	</choose>
+	<choose>
+		<when test="groupBuy.id == null">
+			'',
+		</when>
+		<otherwise>
+			#{groupBuy.id},
+		</otherwise>
+	</choose>
+	NOW(),
+	#{favType}
+	)
+ 
+</insert>
+<delete id="delete" parameterType="com.vcat.module.ec.entity.Favorites">
+	DELETE
+	FROM ec_favorites
+	<include refid="Base_Where_Clause" />
+</delete>
+</mapper>

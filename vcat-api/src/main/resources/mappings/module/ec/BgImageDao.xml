@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.BgImageDao">
+    <sql id="Base_Column_List">
+        id AS "id",
+        name AS "name",
+        url AS "url",
+        display_order AS "displayOrder",
+        is_activate AS "isActivate",
+        del_flag AS "delFlag"
+    </sql>
+    <sql id="Base_Where_Clause">
+        <where>
+            del_flag = 0
+            <if test="id!=null and id!=''">
+                AND id = #{id}
+            </if>
+        </where>
+    </sql>
+    <select id="get" resultType="BgImage">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM ec_bg_image
+        <include refid="Base_Where_Clause" />
+    </select>
+    <select id="find" resultType="BgImage">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM ec_bg_image
+        <include refid="Base_Where_Clause" />
+    </select>
+    <select id="findList" resultType="BgImage">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM ec_bg_image
+        <include refid="Base_Where_Clause" />
+        ORDER BY display_order ASC
+    </select>
+    <insert id="insertOnlyOneImageShop">
+        INSERT ec_shop_bg_image
+        SELECT
+            REPLACE(CAST(UUID() as char character set utf8), '-', ''),
+            shop_id,
+            (SELECT MIN(id) FROM ec_bg_image WHERE is_activate = 1 AND del_flag = 0 AND id != #{id}),
+            NULL
+        FROM
+            ec_shop_bg_image
+        WHERE
+            shop_id IN (
+                SELECT DISTINCT
+                    shop_id
+                FROM
+                    ec_shop_bg_image
+                WHERE
+                    bg_image_id = #{id}
+            )
+        GROUP BY
+            shop_id
+        HAVING
+            count(bg_image_id) = 1
+    </insert>
+    <insert id="insert">
+        INSERT INTO ec_bg_image(
+            id,
+            name,
+            url,
+            display_order,
+            is_activate,
+            del_flag
+        ) VALUES (
+            #{id},
+            #{name},
+            #{url},
+            #{displayOrder},
+            #{NOT_ACTIVATED},
+            #{DEL_FLAG_NORMAL}
+        )
+    </insert>
+    <update id="update">
+        UPDATE ec_bg_image
+        SET name = #{name}
+        ,url = #{url}
+        ,display_order = #{displayOrder}
+        WHERE id = #{id}
+    </update>
+    <update id="activate">
+        UPDATE ec_bg_image
+        SET is_activate = #{isActivate}
+        WHERE id = #{id}
+    </update>
+    <delete id="delete">
+        UPDATE ec_bg_image
+        SET del_flag = #{DEL_FLAG_DELETE}
+        WHERE id = #{id}
+    </delete>
+    <delete id="deleteShopBG">
+        DELETE FROM ec_shop_bg_image
+        WHERE bg_image_id = #{id}
+    </delete>
+</mapper>

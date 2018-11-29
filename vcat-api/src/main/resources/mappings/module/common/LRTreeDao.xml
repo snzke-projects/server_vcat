@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.common.dao.LRTreeDao">
+    <select id="getLeft" resultType="Integer">
+        SELECT CASE WHEN lft = rgt - 1 THEN lft ELSE rgt - 1 END
+        FROM ${tableName}
+        WHERE id = #{id}
+    </select>
+
+    <update id="updateLFTBeforeInsert">
+        UPDATE ${tableName}
+        SET lft = lft + 2
+        WHERE lft > #{lft}
+        AND del_flag = 0
+    </update>
+
+    <update id="updateRGTBeforeInsert">
+        UPDATE ${tableName}
+        SET rgt = rgt + 2
+        WHERE rgt > #{rgt}
+        AND del_flag = 0
+    </update>
+
+    <update id="delete">
+        UPDATE ${tableName}
+        SET del_flag = 1
+        WHERE lft BETWEEN #{lft} AND #{rgt}
+    </update>
+
+    <update id="updateLFTAfterDelete">
+        UPDATE ${tableName}
+        SET lft = lft - #{width}
+        WHERE lft > #{lft}
+        AND del_flag = 0
+    </update>
+
+    <update id="updateRGTAfterDelete">
+        UPDATE ${tableName}
+        SET rgt = rgt - #{width}
+        WHERE rgt > #{rgt}
+        AND del_flag = 0
+    </update>
+
+    <update id="updateL">
+        UPDATE ${tableName}
+        SET lft = #{lft}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateR">
+        UPDATE ${tableName}
+        SET rgt = #{rgt}
+        WHERE id = #{id}
+    </update>
+
+    <select id="getMaxRgt" resultType="Integer">
+        SELECT MAX(rgt) - #{lft} + 1 from ${tableName}
+    </select>
+
+    <update id="updateLFTAndRgtToRootAfterUpdateOne">
+        UPDATE ${tableName}
+        SET lft = lft + #{maxRgt}, rgt = rgt + #{maxRgt}
+        WHERE lft BETWEEN #{lft} AND #{rgt}
+    </update>
+
+    <update id="updateLFTToRootAfterUpdateTwo">
+        UPDATE ${tableName}
+        SET lft = lft - #{width}
+        WHERE lft>#{rgt}
+    </update>
+
+    <update id="updateRGTToRootAfterUpdateThree">
+        UPDATE ${tableName}
+        SET rgt = rgt - #{width}
+        WHERE rgt>#{rgt}
+    </update>
+
+    <update id="updateLFTAfterUpdateOne">
+        UPDATE ${tableName}
+        SET lft = lft + #{width} WHERE lft > #{parentLft}
+    </update>
+
+    <update id="updateRGTAfterUpdateTwo">
+        UPDATE ${tableName}
+        SET rgt = rgt + #{width} WHERE rgt > #{parentLft}
+    </update>
+
+    <update id="updateLFTAndRGTAfterUpdateThree">
+        UPDATE ${tableName}
+        SET lft = lft + #{parentLft} - #{lft} + 1,
+        rgt = rgt + #{parentLft} - #{lft} + 1
+        WHERE lft between #{lft} and #{rgt}
+    </update>
+
+    <update id="updateLFTAfterUpdateFour">
+        UPDATE ${tableName}
+        SET lft = lft - #{width}
+        WHERE lft > #{rgt}
+    </update>
+
+    <update id="updateRGTAfterUpdateFive">
+        UPDATE ${tableName}
+        SET rgt = rgt - #{width}
+        WHERE rgt > #{rgt}
+    </update>
+</mapper>

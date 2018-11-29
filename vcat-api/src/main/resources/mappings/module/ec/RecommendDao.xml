@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.RecommendDao">
+	<sql id="recommendColumns">
+		a.id AS "id",
+		a.start_time AS "startTime",
+		a.end_time AS "endTime",
+		a.discount AS "discount",
+		t.id AS "recommendType.id",
+		t.name AS "recommendType.name",
+		t.code AS "recommendType.code"
+	</sql>
+	<sql id="recommendJoins">
+		LEFT JOIN ec_recommend_type t ON t.id = a.recommend_type_id
+	</sql>
+	<select id="get" resultType="RecommendEntity">
+		SELECT 
+			<include refid="recommendColumns"/>
+		FROM ec_recommend a
+		<include refid="recommendJoins"/>
+		WHERE a.id = #{id}
+	</select>
+	
+	<select id="find" resultType="RecommendEntity">
+		SELECT 
+			<include refid="recommendColumns"/>
+		FROM ec_recommend a
+		<include refid="recommendJoins"/>
+		WHERE 1=1
+		<if test="id != null and id != ''">
+			AND a.id = #{id}
+		</if>
+	</select>
+	
+	<insert id="insert">
+		INSERT INTO ec_recommend(
+			id,
+			start_time,
+			end_time,
+			discount,
+			recommend_type_id
+		) VALUES (
+			#{id},
+			#{startTime},
+			#{endTime},
+			#{discount},
+			(select id from ec_recommend_type where code = #{typeCode})
+		)
+	</insert>
+	
+	<update id="update">
+		UPDATE ec_recommend SET
+			start_time = #{startTime},
+			end_time = #{endTime},
+			discount = #{discount}
+		WHERE id = #{id}
+	</update>
+	
+	<insert id="insertProductRecommend">
+		INSERT INTO ec_product_recommend(
+			id,
+			product_id,
+			recommend_id
+		) VALUES (
+			#{sqlMap.productRecommendId},
+			#{product.id},
+			#{id}
+		)
+	</insert>
+	<delete id="deleteProductRecommend">
+		DELETE FROM ec_product_recommend
+		WHERE recommend_id = #{id}
+	</delete>
+</mapper>

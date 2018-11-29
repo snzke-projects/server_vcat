@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.QuestionDao">
+    <sql id="questionColumns">
+        a.id AS "id",
+        a.title AS "title",
+        a.type AS "type",
+        a.option_value AS "optionValue",
+        a.del_flag AS "delFlag",
+	    a.display_order AS "displayOrder"
+    </sql>
+    <select id="get" resultType="Question">
+        SELECT
+        <include refid="questionColumns"></include>
+        FROM ec_questions a
+        WHERE a.id = #{id}
+    </select>
+    <select id="select" resultType="Question">
+        SELECT
+        <include refid="questionColumns"></include>
+        FROM ec_questions a
+        WHERE a.id = #{id}
+    </select>
+    <select id="findList" resultType="Question">
+        SELECT
+          <include refid="questionColumns"></include>
+        FROM ec_questionnaire_questions a
+        WHERE 1=1
+        <if test="sqlMap.questionnaireId != null and sqlMap.questionnaireId != ''">
+            AND a.questionnaire_id = #{sqlMap.questionnaireId}
+        </if>
+        ORDER BY a.display_order ASC
+    </select>
+    <select id="findListBySheetId" resultType="Question">
+        SELECT
+          <include refid="questionColumns"></include>
+          ,GROUP_CONCAT(ea.answer) AS "answer"
+        FROM ec_questionnaire_questions a
+        LEFT JOIN ec_answer ea ON a.id = ea.questionnaire_question_id AND ea.answer_sheet_id = #{id}
+        WHERE questionnaire_id = (SELECT questionnaire_id FROM ec_answer_sheet WHERE id = #{id})
+        GROUP BY a.id
+        ORDER BY a.display_order
+    </select>
+    <insert id="insert">
+        INSERT INTO ec_questions(
+        id,
+        title,
+        type,
+        option_value,
+        del_flag,
+        create_date
+        ) VALUES (
+        #{id},
+        #{title},
+        #{type},
+        #{optionValue},
+        #{DEL_FLAG_NORMAL},
+        CURRENT_TIMESTAMP
+        )
+    </insert>
+    <update id="update">
+        UPDATE ec_questions SET
+        title = #{title}
+        ,type = #{type}
+        ,option_value = #{optionValue}
+        WHERE id = #{id}
+    </update>
+    <update id="delete">
+        UPDATE ec_questions SET
+        del_flag = #{DEL_FLAG_DELETE}
+        WHERE id = #{id}
+    </update>
+    <select id="getPersonalQuestionList" resultType="com.vcat.module.ec.dto.QuestionDto">
+		SELECT 
+		  qq.id AS "id",
+		  qq.title AS "title",
+		  qq.type AS "type",
+		  qq.option_value AS "optionValue",
+		  (SELECT 
+		        GROUP_CONCAT(answer) 
+		  FROM
+		    ec_answer a 
+		  WHERE a.questionnaire_question_id = qq.id 
+		    AND a.answer_sheet_id = IFNULL(
+		      (SELECT 
+		        aas.answer_sheet_id 
+		      FROM
+		        ec_activity_answer_sheet AS aas
+		        LEFT JOIN ec_answer_sheet AS she ON she.id=aas.answer_sheet_id
+		      WHERE aas.activity_id = #{activityId}
+		      AND she.questionnaire_id = #{questionnaireId}
+		      AND she.customer_id = #{customerId}),
+		      (SELECT 
+		        id 
+		      FROM
+		        ec_answer_sheet 
+		      WHERE customer_id = #{customerId}
+		        AND questionnaire_id = #{questionnaireId}
+		      ORDER BY answer_time DESC 
+		      LIMIT 1)
+		    )) AS 'answer' 
+		FROM
+		  ec_questionnaire_questions qq 
+		  LEFT JOIN ec_questionnaire AS q 
+		    ON q.id = qq.questionnaire_id 
+		WHERE questionnaire_id = #{questionnaireId}
+		  AND qq.del_flag = 0 
+		GROUP BY qq.id
+		ORDER BY qq.display_order
+    </select>
+    <select id="getQuestionList" resultType="com.vcat.module.ec.dto.QuestionDto">
+	SELECT 
+	  qq.id AS "id",
+	  qq.title AS "title",
+	  qq.type AS "type",
+	  qq.option_value AS "optionValue",
+	  (SELECT 
+	      GROUP_CONCAT(answer) 
+	  FROM
+	    ec_answer a 
+	  WHERE a.questionnaire_question_id = qq.id 
+	    AND a.answer_sheet_id =
+	    (SELECT 
+		        aas.answer_sheet_id 
+		      FROM
+		        ec_activity_answer_sheet AS aas
+		        LEFT JOIN ec_answer_sheet AS she ON she.id=aas.answer_sheet_id
+		      WHERE aas.activity_id = #{activityId}
+		      AND she.questionnaire_id = #{questionnaireId}
+		      AND she.customer_id = #{customerId})) AS 'answer' 
+	FROM
+	  ec_questionnaire_questions qq 
+	  LEFT JOIN ec_questionnaire AS q 
+	    ON q.id = qq.questionnaire_id 
+	WHERE questionnaire_id =  #{questionnaireId}
+	  AND qq.del_flag = 0 
+	GROUP BY qq.id
+	ORDER BY qq.display_order
+    </select>
+    <select id="findShortAnswerList" resultType="java.util.Map">
+        SELECT
+          c.user_name AS "name",
+          ea.answer AS "answer",
+          DATE_FORMAT(eas.answer_time,'%Y-%m-%d %H:%i:%s') AS "time"
+        FROM ec_answer ea
+        LEFT JOIN ec_answer_sheet eas ON ea.answer_sheet_id = eas.id
+        LEFT JOIN ec_questionnaire_questions eqq ON ea.questionnaire_question_id = eqq.id
+        LEFT JOIN ec_activity_answer_sheet eaas ON eaas.answer_sheet_id = eas.id
+        LEFT JOIN ec_customer c on eas.customer_id = c.id
+        WHERE eqq.type = 4
+        AND eaas.activity_id = #{sqlMap.activityId}
+        AND eqq.id = #{id}
+        ORDER BY eas.answer_time
+    </select>
+</mapper>

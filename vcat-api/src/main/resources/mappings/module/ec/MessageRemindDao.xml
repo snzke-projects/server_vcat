@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+        <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.MessageRemindDao">
+<select id="findList" resultType="com.vcat.module.ec.entity.MessageRemind">
+    SELECT
+    message.id AS "id",
+    message.shop_id AS "shop.id",
+    message.title AS "title",
+    message.content AS "content",
+    message.is_read AS "isRead",
+    message.read_date AS "readDate",
+    message.create_date AS "createDate"
+    FROM ec_message_remind message
+    WHERE message.shop_id = #{shop.id}
+    ORDER BY message.create_date DESC
+</select>
+<update id="read">
+    UPDATE ec_message_remind
+    SET is_read = 1,read_date = now()
+    WHERE shop_id = #{id}
+</update>
+<insert id="insert">
+    INSERT ec_message_remind (
+    id,
+    shop_id,
+    title,
+    content,
+    is_read,
+    read_date,
+    create_date
+    ) VALUES(
+    #{id},
+    #{shop.id},
+    #{title},
+    #{content},
+    0,
+    NULL,
+    CURRENT_TIMESTAMP
+    )
+</insert>
+</mapper>

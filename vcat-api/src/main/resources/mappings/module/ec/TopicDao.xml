@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.TopicDao">
+	<select id="get" resultType="Topic">
+		SELECT 
+			a.id AS "id",
+			a.title AS "title",
+			a.title_img_url AS "titleImgUrl",
+			a.list_img_url AS "listImgUrl",
+			a.parent_id AS "parent.id",
+			a.lft AS "lft",
+			a.rgt AS "rgt",
+			a.start_time AS "startTime",
+			a.end_time AS "endTime",
+			a.display_order AS "displayOrder",
+            a.is_activate AS "isActivate",
+			(CASE WHEN a.parent_id IS NULL OR '' = a.parent_id OR '0' = a.parent_id THEN 'true' ELSE 'false' END) AS "isRoot"
+		FROM ec_topic a
+		WHERE a.id = #{id}
+        AND a.del_flag = 0
+	</select>
+    <select id="getRoot" resultType="Topic">
+        SELECT
+			a.id AS "id",
+			a.title AS "title",
+			a.title_img_url AS "titleImgUrl",
+			a.list_img_url AS "listImgUrl",
+			a.parent_id AS "parent.id",
+			a.lft AS "lft",
+			a.rgt AS "rgt",
+			a.start_time AS "startTime",
+			a.end_time AS "endTime",
+			a.display_order AS "displayOrder",
+            a.is_activate AS "isActivate",
+			'true' AS "isRoot"
+        FROM ec_topic a
+        WHERE a.parent_id IS NULL OR '0' = a.parent_id
+        ORDER BY a.display_order
+        LIMIT 1
+    </select>
+	<select id="findList" resultType="Topic">
+		SELECT
+            a.id AS "id",
+            a.title AS "title",
+            a.title_img_url AS "titleImgUrl",
+            a.list_img_url AS "listImgUrl",
+            a.parent_id AS "parent.id",
+            a.lft AS "lft",
+            a.rgt AS "rgt",
+            a.start_time AS "startTime",
+            a.end_time AS "endTime",
+            a.display_order AS "displayOrder",
+            a.is_activate AS "isActivate",
+            (CASE WHEN a.parent_id IS NULL OR '' = a.parent_id OR '0' = a.parent_id THEN 'true' ELSE 'false' END) AS "isRoot"
+		FROM ec_topic a
+        WHERE a.del_flag = 0
+        <if test="null != parent and parent.id != null and parent.id != ''">
+            AND a.parent_id  = #{parent.id}
+        </if>
+        ORDER BY a.display_order ASC
+	</select>
+
+    <select id="findParent" resultType="Topic">
+        SELECT
+			a.id AS "id",
+			a.title AS "title",
+			a.title_img_url AS "titleImgUrl",
+			a.list_img_url AS "listImgUrl",
+			a.parent_id AS "parent.id",
+			a.lft AS "lft",
+			a.rgt AS "rgt",
+			a.start_time AS "startTime",
+			a.end_time AS "endTime",
+			a.display_order AS "displayOrder",
+            a.is_activate AS "isActivate",
+			(CASE WHEN a.parent_id IS NULL OR '' = a.parent_id OR '0' = a.parent_id THEN 'true' ELSE 'false' END) AS "isRoot"
+        FROM ec_topic a
+        WHERE a.id = (SELECT parent_id FROM ec_topic WHERE id = #{id})
+        AND a.del_flag = 0
+    </select>
+    <select id="selectedProductList" resultType="Product">
+        SELECT
+            a.id AS "id",
+            a.name AS "name",
+            a.description AS "description",
+            a.clicks AS "clicks",
+            a.add_date AS "addDate",
+            a.display_order AS "displayOrder",
+            a.archived AS "archived",
+            a.is_auto_load AS "isAutoLoad",
+            a.auto_load_date AS "autoLoadDate",
+            a.copywrite AS "copywrite",
+            a.retail_usable AS "retailUsable",
+            a.coupon_all_usable AS "couponAllUsable",
+            a.coupon_part_usable AS "couponPartUsable",
+            a.sales AS "saledNum",
+            a.free_shipping AS "freeShipping",
+            a.is_new AS "isNew",
+            a.del_flag AS "delFlag",
+            a.is_hot_sale AS "isHotSale",
+            a.hot_sale_set_date AS "hotSaleSetDate",
+            brand.id AS "brand.id",
+            brand.name AS "brand.name",
+            supplier.id AS "brand.supplier.id",
+            supplier.name AS "brand.supplier.name",
+            distribution.id AS "distribution.id",
+            distribution.name AS "distribution.name",
+            c.id AS "category.id",
+            c.name AS "category.name",
+            (SELECT SUM(inventory)FROM ec_product_item WHERE product_id = a.id and del_flag = #{DEL_FLAG_NORMAL}) AS "inventory",
+            (SELECT	CONCAT(MIN(retail_price),'-',MAX(retail_price))FROM	ec_product_item WHERE product_id = a.id and del_flag = #{DEL_FLAG_NORMAL}) AS "price",
+            (SELECT	CONCAT(MIN(sale_earning),'-',MAX(sale_earning))FROM	ec_product_item WHERE product_id = a.id and del_flag = #{DEL_FLAG_NORMAL}) AS "saleEarning",
+            le.fund AS "loadEarning.fund",
+            le.convert_fund AS "loadEarning.convertFund",
+            (CASE WHEN  hot.id is null THEN "0" ELSE "1" END) AS "isHot",
+            hot.id AS "hotRecommendId",
+            sale.id AS "saleRecommend.id",
+            sale.startTime AS "saleRecommend.startTime",
+            sale.endTime AS "saleRecommend.endTime",
+            sale.discount AS "saleRecommend.discount",
+            reserve.id AS "reserveRecommend.id",
+            reserve.startTime AS "reserveRecommend.startTime",
+            reserve.endTime AS "reserveRecommend.endTime",
+            pet.express_template_id AS "expressTemplate.id",
+            tp.id AS "topic.remarks",
+            tp.display_order AS "topic.displayOrder",
+            IFNULL(tp.display_order,99999999) AS "orBy"
+        FROM ec_product a
+        LEFT JOIN ec_brand brand ON brand.id = a.brand_id
+        LEFT JOIN ec_supplier supplier ON supplier.id = brand.supplier_id
+        LEFT JOIN ec_distribution distribution ON distribution.id = a.distribution_id
+        LEFT JOIN ec_category_product cp ON cp.product_id = a.id
+        LEFT JOIN ec_category c ON c.id = cp.category_id
+        LEFT JOIN ec_load_earning le on (a.id = le.product_id and le.is_activate = #{ACTIVATED})
+        LEFT JOIN view_all_recommend hot on (a.id = hot.productId and hot.typeCode = #{RECOMMEND_HOT})
+        LEFT JOIN view_all_recommend sale on (a.id = sale.productId and sale.typeCode = #{saleRecommend.typeCode})
+        LEFT JOIN view_all_recommend reserve on (a.id = reserve.productId and reserve.typeCode = #{reserveRecommend.typeCode})
+        LEFT JOIN ec_product_express_template pet ON pet.product_id = a.id
+        LEFT JOIN ec_topic_product tp ON (tp.product_id = a.id AND tp.topic_id = #{sqlMap.topicId})
+        WHERE a.archived = 0
+        ${sqlMap.productScope}
+        <if test="brand != null and brand.id != null and brand.id != ''">
+            AND a.brand_id = #{brand.id}
+        </if>
+        <if test="category != null and category.id != null and category.id != ''">
+            AND c.lft BETWEEN (SELECT lft FROM ec_category where id = #{category.id}) AND (SELECT rgt FROM ec_category where id = #{category.id})
+        </if>
+        <if test="name != null and name != ''">
+            AND a.name LIKE CONCAT('%', #{name} ,'%')
+        </if>
+        <if test="sqlMap.isHotSale != null and sqlMap.isHotSale != ''">
+            AND a.is_hot_sale = #{sqlMap.isHotSale}
+        </if>
+        <if test="sqlMap.isHot != null and sqlMap.isHot != '' and sqlMap.isHot == 0">
+            AND hot.id IS NULL
+        </if>
+        <if test="sqlMap.isHot != null and sqlMap.isHot != '' and sqlMap.isHot == 1">
+            AND hot.id IS NOT NULL
+        </if>
+        <if test="sqlMap.isNew != null and sqlMap.isNew != ''">
+            AND a.is_new = #{sqlMap.isNew}
+        </if>
+        ORDER BY orBy
+    </select>
+
+	<insert id="insert">
+		INSERT INTO ec_topic(
+			id,
+			title,
+			title_img_url,
+			list_img_url,
+			parent_id,
+			lft,
+			rgt,
+			start_time,
+			end_time,
+			display_order,
+			del_flag,
+			is_activate
+		) VALUES (
+			#{id},
+			#{title},
+			#{titleImgUrl},
+			#{listImgUrl},
+			#{parent.id},
+			#{lft},
+			#{rgt},
+			#{startTime},
+			#{endTime},
+			#{displayOrder},
+			#{DEL_FLAG_NORMAL},
+			#{ACTIVATED}
+		)
+	</insert>
+
+	<update id="update">
+		UPDATE ec_topic SET
+			title = #{title},
+			title_img_url = #{titleImgUrl},
+			list_img_url = #{listImgUrl},
+			parent_id = #{parent.id},
+			start_time = #{startTime},
+			end_time = #{endTime},
+			display_order = #{displayOrder}
+		WHERE id = #{id}
+	</update>
+
+    <update id="activate">
+        UPDATE ec_topic SET is_activate = #{isActivate} WHERE lft BETWEEN #{lft} AND #{rgt}
+    </update>
+
+    <select id="hasChild" resultType="Boolean">
+        SELECT
+        CASE WHEN COUNT(1) > 0 THEN 'true' ELSE 'false' END
+        FROM ec_topic
+        WHERE parent_id = #{id}
+    </select>
+    <select id="getHighestOrder" resultType="Integer">
+        SELECT IFNULL(MAX(display_order),0) FROM ec_topic WHERE parent_id = #{id}
+    </select>
+    <update id="updateProductOrder">
+        UPDATE ec_topic_product
+        SET display_order = #{displayOrder}
+        WHERE id = #{id}
+    </update>
+    <delete id="cancelSelect">
+        DELETE FROM ec_topic_product WHERE topic_id = #{topicId} AND product_id = #{productId}
+    </delete>
+    <delete id="batchCancelSelect">
+        DELETE FROM ec_topic_product WHERE topic_id = #{topicId} AND product_id IN (''
+        <foreach collection="productIdArray" item="productId">
+            ,#{productId}
+        </foreach>
+        )
+    </delete>
+    <insert id="selectProduct">
+        INSERT INTO ec_topic_product(id,topic_id,product_id,display_order)
+        SELECT
+        REPLACE(CAST(UUID() as char character set utf8), '-', ''),
+        #{topicId},
+        #{productId},
+        (SELECT a.display_order FROM (SELECT IFNULL(MAX(t.display_order),0)+1 AS "display_order" FROM ec_topic_product t WHERE topic_id = #{topicId}) a)
+    </insert>
+    <insert id="batchSelectProduct">
+        INSERT INTO ec_topic_product(id,topic_id,product_id,display_order)
+        SELECT
+        REPLACE(CAST(UUID() as char character set utf8), '-', ''),
+        #{topicId},
+        p.id,
+        @rowNum:=@rowNum + 1
+        FROM ec_product p,(SELECT @rowNum:=(SELECT a.display_order FROM (SELECT IFNULL(MAX(t.display_order),0) AS "display_order" FROM ec_topic_product t WHERE topic_id = #{topicId}) a)) c
+        WHERE p.id IN (''
+        <foreach collection="productIdArray" item="productId">
+            ,#{productId}
+        </foreach>
+        )
+        AND p.id NOT IN (SELECT a.product_id FROM (SELECT t.product_id FROM ec_topic_product t WHERE t.topic_id = #{topicId}) a)
+    </insert>
+    <insert id="selectAllProduct">
+        INSERT INTO ec_topic_product(id,topic_id,product_id,display_order)
+        SELECT
+        REPLACE(CAST(UUID() as char character set utf8), '-', ''),
+        #{sqlMap.topicId},
+        p.id,
+        @rowNum:=@rowNum + 1
+        FROM ec_product p
+        LEFT JOIN ec_category_product cp ON cp.product_id = p.id
+        LEFT JOIN ec_category category ON category.id = cp.category_id
+        ,(SELECT @rowNum:=(SELECT a.display_order FROM (SELECT IFNULL(MAX(t.display_order),0) AS "display_order" FROM ec_topic_product t WHERE topic_id = #{sqlMap.topicId}) a)) b
+        WHERE p.archived = 0 AND p.del_flag = 0
+        AND p.id NOT IN (SELECT a.product_id FROM (SELECT t.product_id FROM ec_topic_product t WHERE t.topic_id = #{sqlMap.topicId}) a)
+        <if test="brand != null and brand.id != null and brand.id != ''">
+            AND p.brand_id = #{brand.id}
+        </if>
+        <if test="category != null and category.id != null and category.id != ''">
+            AND category.lft BETWEEN (SELECT lft FROM ec_category where id = #{category.id}) AND (SELECT rgt FROM ec_category where id = #{category.id})
+        </if>
+        <if test="name != null and name != ''">
+            AND p.name LIKE CONCAT('%', #{name} ,'%')
+        </if>
+    </insert>
+    <select id="hasProduct" resultType="Boolean">
+        SELECT IFNULL((SELECT 'true' FROM ec_topic_product WHERE topic_id = #{topicId} LIMIT 1),'false')
+    </select>
+    <update id="moveParentProduct">
+        UPDATE ec_topic_product
+        SET topic_id = #{topicId}
+        WHERE topic_id = #{parentTopicId}
+    </update>
+    <delete id="deleteParentProduct">
+        DELETE FROM ec_topic_product WHERE topic_id = #{topicId}
+    </delete>
+    <delete id="cancelAllSelect">
+        DELETE FROM ec_topic_product WHERE topic_id = #{topicId}
+    </delete>
+    <delete id="deleteByProductId">
+        DELETE FROM ec_topic_product WHERE product_id = #{productId}
+    </delete>
+</mapper>

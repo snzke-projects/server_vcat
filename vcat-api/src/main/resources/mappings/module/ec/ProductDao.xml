@@ -1,0 +1,2029 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ProductDao">
+	<sql id="productColumns">
+		a.id AS "id",
+		a.name AS "name",
+		a.description AS "description",
+		a.clicks AS "clicks",
+		a.add_date AS "addDate",
+		a.display_order AS "displayOrder",
+		a.archived AS "archived",
+		a.is_auto_load AS "isAutoLoad",
+		a.auto_load_date AS "autoLoadDate",
+        a.copywrite_title AS "copywriteTitle",
+		a.copywrite AS "copywrite",
+		a.retail_usable AS "retailUsable",
+		a.coupon_all_usable AS "couponAllUsable",
+		a.coupon_part_usable AS "couponPartUsable",
+		a.sales AS "saledNum",
+		a.free_shipping AS "freeShipping",
+		a.is_new AS "isNew",
+		a.del_flag AS "delFlag",
+		a.is_hot_sale AS "isHotSale",
+		a.hot_sale_set_date AS "hotSaleSetDate",
+		a.external_price AS "externalPrice",
+		a.can_refund  AS "canRefund",
+		brand.id AS "brand.id",
+		brand.name AS "brand.name",
+		brand.description AS "brand.description",
+		brand.logo_url AS "brand.logoUrl",
+		supplier.id AS "brand.supplier.id",
+		supplier.name AS "brand.supplier.name",
+		distribution.id AS "distribution.id",
+		distribution.name AS "distribution.name",
+		l.id AS "needLevel.id",
+		l.name AS "needLevel.name",
+		l.min_exp AS "needLevel.minExp",
+		l.max_exp AS "needLevel.maxExp",
+		l.url AS "needLevel.url",
+		c.id AS "category.id",
+		c.name AS "category.name",
+		c.description AS "category.description",
+		(SELECT SUM(inventory)FROM ec_product_item WHERE product_id = a.id and del_flag = #{DEL_FLAG_NORMAL}) AS "inventory",
+		(SELECT	CONCAT(MIN(retail_price),'-',MAX(retail_price))FROM	ec_product_item WHERE product_id = a.id and del_flag = #{DEL_FLAG_NORMAL}) AS "price",
+		(SELECT	CONCAT(MIN(sale_earning),'-',MAX(sale_earning))FROM	ec_product_item WHERE product_id = a.id and del_flag = #{DEL_FLAG_NORMAL}) AS "saleEarning",
+		le.id AS "loadEarning.id",
+		le.fund AS "loadEarning.fund",
+		le.convert_fund AS "loadEarning.convertFund",
+		le.is_activate AS "loadEarning.isActivate",
+		le.create_by AS "loadEarning.createBy",
+		le.create_date AS "loadEarning.createDate",
+		(CASE WHEN  hot.id is null THEN "0" ELSE "1" END) AS "isHot",
+		hot.id AS "hotRecommendId",
+		sale.id AS "saleRecommend.id",
+		sale.startTime AS "saleRecommend.startTime",
+		sale.endTime AS "saleRecommend.endTime",
+		sale.discount AS "saleRecommend.discount",
+		reserve.id AS "reserveRecommend.id",
+		reserve.startTime AS "reserveRecommend.startTime",
+		reserve.endTime AS "reserveRecommend.endTime",
+		pet.express_template_id AS "expressTemplate.id"
+	</sql>
+	<sql id="productJoins">
+        LEFT JOIN ec_brand brand ON brand.id = a.brand_id
+		LEFT JOIN ec_supplier supplier ON supplier.id = brand.supplier_id
+		LEFT JOIN ec_distribution distribution ON distribution.id = a.distribution_id
+		LEFT JOIN ec_level l ON l.id = a.need_level_id
+		LEFT JOIN ec_category_product cp ON cp.product_id = a.id
+		LEFT JOIN ec_category c ON c.id = cp.category_id
+		LEFT JOIN ec_load_earning le on (a.id = le.product_id and le.is_activate = #{ACTIVATED})
+		LEFT JOIN view_all_recommend hot on (a.id = hot.productId and hot.typeCode = #{RECOMMEND_HOT})
+		LEFT JOIN view_all_recommend sale on (a.id = sale.productId and sale.typeCode = #{saleRecommend.typeCode})
+		LEFT JOIN view_all_recommend reserve on (a.id = reserve.productId and reserve.typeCode = #{reserveRecommend.typeCode})
+		LEFT JOIN ec_product_express_template pet ON pet.product_id = a.id
+	</sql>
+	<select id="get" resultType="com.vcat.module.ec.entity.Product">
+		SELECT 
+			<include refid="productColumns"/>
+		FROM ec_product a
+		<include refid="productJoins"/>
+		WHERE a.id = #{id}
+		${sqlMap.productScope}
+	</select>
+	<select id="findListByIds" resultType="com.vcat.module.ec.entity.Product">
+		SELECT
+			a.id AS "id",
+			a.name AS "name",
+			a.description AS "description",
+			a.clicks AS "clicks",
+			a.add_date AS "addDate",
+			a.display_order AS "displayOrder",
+			a.archived AS "archived",
+			a.is_auto_load AS "isAutoLoad",
+			a.auto_load_date AS "autoLoadDate",
+            brand.id AS "supplier.id",
+            brand.name AS "brand.name",
+            brand.description AS "brand.description",
+            brand.logo_url AS "brand.logoUrl",
+			c.id AS "category.id",
+			c.name AS "category.name",
+			c.description AS "category.description"
+		FROM ec_product a
+        LEFT JOIN ec_brand brand ON brand.id = a.brand_id
+		LEFT JOIN ec_supplier supplier ON supplier.id = brand.supplier_id
+		LEFT JOIN ec_level l ON l.id = a.need_level_id
+		LEFT JOIN ec_category_product cp ON cp.product_id = a.id
+		LEFT JOIN ec_category c ON c.id = cp.category_id
+		WHERE a.id in ('',
+		<foreach collection="array" item="id" separator=",">
+			#{id}
+		</foreach>
+		)
+		ORDER BY a.add_date DESC
+	</select>
+
+	<select id="findList" resultType="Product">
+		SELECT 
+			<include refid="productColumns"/>
+		FROM ec_product a
+		<include refid="productJoins"/>
+		WHERE 1=1
+		${sqlMap.productScope}
+		<if test="sqlMap.type != null and sqlMap.type == 'xj'">
+			AND a.archived = #{archived}
+		</if>
+		<if test="sqlMap.type != null and sqlMap.type == 'sj'">
+			AND a.archived = #{archived}
+		</if>
+        <if test="sqlMap.brandId != null and sqlMap.brandId != ''">
+            AND brand.id = #{sqlMap.brandId}
+        </if>
+        <if test="sqlMap.supplierId != null and sqlMap.supplierId != ''">
+            AND supplier.id = #{sqlMap.supplierId}
+        </if>
+		<if test="category != null and category.id != null and category.id != ''">
+			AND c.lft BETWEEN (SELECT lft FROM ec_category where id = #{category.id}) AND (SELECT rgt FROM ec_category where id = #{category.id})
+		</if>
+        <if test="sqlMap.isHotSale != null and sqlMap.isHotSale != ''">
+            AND a.is_hot_sale = #{sqlMap.isHotSale}
+        </if>
+		<if test="name != null and name != ''">
+			AND a.name LIKE CONCAT('%', #{name} ,'%')
+		</if>
+		<if test="sqlMap.recommendType != null and sqlMap.recommendType == 'HOT'">
+			AND hot.id IS NOT NULL
+		</if>
+		<if test="sqlMap.recommendType != null and sqlMap.recommendType == 'SALE'">
+			AND sale.id IS NOT NULL AND sale.discount IS NOT NULL
+		</if>
+		<if test="sqlMap.recommendType != null and sqlMap.recommendType == 'RESERVE'">
+			AND reserve.id IS NOT NULL AND reserve.startTime IS NOT NULL
+		</if>
+        <if test="sqlMap.mode != null and sqlMap.mode == 'NORMAL'">
+            AND a.del_flag = #{DEL_FLAG_NORMAL}
+        </if>
+        <if test="sqlMap.mode != null and sqlMap.mode != 'NORMAL'">
+            AND a.del_flag = #{DEL_FLAG_DELETE}
+        </if>
+        <if test="sqlMap.categoryScope != null and sqlMap.categoryScope != ''">
+            ${sqlMap.categoryScope}
+        </if>
+        <if test="sqlMap.productType != null and sqlMap.productType == 2">
+            AND a.retail_usable = 1
+        </if>
+        <if test="sqlMap.productType != null and sqlMap.productType == 3">
+            AND a.coupon_all_usable = 1
+        </if>
+        <if test="sqlMap.productType != null and sqlMap.productType == 4">
+            AND a.coupon_part_usable = 1
+        </if>
+		ORDER BY a.display_order DESC,a.sales DESC
+	</select>
+		<!-- 买家获取商品列表 -->
+	<select id="getSellerProductList" resultType="com.vcat.module.ec.dto.ProductDto" parameterType="java.util.Map">
+		SELECT *
+		FROM (
+		SELECT
+		egb.id                               AS "groupBuyId",
+		(SELECT retail_price
+		FROM ec_product_item
+		WHERE id = egb.product_item_id
+		)                            as "groupPrice",
+		egb.needed_people 					 as "neededPeople",
+		p.id                                 AS "id",
+		p.name                               AS "name",
+		p.display_order,
+		p.add_date,
+		(CASE WHEN reserve.endTime IS NULL
+		THEN (SELECT SUM(inventory)
+		FROM ec_product_item
+		WHERE product_id = p.id
+		AND del_flag = 0)
+		WHEN egb.id IS NOT NULL
+		THEN (SELECT inventory
+		FROM ec_product_item AS epi1
+		WHERE egb.product_item_id = epi1.id)
+		ELSE (SELECT inventory
+		FROM ec_shop_product
+		WHERE product_id = p.id
+		AND shop_id = sp.shop_id)
+		END)                                AS "inventory",
+		(CASE WHEN egb.id IS NOT NULL
+		THEN 1
+		ELSE 0 END)                         AS "isGroupBuyProduct",
+		(CASE WHEN (now() > reserve.endTime AND reserve.endTime IS NOT NULL)
+		THEN 1
+		ELSE 0 END)                         AS "isReserveOver",
+		p.copywrite_title                    AS "copywriteTitle",
+		p.copywrite                          AS "copywrite",
+		(SELECT max(ec2.activate_time)
+		FROM ec_copywrite AS ec2
+		WHERE ec2.is_activate = 1
+		AND ec2.product_id = p.id)    AS 'activeTime',
+		(SELECT (CASE WHEN ecd.shop_id IS NOT NULL
+		THEN 1
+		ELSE 0
+		END)
+		FROM ec_copywrite_default AS ecd
+		LEFT JOIN ec_copywrite AS ec3 ON ecd.copywrite_id = ec3.id
+		WHERE ecd.product_id = p.id
+		AND ecd.shop_id = sp.shop_id) AS 'default',
+		(CASE WHEN p.update_date IS NULL
+		THEN hot_sale_set_date
+		ELSE p.update_date END)             AS "updateTime",
+		brand.logo_url                       AS "logo",
+		(SELECT group_concat(url)
+		FROM
+		(SELECT
+		i.url          AS url,
+		pi1.product_id AS pid
+		FROM
+		ec_product_image AS pi1
+		LEFT JOIN ec_image AS i ON pi1.image_id = i.id
+		ORDER BY pi1.display_order DESC
+		) t
+		WHERE t.pid = p.id
+		)                                    AS "productImages",
+		sp.is_recommend                      AS "isRecommend",
+		p.external_price                     AS externalPrice,
+		p.free_shipping                      AS freeShipping,
+		p.sales                              AS "saledNum",
+		(CASE WHEN egb.id IS NULL
+		THEN (SELECT max(retail_price)
+		FROM ec_product_item
+		WHERE product_id = p.id
+		AND del_flag = 0)
+		ELSE (SELECT retail_price
+		FROM ec_product_item
+		WHERE product_id = p.id AND product_item_type = 0
+		LIMIT 1
+		) END)                              AS "price",
+		(SELECT i.url
+		FROM ec_product_image AS pi1
+		LEFT JOIN ec_image AS i ON pi1.image_id = i.id
+		WHERE pi1.product_id = p.id
+		ORDER BY pi1.display_order DESC
+		LIMIT 1)                            AS "mainUrl",
+		CASE WHEN hot.id IS NULL
+		THEN 0
+		ELSE 1 END                           AS "isHot",
+		CASE WHEN reserve.endTime IS NOT NULL
+		THEN 1
+		ELSE 0 END                           AS "isReserve",
+		reserve.startTime                    AS "reserveStartTime",
+		reserve.endTime                      AS "reserveEndTime"
+		FROM ec_product AS p
+		LEFT JOIN ec_load_earning AS le ON p.id = le.product_id
+		AND le.is_activate = 1
+		JOIN ec_shop_product AS sp ON sp.product_id = p.id
+		AND sp.shop_id = #{customerId}
+		AND sp.archived = 0
+		AND sp.del_flag = 0
+		LEFT JOIN ec_group_buying AS egb ON sp.product_id = egb.product_id
+		AND egb.status = 1
+		LEFT JOIN ec_share_earning AS ee ON p.id = ee.product_id
+		AND ee.is_activate = 1
+		AND NOW() BETWEEN ee.start_time AND ee.end_time
+		AND ee.del_flag = 0
+		LEFT JOIN view_all_recommend AS hot ON p.id = hot.productId
+		AND hot.typeCode = 'HOT'
+		LEFT JOIN view_all_recommend AS reserve ON p.id = reserve.productId
+		AND reserve.typeCode = 'RESERVE'
+		LEFT JOIN ec_category_product AS cp ON cp.product_id = p.id
+		LEFT JOIN ec_brand brand ON brand.id = p.brand_id
+		WHERE 1 = 1
+		<if test="productType != null and productType == 'HOT'">
+			AND hot.typeCode = #{productType}
+		</if>
+		<if test="productType != null and productType == 'RESERVE'">
+			AND reserve.typeCode = #{productType}
+		</if>
+		<if test="productType != null and productType == 'ALL'">
+
+		</if>
+        AND p.archived=0
+        AND p.retail_usable=1
+        AND p.del_flag=0
+		<if test="categoryId != null and categoryId != ''">
+			AND cp.category_id =#{categoryId}
+		</if>
+		) AS result
+		ORDER BY isGroupBuyProduct desc,
+		(CASE WHEN result.isRecommend = 1 THEN 1
+		ELSE 0 END )  DESC, (CASE WHEN result.default = 1 or result.default is not null THEN 1
+		ELSE 0 END )  DESC,
+		activeTime desc, result.display_order DESC, result.add_date
+		LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+	
+	<!-- 买家获取商品数量 -->
+	<select id="countSellerProductList" resultType="int" parameterType="java.util.Map">
+		SELECT count(p.id)
+		FROM ec_product AS p
+		JOIN ec_shop_product AS sp ON sp.product_id=p.id
+		AND sp.shop_id=#{shopId}
+		AND sp.archived=0
+		LEFT JOIN ec_load_earning AS le ON p.id = le.product_id
+		AND le.is_activate = 1
+		LEFT JOIN ec_share_earning AS ee ON p.id = ee.product_id
+		AND ee.is_activate = 1
+		AND NOW() BETWEEN ee.start_time AND ee.end_time
+		AND ee.del_flag = 0
+		LEFT JOIN view_all_recommend AS hot ON p.id = hot.productId
+		AND hot.typeCode = 'HOT'
+		LEFT JOIN view_all_recommend AS reserve ON p.id = reserve.productId
+		AND reserve.typeCode = 'RESERVE'
+		<![CDATA[ AND NOW()<reserve.endTime]]> 
+		LEFT JOIN ec_category_product AS cp ON cp.product_id=p.id
+		WHERE 1 = 1
+		<if test="productType != null and productType == 'HOT'">
+			AND hot.typeCode = #{productType}
+		</if>
+		<if test="productType != null and productType == 'RESERVE'">
+			AND reserve.typeCode = #{productType}
+		</if>
+		<if test="productType != null and productType == 'ALL'">
+
+		</if>
+		AND p.archived=0
+        AND p.del_flag=0
+		AND p.retail_usable=1
+		<if test="categoryId != null and categoryId != ''">
+			AND cp.category_id =#{categoryId}
+		</if>
+	</select>
+		
+	<!-- 卖家获取商品数量 -->
+	<select id="countShopProductList" resultType="int" parameterType="java.util.Map">
+		SELECT count(p.id)
+		FROM ec_product AS p
+		LEFT JOIN ec_shop_product AS sp ON sp.product_id=p.id
+		LEFT JOIN ec_load_earning AS le ON p.id = le.product_id
+		AND le.is_activate = 1
+		LEFT JOIN ec_share_earning AS ee ON p.id = ee.product_id
+		AND ee.is_activate = 1
+		AND NOW() BETWEEN ee.start_time AND ee.end_time
+		AND ee.del_flag = 0
+		LEFT JOIN view_all_recommend AS hot ON p.id = hot.productId
+		AND hot.typeCode = 'HOT'
+		LEFT JOIN view_all_recommend AS reserve ON p.id = reserve.productId
+		AND reserve.typeCode = 'RESERVE'
+		<![CDATA[ AND NOW()<reserve.endTime]]> 
+		LEFT JOIN ec_category_product AS cp ON cp.product_id=p.id
+		LEFT JOIN ec_category AS cc ON cc.id=cp.category_id
+		WHERE 1 = 1
+		AND sp.shop_id=#{customerId}
+		AND sp.archived=#{loadType}
+		AND sp.del_flag=0
+		<if test="productType != null and productType == 'HOT'">
+		AND hot.typeCode = #{productType}
+		</if>
+		<if test="productType != null and productType == 'RESERVE'">
+		AND reserve.typeCode = #{productType}
+		</if>
+		AND p.archived=0
+        AND p.del_flag=0
+		AND p.retail_usable=1
+		<if test="categoryId != null and categoryId != ''">
+		AND cc.parent_category_id=#{categoryId}
+		AND cc.is_activate=1
+		</if>
+	</select>
+    <!--买家获取商品详情-->
+
+	<select id="getSellerProductDetail" resultType="com.vcat.module.ec.entity.Product" parameterType="String">
+		SELECT a.id AS "id",
+	       a.name AS "name",
+	       a.description AS "description",
+	       a.copywrite AS "copywrite",
+		   <if test="couponType ==1" >
+	       (CASE
+	            WHEN a.archived=0 AND (sp.archived=0
+				 OR (a.id in
+				        (SELECT tp.product_id FROM ec_topic_product tp LEFT JOIN ec_topic t ON tp.topic_id = t.id
+				         WHERE t.is_activate = 1 AND t.del_flag = 0 )))
+				 THEN "0"
+	            ELSE "1"
+	        END) AS "isDownLoad",
+
+               (CASE WHEN reserve.endTime is null then (SELECT SUM(inventory)
+               FROM ec_product_item
+               WHERE product_id = a.id
+               AND del_flag = 0)
+               else (SELECT inventory
+               FROM ec_shop_product
+               WHERE product_id = a.id
+               AND shop_id = sp.shop_id)
+               end) AS "inventory",
+	        </if>
+	       <if test="couponType ==3 or couponType ==4" >
+	        (SELECT brand.freight_charge
+                FROM ec_product AS p
+                LEFT JOIN ec_brand brand ON brand.id = p.brand_id
+                WHERE p.id=a.id) AS "freightPrice",
+	        </if>
+	       a.add_date AS "addDate",
+
+			(CASE WHEN sp.archived = 0
+			THEN "0"
+			ELSE "1" END)               AS "isSellerLoad",
+
+           brand.name AS "brand.name",
+           brand.description AS "brand.description",
+           brand.logo_url AS "brand.logoUrl",
+	       l.id AS "needLevel.id",
+	       l.name AS "needLevel.name",
+	       l.min_exp AS "needLevel.minExp",
+	       l.max_exp AS "needLevel.maxExp",
+	       l.url AS "needLevel.url",
+	       c.id AS "category.id",
+	       c.name AS "category.name",
+	       c.description AS "category.description",
+	       a.collection  AS "productCollectCount",
+		   a.sales AS "saledNum",
+           a.can_refund as "canRefund",
+           a.is_virtual_product as "virtualProduct",
+           ep.buy_count as "promotion.buyCount",
+           ep.name as "promotion.name",
+           ep.free_count as "promotion.freeCount",
+	  (SELECT CONCAT(MIN(retail_price),'-',MAX(retail_price))
+	   FROM ec_product_item
+	   WHERE product_id = a.id
+	     AND del_flag = 0) AS "price",
+	    <if test="couponType ==3" >
+	    	(CASE
+	            WHEN a.archived=0 AND a.coupon_all_usable=1 THEN "0"
+	            ELSE "1"
+	        END) AS "isDownLoad",
+	      (SELECT MIN(retail_price)
+				FROM ec_product_item
+				WHERE product_id = a.id
+					AND del_flag = 0) AS "couponValue",
+		  (SELECT SUM(coupon_all_inventory)
+	   FROM ec_product_item
+	   WHERE product_id = a.id
+	     AND del_flag = 0) AS "inventory",
+	    </if>
+	  	<if test="couponType == 4" >
+	  	   (CASE
+	            WHEN a.archived=0 AND a.coupon_part_usable=1 THEN "0"
+	            ELSE "1"
+	        END) AS "isDownLoad",
+		  (SELECT MIN(coupon_value)
+				FROM ec_product_item
+				WHERE product_id = a.id
+					AND del_flag = 0) AS "couponValue",
+		(SELECT SUM(coupon_part_inventory)
+	   FROM ec_product_item
+	   WHERE product_id = a.id
+	     AND del_flag = 0) AS "inventory",
+	  	</if>
+	       (CASE
+	            WHEN hot.id IS NULL THEN "0"
+	            ELSE "1"
+	        END) AS "isHot",
+	       reserve.id AS "reserveRecommend.id",
+	       reserve.startTime AS "reserveRecommend.startTime",
+		   reserve.endTime AS "reserveRecommend.endTime"
+		FROM ec_product a
+		<if test="couponType ==1" >
+		LEFT JOIN ec_shop_product AS sp ON sp.product_id=a.id
+		AND sp.shop_id=#{shopId}
+		</if>
+        LEFT JOIN ec_brand brand ON brand.id = a.brand_id
+        LEFT JOIN ec_promotion_product as epp on epp.product_id = a.id
+        LEFT JOIN ec_promotion as ep on ep.id = epp.promotion_id
+        and ep.is_activate = 1
+		LEFT JOIN ec_supplier s ON s.id = brand.supplier_id
+		LEFT JOIN ec_level l ON l.id = a.need_level_id
+		LEFT JOIN ec_category_product cp ON cp.product_id = a.id
+		LEFT JOIN ec_category c ON c.id = cp.category_id
+		LEFT JOIN view_all_recommend hot ON (a.id = hot.productId
+		                                     AND hot.typeCode = 'HOT')
+		LEFT JOIN view_all_recommend reserve ON (a.id = reserve.productId
+        and reserve.endTime is not null
+# 		 AND reserve.typeCode = 'RESERVE' <![CDATA[ AND NOW()<reserve.endTime]]>
+        )
+		WHERE a.id = #{productId}
+        limit 1
+	</select>
+	<!-- 获取V猫商品详情-->
+	<select id="getVcatProductDetail" resultType="com.vcat.module.ec.entity.Product" parameterType="String">
+		SELECT
+		   a.farm_services_wechat_no as "farmWechatNo",
+	       a.id AS "id",
+	       a.name AS "name",
+           a.copywrite AS "copywrite",
+	       a.add_date AS "addDate",
+	       a.description AS "description",
+		   a.is_virtual_product AS "virtualProduct",
+		   a.can_refund AS "canRefund",
+           ep.name as "promotion.name",
+           ep.buy_count as "promotion.buyCount",
+           ep.free_count as "promotion.freeCount",
+           a.coupon_part_usable  as "couponAllUsable",
+           a.coupon_all_usable as "couponPartUsable",
+	       (CASE
+	            WHEN a.archived=0  THEN "0"
+	            ELSE "1"
+	        END) AS "isDownLoad",
+	       (CASE
+	            WHEN sp.archived=0 THEN "0"
+	            ELSE "1"
+	        END) AS "isSellerLoad",
+	       a.collection  AS "productCollectCount",
+		   a.sales AS "saledNum",
+			(SELECT (CASE WHEN MIN(sale_earning)=MAX(sale_earning) THEN  MIN(sale_earning)
+# 			ELSE CONCAT(MIN(sale_earning),'-',MAX(sale_earning)) END )
+		ELSE MAX(sale_earning) END )
+			FROM ec_product_item
+			WHERE product_id = a.id
+			AND del_flag = 0) AS "saleEarningFund",
+	       brand.name AS "brand.name",
+            (case when #{couponType} in (2,5)
+                then s.description
+                else brand.description
+                end
+            ) AS "brand.description",
+	       brand.logo_url AS "brand.logoUrl",
+	       l.id AS "needLevel.id",
+	       l.name AS "needLevel.name",
+	       l.min_exp AS "needLevel.minExp",
+	       l.max_exp AS "needLevel.maxExp",
+	       l.url AS "needLevel.url",
+	       c.id AS "category.id",
+	       c.name AS "category.name",
+	       le.fund AS "loadEarning.fund",
+	       le.convert_fund AS "loadEarning.convertFund",
+	       c.description AS "category.description",
+	  (SELECT SUM(inventory)
+	   FROM ec_product_item
+	   WHERE product_id = a.id
+	     AND del_flag = 0) AS "inventory",
+		(SELECT CONCAT(MIN(retail_price),'-',MAX(retail_price))
+		FROM ec_product_item
+		WHERE product_id = a.id
+			AND del_flag = 0
+		) AS "price",
+	       (CASE
+	            WHEN hot.id IS NULL THEN "0"
+	            ELSE "1"
+	        END) AS "isHot",
+	       reserve.id AS "reserveRecommend.id",
+	       reserve.startTime AS "reserveRecommend.startTime",
+		   reserve.endTime AS "reserveRecommend.endTime"
+		FROM ec_product a
+        <!--优惠活动-->
+        LEFT JOIN ec_promotion_product as ept ON a.id = ept.product_id
+        LEFT JOIN ec_promotion as ep ON ept.promotion_id = ep.id
+        AND ep.is_activate = 1
+        LEFT JOIN ec_brand brand ON brand.id = a.brand_id
+		LEFT JOIN ec_supplier s ON s.id = brand.supplier_id
+		LEFT JOIN ec_level l ON l.id = a.need_level_id
+		LEFT JOIN ec_category_product cp ON cp.product_id = a.id
+		LEFT JOIN ec_category c ON c.id = cp.category_id
+		LEFT JOIN ec_shop_product AS sp ON sp.product_id=a.id
+		AND sp.shop_id= #{shopId}
+		LEFT JOIN ec_load_earning AS le ON le.product_id=a.id
+		AND le.is_activate=1
+		LEFT JOIN view_all_recommend hot ON (a.id = hot.productId
+		                                     AND hot.typeCode = 'HOT')
+		LEFT JOIN view_all_recommend reserve ON (a.id = reserve.productId
+        and reserve.endTime is not null
+        )
+		WHERE a.id = #{productId}
+        limit 1
+	</select>
+	
+	<insert id="insert">
+		INSERT INTO ec_product(
+			id,
+			name,
+			brand_id,
+			description,
+			need_level_id,
+			archived,
+			add_date,
+			display_order,
+			is_auto_load,
+			auto_load_date,
+            copywrite_title,
+			copywrite,
+			retail_usable,
+		    coupon_all_usable,
+		    coupon_part_usable,
+		    free_shipping,
+		    is_new,
+		    distribution_id,
+		    is_hot_sale,
+		    hot_sale_set_date,
+		    external_price
+		) VALUES (
+			#{id},
+			#{name},
+			#{brand.id},
+			#{description},
+			#{needLevel.id},
+			#{DEL_FLAG_NORMAL},
+			NOW(),
+			#{displayOrder},
+			#{isAutoLoad},
+			#{autoLoadDate},
+            #{copywriteTitle},
+			#{copywrite},
+			#{retailUsable},
+			#{couponAllUsable},
+			#{couponPartUsable},
+			#{freeShipping},
+			#{isNew},
+			#{distribution.id},
+			#{isHotSale},
+			#{hotSaleSetDate},
+			#{externalPrice}
+		)
+	</insert>
+	
+	<update id="update">
+		UPDATE ec_product SET
+			name = #{name},
+			brand_id = #{brand.id},
+			description = #{description},
+			need_level_id = #{needLevel.id},
+			display_order = #{displayOrder},
+			is_auto_load = #{isAutoLoad},
+			auto_load_date = #{autoLoadDate},
+            copywrite_title = #{copywriteTitle},
+			copywrite = #{copywrite},
+			retail_usable = #{retailUsable},
+		    coupon_all_usable = #{couponAllUsable},
+		    coupon_part_usable = #{couponPartUsable},
+		    free_shipping = #{freeShipping},
+		    is_new = #{isNew},
+		    distribution_id = #{distribution.id},
+		    is_hot_sale = #{isHotSale},
+		    hot_sale_set_date = #{hotSaleSetDate},
+		    external_price = #{externalPrice},
+            update_by = #{updateBy.id},
+            update_date = CURRENT_TIMESTAMP
+		WHERE id = #{id}
+	</update>
+
+    <select id="getCanBeArchived" resultType="java.lang.Boolean">
+        SELECT 'TRUE'
+        FROM ec_product p
+        LEFT JOIN ec_category_product cp ON p.id = cp.product_id
+        LEFT JOIN ec_category c ON cp.category_id = c.id
+        WHERE p.id = #{id}
+        AND c.is_activate = 1
+    </select>
+	
+	<update id="archived">
+		UPDATE ec_product SET 
+			archived = #{archived}
+			<if test="archived != null and archived == 0">
+				,is_auto_load = 0
+				,auto_load_date = null
+			</if>
+		WHERE id = #{id}
+	</update>
+
+	<delete id="deleteHotRecommend">
+		DELETE FROM ec_recommend
+		WHERE id = #{hotRecommendId}
+	</delete>
+	<insert id="insertHotRecommend">
+		INSERT INTO ec_recommend(
+			id,
+			recommend_type_id
+		) VALUES (
+			#{hotRecommendId},
+			(select id from ec_recommend_type where code = #{RECOMMEND_HOT})
+		)
+	</insert>
+	<update id="updateCollectCount" >
+		UPDATE ec_product SET
+		collection = IFNULL(collection,0)+#{count}
+		WHERE id = #{productId}
+		AND archived = 0
+	</update>
+	<update id="updateSales">
+		UPDATE ec_product SET
+		sales = IFNULL(sales,0)+#{sales}
+		WHERE id = #{productId}
+		AND archived = 0
+	</update>
+	<update id="updateShelves">
+		UPDATE ec_product SET
+		shelves = IFNULL(shelves,0)+1
+		WHERE id = #{_parameter}
+	</update>
+	<update id="autoLoadByForecast">
+		UPDATE ec_product SET
+		is_auto_load = 1,
+		auto_load_date = #{autoLoadDate}
+		WHERE id = #{id}
+		AND archived = 1
+	</update>
+	<select id="countCategoryProductList" resultType="int" parameterType="java.util.Map">
+	SELECT COUNT(1)
+	FROM(
+		  SELECT 
+		  p.id AS "id",
+		  p.name AS "name",
+		  p.shelves AS "shelves",
+		  (SELECT 
+		    MAX(retail_price) 
+		  FROM
+		    ec_product_item 
+		  WHERE product_id = p.id 
+		    AND del_flag = 0) AS "price",
+		  (SELECT 
+		    i.url 
+		  FROM
+		    ec_product_image AS pi1 
+		    LEFT JOIN ec_image AS i 
+		      ON pi1.image_id = i.id 
+		  WHERE pi1.product_id = p.id 
+		  ORDER BY pi1.display_order DESC 
+		  LIMIT 1) AS "mainUrl",
+		  (SELECT 
+		    MAX(sale_earning) 
+		  FROM
+		    ec_product_item 
+		  WHERE product_id = p.id 
+		    AND del_flag = 0) AS "saleEarningFund",
+		CASE WHEN hot.id IS NULL THEN '0' ELSE '1' END AS "isHot",
+		CASE WHEN reserve.id IS NULL THEN '0' ELSE '1' END AS "isReserve"
+		FROM ec_product AS p
+		LEFT JOIN ec_category_product AS cp ON cp.product_id=p.id
+		LEFT JOIN ec_category AS cc ON cc.id=cp.category_id
+		LEFT JOIN view_all_recommend AS hot ON p.id = hot.productId
+		AND hot.typeCode = 'HOT'
+		LEFT JOIN view_all_recommend AS reserve ON p.id = reserve.productId
+		AND reserve.typeCode = 'RESERVE'
+		AND reserve.endTime>NOW()
+		WHERE 1 = 1
+		<if test="categoryId != null and categoryId != ''">
+		AND cc.parent_category_id =#{categoryId}
+		</if>
+		<if test="childCategoryId != null and childCategoryId != ''">
+		AND cp.category_id =#{childCategoryId}
+		</if>
+		<if test="brandId != null and brandId != ''">
+		AND p.brand_id=#{brandId}
+		</if>
+		AND p.archived=0
+        AND p.del_flag=0
+		AND p.retail_usable=1
+		) AS result
+		WHERE 1=1
+		<if test="productType != null and productType == 'HOT'">
+		AND result.isHot = 1
+		</if>
+		<if test="productType == null or productType == 'ALL'">
+		AND result.isReserve = 0
+		</if>
+	</select>
+	<select id="getCategoryProductList" resultType="com.vcat.module.ec.dto.ProductDto" parameterType="java.util.Map">
+	SELECT *
+	FROM(
+		  SELECT 
+		  p.id AS "id",
+		  p.name AS "name",
+		  p.shelves AS "shelves",
+		  p.display_order AS "display_order",
+		  p.sales AS "saledNum",
+		  	  (SELECT SUM(inventory)
+	   FROM ec_product_item
+	   WHERE product_id = p.id
+	     AND del_flag = 0) AS "inventory",
+		  (SELECT 
+		    MAX(retail_price) 
+		  FROM
+		    ec_product_item 
+		  WHERE product_id = p.id 
+		    AND del_flag = 0) AS "price",
+		  (SELECT 
+		    i.url 
+		  FROM
+		    ec_product_image AS pi1 
+		    LEFT JOIN ec_image AS i 
+		      ON pi1.image_id = i.id 
+		  WHERE pi1.product_id = p.id 
+		  ORDER BY pi1.display_order DESC 
+		  LIMIT 1) AS "mainUrl",
+		  (SELECT 
+		    MAX(sale_earning) 
+		  FROM
+		    ec_product_item 
+		  WHERE product_id = p.id 
+		    AND del_flag = 0) AS "saleEarningFund",
+        (SELECT
+        MAX(bonus_earning)
+        FROM
+        ec_product_item
+        WHERE product_id = p.id
+        AND del_flag = 0) AS "bonusEaringFund",
+		CASE WHEN hot.id IS NULL THEN '0' ELSE '1' END AS "isHot",
+		CASE WHEN reserve.id IS NULL THEN '0' ELSE '1' END AS "isReserve"
+		FROM ec_product AS p
+		LEFT JOIN ec_category_product AS cp ON cp.product_id=p.id
+		LEFT JOIN ec_category AS cc ON cc.id=cp.category_id
+		LEFT JOIN view_all_recommend AS hot ON p.id = hot.productId
+		AND hot.typeCode = 'HOT'
+		LEFT JOIN view_all_recommend AS reserve ON p.id = reserve.productId
+		AND reserve.typeCode = 'RESERVE'
+		AND reserve.endTime>NOW()
+		WHERE 1 = 1
+		<if test="categoryId != null and categoryId != ''">
+		AND cc.parent_category_id =#{categoryId}
+		</if>
+		<if test="childCategoryId != null and childCategoryId != ''">
+		AND cp.category_id =#{childCategoryId}
+		</if>
+		<if test="brandId != null and brandId != ''">
+		AND p.brand_id=#{brandId}
+		</if>
+		AND p.archived=0
+        AND p.del_flag=0
+		AND p.retail_usable=1
+		) AS result
+		WHERE 1=1
+		<if test="productType != null and productType == 'HOT'">
+		AND result.isHot = 1
+		</if>
+		<if test="productType == null or productType == 'ALL'">
+		AND result.isReserve = 0
+		</if>
+		<if test="sortType == null or sortType == '' or sortType=='default'">
+		ORDER BY result.display_order DESC,result.price
+		</if>
+		<if test="sortType == 'price'">
+		ORDER BY result.price,result.display_order DESC
+		</if>
+		<if test="sortType == 'sales'">
+		ORDER BY result.saledNum DESC,result.display_order DESC
+		</if>
+		<if test="sortType == 'saleEarning'">
+		ORDER BY result.saleEarningFund DESC,result.display_order DESC
+		</if>
+		LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+	<select id="getProduct" resultType="com.vcat.module.ec.dto.ProductDto" parameterType="String">
+		SELECT p.id AS "id",p.name AS "name",
+		p.sales AS "saledNum",
+		p.display_order AS "display_order",
+		p.collection AS "collection",
+		p.add_date AS "add_date",
+		(SELECT MIN(retail_price)
+		FROM ec_product_item
+		WHERE product_id = p.id
+			AND del_flag = 0
+		) AS "samplePrice",
+		(SELECT i.url
+		FROM ec_product_image AS pi1
+		LEFT JOIN ec_image AS i ON pi1.image_id=i.id
+		WHERE pi1.product_id=p.id
+		ORDER BY pi1.display_order DESC LIMIT 1)
+		AS "mainUrl"	,
+		(SELECT MAX(sale_earning)
+		FROM ec_product_item
+		WHERE product_id = p.id
+		AND del_flag = 0
+		) AS "saleEarningFund",
+		ee.fund AS "shareEarningFund",
+		le.fund AS "loadEarningFund",
+		CASE WHEN hot.id IS NULL THEN '0' ELSE '1' END AS "isHot",
+		CASE WHEN reserve.id IS NULL THEN '0' ELSE '1' END AS "isReserve",
+		sp.archived AS "isSellerLoad",
+		reserve.startTime AS "reserveStartTime",
+		reserve.endTime AS "reserveEndTime"
+		FROM ec_product AS p
+		LEFT JOIN ec_load_earning AS le ON p.id = le.product_id
+		AND le.is_activate = 1
+		LEFT JOIN ec_shop_product AS sp ON sp.product_id=p.id
+		AND sp.shop_id=#{customerId}
+		AND sp.del_flag=0
+		LEFT JOIN ec_share_earning AS ee ON p.id = ee.product_id
+		AND ee.is_activate = 1
+		AND NOW() BETWEEN ee.start_time AND ee.end_time
+		AND ee.del_flag = 0
+		LEFT JOIN view_all_recommend AS hot ON p.id = hot.productId
+		AND hot.typeCode = 'HOT'
+		LEFT JOIN view_all_recommend AS reserve ON p.id = reserve.productId
+		AND reserve.typeCode = 'RESERVE'
+		<![CDATA[ AND NOW()<reserve.endTime]]> 
+		LEFT JOIN ec_category_product AS cp ON cp.product_id=p.id
+		WHERE 1 = 1
+		AND p.id=#{_parameter}
+	</select>
+
+	<update id="archivedShopProduct">
+		UPDATE ec_shop_product
+		SET  archived = 1
+		,start_date = NULL
+		,end_date = NULL
+		WHERE product_id = #{productId}
+		AND shop_id = #{shopId}
+		AND end_date IS NOT NULL
+	</update>
+    <select id="hasBrandCategory" resultType="Boolean">
+        SELECT CASE WHEN COUNT(1) > 0 THEN 'true' ELSE 'false' END
+        FROM ec_category_brand cs
+        WHERE cs.brand_id = #{brandId} AND cs.category_id = #{categoryId}
+    </select>
+    <insert id="insertBrandCategory">
+        INSERT INTO ec_category_brand(
+          id,
+          brand_id,
+          category_id
+        )VALUES (
+          #{id},
+          #{brandId},
+          #{categoryId}
+        )
+    </insert>
+    <select id="needDeleteBrandCategory" resultType="Boolean">
+        SELECT IFNULL((SELECT CASE WHEN COUNT(1) = 0 THEN 'true' ELSE 'false' END
+        FROM ec_product p
+        LEFT JOIN ec_brand brand ON brand.id = p.brand_id
+        LEFT JOIN ec_supplier s ON brand.supplier_id = s.id
+        LEFT JOIN ec_category_product cp on cp.product_id = p.id
+        WHERE p.brand_id = #{brandId} AND cp.category_id = #{categoryId} AND p.archived = 0
+        GROUP BY p.brand_id,cp.category_id),'true')
+    </select>
+    <delete id="deleteBrandCategory">
+        DELETE FROM ec_category_brand
+        WHERE brand_id = #{brandId} AND category_id = #{categoryId}
+    </delete>
+    <!--<select id="countCouponProductList" resultType="int">-->
+     <!--SELECT COUNT(result.id)-->
+		<!--FROM(-->
+		<!--SELECT -->
+		  <!--p.id AS "id",-->
+		  <!--p.name AS "name",-->
+		  <!--p.sales AS "saledNum",-->
+		  <!--p.collection AS "collection"-->
+		<!--FROM-->
+		  <!--ec_product AS p -->
+		<!--WHERE 1 = 1 -->
+		  <!--AND p.archived = 0 -->
+		  <!--<if test="couponType==3">-->
+		  <!--AND p.coupon_all_usable = 1-->
+		  <!--</if>-->
+		  <!--<if test="couponType==4">-->
+		  <!--AND p.coupon_part_usable = 1-->
+		  <!--</if>-->
+        <!--<if test="couponType==5">-->
+            <!--AND (p.coupon_all_usable = 1 or p.coupon_part_usable = 1)-->
+        <!--</if>-->
+		  <!--) AS result-->
+    <!--</select>-->
+
+    <!--<select id="getCouponProductList" resultType="com.vcat.module.ec.dto.ProductDto" >-->
+	    <!--SELECT *-->
+		<!--FROM(-->
+		<!--SELECT -->
+		  <!--p.id AS "id",-->
+		  <!--p.name AS "name",-->
+		  <!--p.display_order AS "display_order",-->
+		  <!--p.add_date AS "add_date",-->
+		  <!--p.sales AS "saledNum",-->
+		  <!--(SELECT -->
+		    <!--i.url -->
+		  <!--FROM-->
+		    <!--ec_product_image AS pi1 -->
+		    <!--LEFT JOIN ec_image AS i -->
+		      <!--ON pi1.image_id = i.id -->
+		  <!--WHERE pi1.product_id = p.id -->
+		  <!--ORDER BY pi1.display_order DESC -->
+		  <!--LIMIT 1) AS "mainUrl" ,-->
+		  <!--(SELECT MIN(retail_price)-->
+	   <!--FROM ec_product_item-->
+	   <!--WHERE product_id = p.id-->
+	     <!--AND del_flag = 0) AS "price",-->
+		 <!--<if test="couponType ==3" >-->
+	      <!--(SELECT MIN(retail_price)-->
+				<!--FROM ec_product_item-->
+				<!--WHERE product_id = p.id-->
+					<!--AND del_flag = 0) AS "couponValue",-->
+		  <!--(SELECT SUM(coupon_all_inventory)-->
+	   <!--FROM ec_product_item-->
+	   <!--WHERE product_id = p.id-->
+	     <!--AND del_flag = 0) AS "inventory"-->
+	    <!--</if>-->
+	  	<!--<if test="couponType ==4" >-->
+		  <!--(SELECT MIN(coupon_value)-->
+				<!--FROM ec_product_item-->
+				<!--WHERE product_id = p.id-->
+					<!--AND del_flag = 0) AS "couponValue",-->
+		<!--(SELECT SUM(coupon_part_inventory)-->
+	   <!--FROM ec_product_item-->
+	   <!--WHERE product_id = p.id-->
+	     <!--AND del_flag = 0) AS "inventory"-->
+	  	<!--</if> -->
+		<!--FROM-->
+		  <!--ec_product AS p -->
+		<!--WHERE 1 = 1 -->
+		  <!--AND p.archived = 0 -->
+		  <!--<if test="couponType==3">-->
+		  <!--AND p.coupon_all_usable = 1-->
+		  <!--</if>-->
+		  <!--<if test="couponType==4">-->
+		  <!--AND p.coupon_part_usable = 1-->
+		  <!--</if>-->
+		  <!--) AS result-->
+		<!--<if test="sortType == 'sales'">-->
+		<!--ORDER BY result.saledNum DESC,result.add_date DESC-->
+		<!--</if>-->
+		<!--<if test="sortType == 'price'">-->
+		<!--ORDER BY result.price,result.add_date DESC-->
+		<!--</if>-->
+		<!--<if test="sortType == 'default'">-->
+		<!--ORDER BY result.display_order DESC,result.add_date DESC-->
+		<!--</if>-->
+
+        <!--<if test="sortType == 'all'">-->
+            <!--ORDER BY result.display_order DESC,result.add_date DESC-->
+        <!--</if>-->
+
+		<!--LIMIT #{page.pageOffset},#{page.pageSize}-->
+    <!--</select>-->
+    <!--&lt;!&ndash; 2016.3月.1.dsj 现在修改返回全部类型和排序规则&ndash;&gt;-->
+    <!--<select id="getCouponProductList2" resultType="com.vcat.module.ec.dto.ProductDto" >-->
+        <!--SELECT *-->
+        <!--FROM(-->
+            <!--(SELECT-->
+            <!--p.id AS "id",-->
+            <!--p.name AS "name",-->
+            <!--p.display_order + 100 AS "display_order",-->
+            <!--p.add_date AS "add_date",-->
+            <!--p.sales AS "saledNum",-->
+            <!--(SELECT i.url-->
+            <!--FROM-->
+            <!--ec_product_image AS pi1-->
+            <!--LEFT JOIN ec_image AS i-->
+            <!--ON pi1.image_id = i.id-->
+            <!--WHERE pi1.product_id = p.id-->
+            <!--ORDER BY pi1.display_order DESC-->
+            <!--LIMIT 1) AS "mainUrl" ,-->
+            <!--(SELECT MIN(retail_price)-->
+            <!--FROM ec_product_item-->
+            <!--WHERE product_id = p.id-->
+            <!--AND del_flag = 0) AS "price",-->
+            <!--(SELECT MIN(retail_price)-->
+            <!--FROM ec_product_item-->
+            <!--WHERE product_id = p.id-->
+            <!--AND del_flag = 0) AS "couponValue",-->
+            <!--(SELECT SUM(coupon_all_inventory)-->
+            <!--FROM ec_product_item-->
+            <!--WHERE product_id = p.id-->
+            <!--AND del_flag = 0-->
+            <!--) AS "inventory",-->
+            <!--CASE WHEN hot.id IS NULL THEN '0' ELSE '1' END AS "isHot"-->
+             <!--FROM-->
+            <!--ec_product AS p-->
+            <!--LEFT JOIN view_all_recommend AS hot ON p.id = hot.productId-->
+            <!--WHERE 1 = 1-->
+            <!--AND p.archived = 0-->
+            <!--AND p.coupon_all_usable = 1-->
+            <!--)-->
+            <!--UNION-->
+            <!--(-->
+            <!--SELECT-->
+            <!--p.id AS "id",-->
+            <!--p.name AS "name",-->
+            <!--p.display_order + 0 AS "display_order",-->
+            <!--p.add_date AS "add_date",-->
+            <!--p.sales AS "saledNum",-->
+            <!--(SELECT i.url-->
+            <!--FROM-->
+            <!--ec_product_image AS pi1-->
+            <!--LEFT JOIN ec_image AS i-->
+            <!--ON pi1.image_id = i.id-->
+            <!--WHERE pi1.product_id = p.id-->
+            <!--ORDER BY pi1.display_order DESC-->
+            <!--LIMIT 1) AS "mainUrl" ,-->
+            <!--(SELECT MIN(retail_price)-->
+            <!--FROM ec_product_item-->
+            <!--WHERE product_id = p.id-->
+            <!--AND del_flag = 0) AS "price",-->
+
+            <!--(SELECT MIN(coupon_value)-->
+            <!--FROM ec_product_item-->
+            <!--WHERE product_id = p.id-->
+            <!--AND del_flag = 0) AS "couponValue",-->
+            <!--(SELECT SUM(coupon_part_inventory)-->
+            <!--FROM ec_product_item-->
+            <!--WHERE product_id = p.id-->
+            <!--AND del_flag = 0) AS "inventory",-->
+            <!--CASE WHEN hot.id IS NULL THEN '0' ELSE '1' END AS "isHot"-->
+            <!--FROM-->
+            <!--ec_product AS p-->
+            <!--LEFT JOIN view_all_recommend AS hot ON p.id = hot.productId-->
+            <!--WHERE 1 = 1-->
+            <!--AND p.archived = 0-->
+            <!--AND p.coupon_part_usable = 1)-->
+        <!--) AS result-->
+        <!--ORDER BY result.display_order DESC,result.add_date DESC-->
+        <!--LIMIT #{page.pageOffset},#{page.pageSize}-->
+    <!--</select>-->
+    <update id="updateOrder">
+        UPDATE ec_product
+        SET display_order = #{displayOrder}
+        WHERE id = #{id}
+    </update>
+    <delete id="delete">
+        UPDATE ec_product
+        SET del_flag = #{DEL_FLAG_DELETE}
+        ,archived = 1
+        WHERE id = #{id}
+        AND del_flag = #{DEL_FLAG_NORMAL}
+    </delete>
+    <delete id="recover">
+        UPDATE ec_product
+        SET del_flag = #{DEL_FLAG_NORMAL}
+        WHERE id = #{id}
+        AND del_flag = #{DEL_FLAG_DELETE}
+    </delete>
+    <select id="countRecommendProductList" resultType="int">
+		  SELECT 
+			COUNT(1)
+		 FROM ec_product AS p
+		 	WHERE 1=1
+		 	and p.id not in (select epi.product_id from ec_product_item as epi where epi.product_id = p.id and epi.product_item_type = 1)
+		 	AND p.archived=0
+            AND p.del_flag=0
+		    AND p.retail_usable=1
+		    ORDER BY p.shelves DESC
+    </select>
+    <select id="countNewProductList" resultType="int">
+		  SELECT 
+			COUNT(1)
+		 FROM ec_product AS p
+		 	WHERE p.is_new =1
+		 	and p.id not in (select epi.product_id from ec_product_item as epi where epi.product_id = p.id and epi.product_item_type = 1)
+		 	AND p.archived=0
+            AND p.del_flag=0
+		    AND p.retail_usable=1
+		    ORDER BY p.display_order DESC
+    </select>
+    <select id="countReserveProductList" resultType="int">
+		SELECT COUNT(1)
+		FROM
+			ec_product AS p
+			LEFT JOIN view_all_recommend AS reserve
+				ON p.id = reserve.productId
+			AND reserve.startTime is not null
+			AND reserve.endTime is not null
+		WHERE 1 = 1
+			  AND p.archived = 0
+			  and p.id not in (select epi.product_id from ec_product_item as epi where epi.product_id = p.id and epi.product_item_type = 1)
+			  AND p.del_flag = 0
+			  AND p.retail_usable = 1
+			  AND reserve.typeCode = 'RESERVE'
+		ORDER BY reserve.endTime
+    </select>
+    <select id="getRecommendProductList" resultType="com.vcat.module.ec.dto.ProductDto" >
+        SELECT
+            p.id AS "id",
+            p.name AS "name",
+            p.shelves AS "shelves",
+            (case when (recommend.typeCode = 'HOT' and recommend.endTime is null) then 1 else 0 end) as "isHot",
+            (case when (recommend.typeCode = 'RESERVE' and recommend.endTime is not null) then 1 else 0 end)  as "isReserve",
+            (case when (recommend.typeCode = 'RESERVE'and  now() > recommend.endTime and recommend.endTime is not null ) then 1 else 0 end) as "isReserveOver",
+            (SELECT SUM(inventory)
+             FROM ec_product_item
+             WHERE product_id = p.id
+                   AND del_flag = 0) AS "inventory",
+            (SELECT
+            MAX(retail_price)
+             FROM
+                 ec_product_item
+             WHERE product_id = p.id
+                   AND del_flag = 0) AS "price",
+            (SELECT
+            i.url
+             FROM
+                 ec_product_image AS pi1
+                 LEFT JOIN ec_image AS i
+                     ON pi1.image_id = i.id
+             WHERE pi1.product_id = p.id
+             ORDER BY pi1.display_order DESC
+             LIMIT 1) AS "mainUrl",
+            (SELECT
+            MAX(sale_earning)
+             FROM
+                 ec_product_item
+             WHERE product_id = p.id
+                   AND del_flag = 0) AS "saleEarningFund",
+			(SELECT
+			MAX(bonus_earning)
+			 FROM
+				 ec_product_item
+			 WHERE product_id = p.id
+				   AND del_flag = 0) AS "bonusEaringFund"
+        FROM ec_product AS p
+            LEFT JOIN view_all_recommend as recommend ON recommend.productId = p.id
+        WHERE 1 = 1
+        and p.id not in (select epi.product_id from ec_product_item as epi where epi.product_id = p.id and epi.product_item_type = 1)
+              AND p.archived=0
+              AND p.del_flag=0
+              AND p.retail_usable=1
+        GROUP BY p.id
+        ORDER BY p.shelves DESC
+	   	LIMIT #{page.pageOffset},#{page.pageSize}
+    </select>
+     <select id="getNewProductList" resultType="com.vcat.module.ec.dto.ProductDto" >
+	    SELECT 
+	  p.id AS "id",
+	  p.name AS "name",
+	  p.shelves AS "shelves",
+	  (SELECT SUM(inventory)
+	   FROM ec_product_item
+	   WHERE product_id = p.id
+	     AND del_flag = 0) AS "inventory",
+	  (SELECT 
+	    MAX(retail_price) 
+	  FROM
+	    ec_product_item 
+	  WHERE product_id = p.id 
+	    AND del_flag = 0) AS "price",
+	  (SELECT 
+	    i.url 
+	  FROM
+	    ec_product_image AS pi1 
+	    LEFT JOIN ec_image AS i 
+	      ON pi1.image_id = i.id 
+	  WHERE pi1.product_id = p.id 
+	  ORDER BY pi1.display_order DESC 
+	  LIMIT 1) AS "mainUrl",
+	  (SELECT 
+	    MAX(sale_earning) 
+	  FROM
+	    ec_product_item 
+	  WHERE product_id = p.id 
+	    AND del_flag = 0) AS "saleEarningFund",
+	(SELECT
+	MAX(bonus_earning)
+	 FROM
+		 ec_product_item
+	 WHERE product_id = p.id
+		   AND del_flag = 0) AS "bonusEaringFund"
+	 FROM ec_product AS p
+	 	WHERE p.is_new =1
+	 	and p.id not in (select epi.product_id from ec_product_item as epi where epi.product_id = p.id and epi.product_item_type = 1)
+	 	AND p.archived=0
+        AND p.del_flag=0
+		AND p.retail_usable=1
+	    ORDER BY p.display_order DESC,p.add_date DESC
+	   LIMIT #{page.pageOffset},#{page.pageSize}
+    </select>
+    <select id="getReserveProductList" resultType="com.vcat.module.ec.dto.ProductDto" >
+		SELECT
+		  p.id AS "id",
+		  p.name AS "name",
+		  p.shelves AS "shelves",
+	      reserve.startTime AS "reserveStartTime",
+		  reserve.endTime AS "reserveEndTime",
+		  (case when now() > reserve.endTime then 1 else 0 end) as "isReserveOver",
+		  reserve.typeCode = 'HOT' AS 'isHot',
+		  reserve.typeCode = 'RESERVE' AS "isReserve",
+	  	  (SELECT SUM(inventory)
+	   		FROM ec_product_item
+	   		WHERE product_id = p.id
+	     	AND del_flag = 0) AS "inventory",
+		  (SELECT MAX(retail_price)
+		  	FROM ec_product_item
+		  	WHERE product_id = p.id
+		    AND del_flag = 0) AS "price",
+		  (SELECT i.url
+		  	FROM ec_product_image AS pi1  LEFT JOIN ec_image AS i
+		    ON pi1.image_id = i.id
+		  	WHERE pi1.product_id = p.id
+		  	ORDER BY pi1.display_order DESC LIMIT 1) AS "mainUrl",
+		  (SELECT MAX(sale_earning)
+		  	FROM ec_product_item
+		  	WHERE product_id = p.id
+		    AND del_flag = 0) AS "saleEarningFund",
+        (SELECT
+        MAX(bonus_earning)
+        FROM
+        ec_product_item
+        WHERE product_id = p.id
+        AND del_flag = 0) AS "bonusEaringFund"
+		  FROM ec_product AS p LEFT JOIN view_all_recommend AS reserve
+		  ON p.id = reserve.productId
+			AND reserve.startTime is not null
+			AND reserve.endTime is not null
+		  WHERE 1 = 1
+		and p.id not in (select epi.product_id from ec_product_item as epi where epi.product_id = p.id and epi.product_item_type = 1)
+		  <!--是否下架-->
+		  AND p.archived=0
+		  <!--是否删除-->
+		  AND p.del_flag=0
+		  <!--零售市场是否可用-->
+		  AND p.retail_usable=1
+		  <!--预售标识-->
+		  AND reserve.typeCode = 'RESERVE'
+		ORDER BY (case when reserve.endTime > NOW() then reserve.endTime  else ADDDATE(reserve.endTime,INTERVAL 1 year) end)
+	    LIMIT #{page.pageOffset},#{page.pageSize}
+    </select>
+    <update id="stick">
+        UPDATE ec_product
+        SET display_order = (
+            SELECT
+                a.d
+            FROM
+                (
+                    SELECT
+                        MAX(display_order) AS 'd'
+                    FROM
+                        ec_product
+                    WHERE
+                        id != #{id}
+                ) a
+        ) + 1
+        WHERE id = #{id}
+    </update>
+    <update id="addPerformance">
+        UPDATE ec_product
+        SET sales = sales + #{sales}
+        ,shelves = shelves + #{shelves}
+        WHERE id = #{product.id}
+    </update>
+    <update id="setShopProductRecommendByType">
+        update ec_shop_product
+        <set>
+            <if test = "type == 'add'">
+                is_recommend = 1,
+            </if>
+            <if test = "type == 'cancel'">
+                is_recommend = 0
+            </if>
+        </set>
+        where product_id = #{productId}
+		and del_flag = 0
+        and shop_id = #{shopId}
+    </update>
+    <select id="countHotZoneProductList" resultType="int">
+		SELECT
+		COUNT(1)
+		FROM ec_product AS p
+		WHERE p.is_hot_sale =1
+		and p.id not in (select epi.product_id from ec_product_item as epi where epi.product_id = p.id and epi.product_item_type = 1)
+		AND p.archived=0
+		AND p.del_flag=0
+		AND p.retail_usable=1
+		ORDER BY p.display_order DESC
+	</select>
+	<select id="getHotZoneProductList" resultType="com.vcat.module.ec.dto.ProductDto" >
+		<![CDATA[
+		SELECT
+		p.id AS "id",
+		p.name AS "name",
+		p.shelves AS "shelves",
+		(CASE WHEN update_date is null THEN hot_sale_set_date
+			ELSE update_date END )  AS "updateTime",
+		(select max(ec2.activate_time) from ec_copywrite as ec2
+		where ec2.is_activate = 1
+			  and ec2.product_id = p.id) as 'activeTime',
+		(SELECT SUM(inventory)
+		FROM ec_product_item
+		WHERE product_id = p.id
+		AND del_flag = 0) AS "inventory",
+		(SELECT
+		MAX(retail_price)
+		FROM
+		ec_product_item
+		WHERE product_id = p.id
+		AND del_flag = 0) AS "price",
+		(SELECT
+		MAX(sale_earning)
+		FROM
+		ec_product_item
+		WHERE product_id = p.id
+		AND del_flag = 0) AS "saleEarningFund",
+		(SELECT
+		MAX(bonus_earning)
+		 FROM
+			 ec_product_item
+		 WHERE product_id = p.id
+			   AND del_flag = 0) AS "bonusEaringFund",
+
+		( SELECT  count(1) <= 0
+		    FROM ec_shop_product sp
+			WHERE sp.product_id = p.id
+			AND  sp.shop_id = #{shopId} AND sp.archived = 0
+		) as "isSellerLoad",
+		(SELECT i.url
+		FROM ec_product_image AS pi1
+		LEFT JOIN ec_image AS i ON pi1.image_id=i.id
+		WHERE pi1.product_id=p.id
+		ORDER BY pi1.display_order DESC LIMIT 1)
+		AS "mainUrl",
+        br.logo_url AS "logo"
+		FROM ec_product AS p
+        join ec_brand as br on br.id = p.brand_id
+		WHERE p.is_hot_sale =1
+		and p.id not in (select epi.product_id from ec_product_item as epi where epi.product_id = p.id and epi.product_item_type = 1)
+		AND p.archived=0
+		AND p.del_flag=0
+		AND p.retail_usable=1
+		ORDER BY activeTime DESC, p.display_order DESC, p.add_date DESC
+		LIMIT #{page.pageOffset},#{page.pageSize}
+		]]>
+	</select>
+	<select id="getShopProductList" resultType="com.vcat.module.ec.dto.ProductDto" parameterType="java.util.Map">
+		SELECT *
+		FROM(
+		SELECT p.id AS "id",p.name AS "name",
+		p.sales AS "saledNum",
+		p.display_order AS "display_order",
+		p.collection AS "collection",
+		p.add_date AS "add_date",
+		p.copywrite_title AS "copywriteTitle",
+		(CASE WHEN p.update_date is null THEN p.add_date
+		ELSE p.update_date END )  AS "updateTime",
+		brand.logo_url AS "logo",
+		(SELECT
+		group_concat(url)
+		FROM
+		(SELECT i.url as url ,  pi1.product_id as pid
+		FROM
+		ec_product_image AS pi1
+		LEFT JOIN ec_image AS i ON pi1.image_id = i.id
+		ORDER BY pi1.display_order DESC
+		) t
+		WHERE t.pid = p.id
+		) AS "productImages",
+        sp.is_recommend as "isRecommend",
+		(SELECT MAX(retail_price)
+		FROM ec_product_item
+		WHERE product_id = p.id
+		AND del_flag = 0
+		) AS "price",
+		p.external_price externalPrice,
+		p.free_shipping freeShipping,
+# 		(CASE WHEN reserve.endTime is null then (SELECT SUM(inventory)
+# 		FROM ec_product_item
+# 		WHERE product_id = p.id
+# 		AND del_flag = 0)
+# 		else (SELECT inventory
+# 		FROM ec_shop_product
+# 		WHERE product_id = p.id
+# 		AND shop_id = sp.shop_id)
+# 		end) AS "inventory",
+
+		(SELECT SUM(inventory)
+		FROM ec_product_item
+		WHERE product_id = p.id
+		AND del_flag = 0) AS "inventory",
+		(SELECT i.url
+		FROM ec_product_image AS pi1
+		LEFT JOIN ec_image AS i ON pi1.image_id=i.id
+		WHERE pi1.product_id=p.id
+		ORDER BY pi1.display_order DESC LIMIT 1)
+		AS "mainUrl"	,
+		(SELECT MAX(sale_earning)
+		FROM ec_product_item
+		WHERE product_id = p.id
+		AND del_flag = 0
+		) AS "saleEarningFund",
+        (SELECT
+        MAX(bonus_earning)
+        FROM
+        ec_product_item
+        WHERE product_id = p.id
+        AND del_flag = 0) AS "bonusEaringFund",
+		ee.fund AS "shareEarningFund",
+		le.fund AS "loadEarningFund",
+		CASE WHEN hot.id IS NULL THEN '0' ELSE '1' END AS "isHot",
+		CASE WHEN (reserve.startTime IS not NULL or reserve.endTime is not null)  THEN '1' ELSE '0' END AS "isReserve",
+		sp.archived AS "isSellerLoad",
+		sp.start_date AS "takeStartTime",
+		sp.end_date AS "takeEndTime",
+		reserve.startTime AS "reserveStartTime",
+		reserve.endTime AS "reserveEndTime",
+        (case when ( now() > reserve.endTime and reserve.endTime is not null ) then 1 else 0 end) as "isReserveOver",
+		p.copywrite AS "copywrite"
+		FROM ec_product AS p
+		LEFT JOIN ec_load_earning AS le ON p.id = le.product_id
+		AND le.is_activate = 1
+		LEFT JOIN ec_shop_product AS sp ON sp.product_id=p.id
+		LEFT JOIN ec_brand brand ON brand.id = p.brand_id
+		LEFT JOIN ec_supplier AS s ON s.id = brand.supplier_id
+		LEFT JOIN ec_share_earning AS ee ON p.id = ee.product_id
+		AND ee.is_activate = 1
+		AND NOW() BETWEEN ee.start_time AND ee.end_time
+		AND ee.del_flag = 0
+		LEFT JOIN view_all_recommend AS hot ON p.id = hot.productId
+		AND hot.typeCode = 'HOT'
+		LEFT JOIN view_all_recommend AS reserve ON p.id = reserve.productId
+		AND reserve.typeCode = 'RESERVE'
+		LEFT JOIN ec_category_product AS cp ON cp.product_id=p.id
+		LEFT JOIN ec_category AS cc ON cc.id=cp.category_id
+		WHERE 1 = 1
+		AND sp.shop_id=#{customerId}
+		AND sp.archived=#{loadType}
+		AND sp.del_flag=0
+		<if test="productType != null and productType == 'HOT'">
+			AND hot.typeCode = #{productType}
+            AND hot.endTime is null
+		</if>
+		<if test="productType != null and productType == 'RESERVE'">
+			AND reserve.typeCode = #{productType}
+            AND reserve.endTime is not null
+		</if>
+		AND p.archived=0
+		AND p.del_flag=0
+		AND p.retail_usable=1
+		<if test="categoryId != null and categoryId != ''">
+			AND cc.parent_category_id=#{categoryId}
+			AND cc.is_activate=1
+		</if>
+		) AS result
+		<if test="sortType == 'default'">
+			ORDER BY (CASE WHEN result.isRecommend=1 THEN 1
+            ELSE 0 END )  DESC, result.display_order DESC,result.add_date DESC
+		</if>
+		<if test="sortType == 'sales'">
+			ORDER BY (CASE WHEN result.isRecommend=1 THEN 1
+            ELSE 0 END )  DESC, result.saledNum DESC,result.add_date DESC
+		</if>
+		<if test="sortType == 'collection'">
+			ORDER BY (CASE WHEN result.isRecommend=1 THEN 1
+            ELSE 0 END )  DESC, result.collection DESC,result.add_date DESC
+		</if>
+		<if test="sortType == 'time'">
+			ORDER BY (CASE WHEN result.isRecommend=1 THEN 1
+            ELSE 0 END )  DESC, result.updateTime DESC
+		</if>
+		<if test="sortType == 'saleEarning'">
+			ORDER BY (CASE WHEN result.isRecommend=1 THEN 1
+            ELSE 0 END )  DESC, result.saleEarningFund DESC,result.add_date DESC
+		</if>
+
+		LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+	<select id="countRecommendShopProduct" resultType="java.lang.Integer">
+		select count(1) from ec_shop_product as s
+			left join ec_product as ep
+			ON s.product_id = ep.id
+			where s.shop_id =#{shopId}
+			# 未删除
+			and s.del_flag = 0
+			# 已推荐
+			and s.is_recommend = 1
+			# 商品上架中
+			and ep.archived = 0
+			and ep.del_flag = 0
+	</select>
+	<select id="countLeroyProductList" resultType="java.lang.Integer">
+        SELECT COUNT(1) FROM ec_product as p
+        WHERE 1=1
+              AND p.is_virtual_product = 1
+              AND p.archived=0
+              AND p.del_flag=0
+              AND p.retail_usable=1
+        ORDER BY p.display_order DESC
+	</select>
+    <select id="getLeroyProductList" resultType="com.vcat.module.ec.dto.ProductDto">
+        SELECT
+            p.id AS "id",
+            p.name AS "name",
+            (CASE WHEN p.update_date is null THEN p.add_date
+             ELSE p.update_date END ) AS "updateTime",
+			(select max(ec2.activate_time) from ec_copywrite as ec2
+			where ec2.is_activate = 1
+				  and ec2.product_id = p.id) as 'activeTime',
+            brand.logo_url AS "logo",
+            CASE WHEN hot.id IS NULL THEN '0' ELSE '1' END AS "isHot",
+            (SELECT SUM(inventory)
+             FROM ec_product_item
+             WHERE product_id = p.id
+                   AND del_flag = 0) AS "inventory",
+			(SELECT i.url
+			 FROM ec_product_image AS pi1
+				 LEFT JOIN ec_image AS i ON pi1.image_id=i.id
+			 WHERE pi1.product_id=p.id
+			 ORDER BY pi1.display_order DESC LIMIT 1)
+				AS "mainUrl",
+            (SELECT
+            MAX(retail_price)
+             FROM
+                 ec_product_item
+             WHERE product_id = p.id
+                   AND del_flag = 0) AS "price"
+        FROM ec_product AS p
+        JOIN ec_brand brand ON brand.id = p.brand_id
+        LEFT JOIN view_all_recommend AS hot ON p.id = hot.productId
+              AND hot.typeCode = 'HOT'
+        WHERE p.is_virtual_product = 1
+              AND p.del_flag=0
+              AND p.retail_usable=1
+        ORDER BY p.display_order DESC
+        LIMIT #{page.pageOffset},#{page.pageSize}
+    </select>
+    <select id="getReserveImage" resultType="java.lang.String">
+        select url from ec_head_image
+        where type = 3
+        and is_activate =1
+        and del_flag = 0
+        limit 1;
+    </select>
+    <select id="isReserveProduct" resultType="java.lang.Boolean">
+        select count(1)
+        FROM ec_product AS p LEFT JOIN view_all_recommend AS reserve on p.id = reserve.productId
+            LEFT JOIN ec_product_item as epi on epi.product_id = p.id
+                                                AND reserve.startTime is not null
+                                                AND reserve.endTime is not null
+        WHERE 1 = 1
+              AND p.archived=0
+              AND p.del_flag=0
+              AND p.retail_usable=1
+              AND reserve.typeCode = 'RESERVE'
+              AND reserve.endTime>NOW()
+        AND epi.id = #{productItemId}
+    </select>
+    <select id="getProductsByPaymentId" resultType="java.util.Map">
+        select eoi.shop_id as 'shopId', eoi.product_id as 'productId'
+        from ec_order as eo left join ec_order_item as eoi on eo.id = eoi.order_id
+            left join ec_product_item as epi on eoi.product_item_id = epi.id
+            left join ec_product as ep on eoi.product_id = ep.id
+        where eo.payment_id = #{paymentId}
+        and ep.is_virtual_product = 1
+		and eoi.order_item_type = 7
+		limit 1
+    </select>
+    <select id="isReserveType" resultType="java.lang.Boolean">
+        select count(1)
+        FROM ec_product AS p LEFT JOIN view_all_recommend AS reserve on p.id = reserve.productId
+            LEFT JOIN ec_product_item as epi on epi.product_id = p.id
+                                                AND reserve.startTime is not null
+                                                AND reserve.endTime is not null
+        WHERE 1 = 1
+              AND p.archived=0
+              AND p.del_flag=0
+              AND p.retail_usable=1
+              AND reserve.typeCode = 'RESERVE'
+              AND reserve.endTime>NOW()
+              AND p.id = #{productId}
+    </select>
+	<select id="isVirtualProduct" resultType="java.lang.Boolean">
+		select ep.is_virtual_product as "virtualProduct"
+        from ec_product as ep left join ec_product_item as epi on ep.id = epi.product_id
+		where epi.id = #{productItemId}
+	</select>
+    <!--<select id="CouponUsable" resultType="java.lang.Integer">-->
+        <!--select (case when coupon_all_usable = 1 and coupon_part_usable = 0 then 3-->
+                <!--when  coupon_part_usable = 1  and coupon_all_usable = 0 then 4-->
+                <!--when coupon_all_usable = 1 and coupon_part_usable = 1 then 3-->
+                <!--else 0-->
+                <!--end) as "couponUsable"-->
+        <!--from ec_product-->
+        <!--where id = #{parductId}-->
+    <!--</select>-->
+	<select id="countShopProductList2" resultType="java.lang.Integer">
+		SELECT count(p.id)
+		FROM ec_product AS p
+		LEFT JOIN ec_shop_product AS sp ON sp.product_id=p.id
+		LEFT JOIN ec_load_earning AS le ON p.id = le.product_id
+		AND le.is_activate = 1
+		LEFT JOIN ec_share_earning AS ee ON p.id = ee.product_id
+		AND ee.is_activate = 1
+		AND NOW() BETWEEN ee.start_time AND ee.end_time
+		AND ee.del_flag = 0
+		LEFT JOIN view_all_recommend AS hot ON p.id = hot.productId
+		AND hot.typeCode = 'HOT'
+		LEFT JOIN view_all_recommend AS reserve ON p.id = reserve.productId
+		AND reserve.typeCode = 'RESERVE'
+		<![CDATA[ AND NOW()<reserve.endTime]]>
+		LEFT JOIN ec_category_product AS cp ON cp.product_id=p.id
+		LEFT JOIN ec_category AS cc ON cc.id=cp.category_id
+		WHERE 1 = 1
+		AND sp.shop_id=#{customerId}
+		<if  test="loadType != null and loadType != ''">
+			AND sp.archived=#{loadType}
+		</if>
+		AND sp.del_flag=0
+		<if test="productType != null and productType == 'HOT'">
+			AND hot.typeCode = #{productType}
+		</if>
+		<if test="productType != null and productType == 'RESERVE'">
+			AND reserve.typeCode = #{productType}
+		</if>
+		<if  test="condition != null and condition != ''">
+			AND p.name like CONCAT('%',#{condition},'%')
+		</if>
+		AND p.archived=0
+		AND p.del_flag=0
+		AND p.retail_usable=1
+	</select>
+	<select id="getShopProductList2" resultType="com.vcat.module.ec.dto.ProductDto">
+		SELECT *
+		FROM (
+			SELECT
+			egb.id                               AS "groupBuyId",
+			egb.needed_people                    AS "neededPeople",
+			(SELECT retail_price
+			FROM ec_product_item
+			WHERE id = egb.product_item_id)     AS "groupPrice",
+			p.id                                 AS "id",
+			p.name                               AS "name",
+			p.sales                              AS "saledNum",
+			p.display_order                      AS "display_order",
+			p.collection                         AS "collection",
+			p.add_date                           AS "add_date",
+			(CASE WHEN p.update_date IS NULL
+			THEN p.add_date
+			ELSE p.update_date END)             AS "updateTime",
+			(SELECT (CASE WHEN ecd.shop_id IS NOT NULL
+			THEN 1
+			ELSE 0
+			END)
+			FROM ec_copywrite_default AS ecd
+			LEFT JOIN ec_copywrite AS ec3 ON ecd.copywrite_id = ec3.id
+			WHERE ecd.product_id = p.id
+			AND ecd.shop_id = sp.shop_id) AS 'default',
+			(SELECT max(ec2.activate_time)
+			FROM ec_copywrite AS ec2
+			WHERE ec2.is_activate = 1
+			AND ec2.product_id = p.id)    AS 'activeTime',
+			brand.logo_url                       AS "logo",
+			sp.is_recommend                      AS "isRecommend",
+			(SELECT MAX(retail_price)
+			FROM ec_product_item
+			WHERE product_id = p.id
+			AND del_flag = 0
+			AND product_item_type = 0) AS "price",
+
+			(CASE WHEN egb.id IS NOT NULL
+			THEN 1
+			ELSE 0 END)                         AS "isGroupBuyProduct",
+			p.external_price                        externalPrice,
+			p.free_shipping                         freeShipping,
+			(case when egb.id is not null then (SELECT inventory
+			FROM ec_product_item AS epi1
+			WHERE egb.product_item_id = epi1.id)
+			else (SELECT SUM(inventory)
+			FROM ec_product_item
+			WHERE product_id = p.id
+			AND del_flag = 0) end ) AS "inventory",
+			(SELECT i.url
+			FROM ec_product_image AS pi1
+			LEFT JOIN ec_image AS i ON pi1.image_id = i.id
+			WHERE pi1.product_id = p.id
+			ORDER BY pi1.display_order DESC
+			LIMIT 1)
+			AS "mainUrl",
+
+			(CASE WHEN egb.id IS NOT NULL
+			THEN (SELECT sale_earning
+			FROM ec_product_item
+			WHERE id = egb.product_item_id)
+			ELSE (SELECT MAX(sale_earning)
+			FROM
+			ec_product_item
+			WHERE product_id = p.id
+			AND del_flag = 0) END)  AS "saleEarningFund",
+
+			(CASE WHEN egb.id IS NOT NULL
+			THEN (SELECT bonus_earning
+			FROM ec_product_item
+			WHERE id = egb.product_item_id)
+			ELSE (SELECT MAX(bonus_earning)
+			FROM
+			ec_product_item
+			WHERE product_id = p.id
+			AND del_flag = 0) END)               AS "bonusEaringFund",
+
+
+			ee.fund                              AS "shareEarningFund",
+			le.fund                              AS "loadEarningFund",
+			CASE WHEN hot.id IS NULL
+			THEN '0'
+			ELSE '1' END                         AS "isHot",
+			CASE WHEN (reserve.startTime IS NOT NULL OR reserve.endTime IS NOT NULL)
+			THEN '1'
+			ELSE '0' END                         AS "isReserve",
+			sp.archived                          AS "isSellerLoad",
+			sp.start_date                        AS "takeStartTime",
+			sp.end_date                          AS "takeEndTime",
+			reserve.startTime                    AS "reserveStartTime",
+			reserve.endTime                      AS "reserveEndTime",
+			(CASE WHEN (now() > reserve.endTime AND reserve.endTime IS NOT NULL)
+			THEN 1
+			ELSE 0 END)                         AS "isReserveOver"
+			FROM ec_product AS p
+			LEFT JOIN ec_group_buying AS egb ON p.id = egb.product_id
+			AND egb.status = 1 AND now() >= egb.start_date AND egb.end_date > now()
+			LEFT JOIN ec_load_earning AS le ON p.id = le.product_id
+			AND le.is_activate = 1
+			LEFT JOIN ec_shop_product AS sp ON sp.product_id = p.id
+			LEFT JOIN ec_brand brand ON brand.id = p.brand_id
+			LEFT JOIN ec_supplier AS s ON s.id = brand.supplier_id
+			LEFT JOIN ec_share_earning AS ee ON p.id = ee.product_id
+			AND ee.is_activate = 1
+			AND NOW() BETWEEN ee.start_time AND ee.end_time
+			AND ee.del_flag = 0
+			LEFT JOIN view_all_recommend AS hot ON p.id = hot.productId
+			AND hot.typeCode = 'HOT'
+			LEFT JOIN view_all_recommend AS reserve ON p.id = reserve.productId
+			AND reserve.typeCode = 'RESERVE'
+			LEFT JOIN ec_category_product AS cp ON cp.product_id = p.id
+			LEFT JOIN ec_category AS cc ON cc.id = cp.category_id
+		WHERE 1 = 1
+				AND sp.shop_id=#{customerId}
+				<if  test="loadType != null and loadType != ''">
+					AND sp.archived=#{loadType}
+				</if>
+				AND sp.del_flag=0
+				<if test="productType != null and productType == 'HOT'">
+					AND hot.typeCode = #{productType}
+					AND hot.endTime is null
+				</if>
+				<if test="productType != null and productType == 'RESERVE'">
+					AND reserve.typeCode = #{productType}
+					AND reserve.endTime is not null
+				</if>
+				AND p.archived=0
+				AND p.del_flag=0
+				AND p.retail_usable=1
+				<if test="categoryId != null and categoryId != ''">
+					AND cc.parent_category_id=#{categoryId}
+					AND cc.is_activate=1
+				</if>
+		  ) AS result
+		where 1 = 1
+			<if  test="condition != null and condition != ''">
+				AND result.name like CONCAT('%',#{condition},'%')
+			</if>
+			<if test="sortType == 'default'">
+				ORDER BY (CASE WHEN result.isRecommend=1 THEN 1
+				ELSE 0 END )  DESC, (CASE WHEN result.default = 1 or result.default is not null THEN 1
+				ELSE 0 END )  DESC,  result.activeTime DESC,result.add_date DESC
+			</if>
+			<if test="sortType == 'sales'">
+				ORDER BY (CASE WHEN result.isRecommend=1 THEN 1
+				ELSE 0 END )  DESC, (CASE WHEN result.default = 1 THEN 1
+				ELSE 0 END )  DESC,result.saledNum DESC,result.add_date DESC
+			</if>
+			<if test="sortType == 'collection'">
+				ORDER BY (CASE WHEN result.isRecommend=1 THEN 1
+				ELSE 0 END )  DESC, (CASE WHEN result.default = 1 THEN 1
+				ELSE 0 END )  DESC,result.collection DESC,result.add_date DESC
+			</if>
+			<if test="sortType == 'time'">
+				ORDER BY (CASE WHEN result.isRecommend=1 THEN 1
+				ELSE 0 END )  DESC, (CASE WHEN result.default = 1 THEN 1
+				ELSE 0 END )  DESC,result.updateTime DESC
+			</if>
+			<if test="sortType == 'saleEarning'">
+				ORDER BY (CASE WHEN result.isRecommend=1 THEN 1
+				ELSE 0 END )  DESC, (CASE WHEN result.default = 1 THEN 1
+				ELSE 0 END )  DESC,result.saleEarningFund DESC,result.add_date DESC
+			</if>
+			<if test="sortType == 'new'">
+			ORDER BY (CASE WHEN result.isRecommend=1 THEN 1
+				ELSE 0 END )  DESC, (CASE WHEN result.default = 1 THEN 1
+			ELSE 0 END )  DESC, result.activeTime DESC,result.add_date DESC
+		</if>
+		LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+
+	<!--获取团购列表-->
+	<select id="countGroupBuyProductList" resultType="java.lang.Integer">
+		SELECT count(1)
+			FROM (SELECT ep.id as "id"
+					FROM ec_group_buying AS egb
+					LEFT JOIN ec_product AS ep ON egb.product_id = ep.id
+					LEFT JOIN ec_product_item AS epi ON egb.product_item_id = epi.id
+					WHERE egb.status = 1            -- 状态为激活
+					and now() >= egb.start_date and egb.end_date > now()
+					AND ep.archived = 0            -- 商品未下架
+					AND ep.del_flag = 0            -- 商品未删除
+					AND epi.del_flag = 0          -- 商品项未删除
+					AND epi.del_flag = 0          -- 商品项未删除
+					AND epi.product_item_type = 1
+		) as result
+			<if test="shopId != null and shopId != ''">
+				, ec_shop_product as esp where   esp.product_id = result.id
+				and  esp.shop_id = #{shopId}
+				and  esp.archived = 0
+				and esp.del_flag = 0
+			</if>
+	</select>
+
+	<select id="getGroupBuyProductList" resultType="com.vcat.module.ec.dto.GroupBuyProductDto">
+	  SELECT *
+		FROM (SELECT
+			ep.id                                  AS 'productId',
+			epi.id                                 AS 'productItemId',
+			egb.id                                 AS 'groupBuyId',
+			egb.needed_people                      AS "headCount",
+			egb.single_price                       AS "singlePrice",
+			epi.retail_price                       AS "groupPrice",
+			egb.create_date                        AS "createDate",
+			(CASE WHEN epi.inventory = 0
+			THEN 1
+			ELSE 0 END)                           	AS "hasChance",
+			epi.inventory      						AS "inventory"
+			FROM ec_group_buying AS egb
+			LEFT JOIN ec_product AS ep ON egb.product_id = ep.id
+			LEFT JOIN ec_product_item AS epi ON egb.product_item_id = epi.id
+		WHERE egb.status = 1            -- 状态为激活
+			and now() >= egb.start_date and egb.end_date > now()
+			AND ep.archived = 0            -- 商品未下架
+			AND ep.del_flag = 0            -- 商品未删除
+			AND epi.del_flag = 0          -- 商品项未删除
+			AND epi.del_flag = 0          -- 商品项未删除
+			AND epi.product_item_type = 1  -- 拼团商品
+       ORDER BY egb.display_order DESC,egb.oper_date DESC -- 根据团购排序倒序，操作日期倒序
+			) as result
+			<if test="shopId != null and shopId != ''">
+				, ec_shop_product as esp where   esp.product_id = productId
+				and  esp.shop_id = #{shopId}
+				and  esp.archived = 0
+				and esp.del_flag = 0
+			</if>
+		LIMIT #{page.pageOffset},#{page.pageSize}
+
+
+	</select>
+	<select id="getGroupBuyProductDetail" resultType="com.vcat.module.ec.entity.Product">
+		SELECT
+		  ep.id                        AS "id",
+		  ep.name                      AS "name",
+		  ep.add_date                  AS "addDate",
+		  ep.description               AS "description",
+		  ep.can_refund                AS "canRefund",
+		  (CASE WHEN ep.archived = 0
+			THEN "0"
+		   ELSE "1" END)               AS "isDownLoad",
+		  (CASE WHEN sp.archived = 0
+			THEN "0"
+		   ELSE "1" END)               AS "isSellerLoad",
+		  ep.collection                AS "productCollectCount",
+		  ep.sales                     AS "saledNum",
+		  brand.name                   AS "brand.name",
+		  (CASE WHEN 1 = 1
+			THEN s.description
+		   ELSE brand.description END) AS "brand.description",
+		  brand.logo_url               AS "brand.logoUrl",
+		  c.id                         AS "category.id",
+		  c.name                       AS "category.name",
+		  c.description                AS "category.description",
+		  (select ec.title from ec_copywrite as ec where ec.product_id = egb.product_id and ec.is_activate = 1
+		  order by  activate_time desc
+		  limit 1)             AS "title"
+		FROM ec_group_buying as egb
+		left join ec_product as ep on egb.product_id = ep.id
+		left join ec_product_item as epi on egb.product_item_id = epi.id
+		left join ec_brand as brand on ep.brand_id = brand.id
+		left join ec_supplier as s on brand.supplier_id = s.id
+		left join ec_category_product as cp on ep.id = cp.product_id
+		left join ec_category as c on cp.category_id = c.id
+		left join ec_shop_product as sp on ep.id = sp.product_id
+		  and sp.shop_id = #{shopId}
+		where egb.id = #{groupBuyId}
+		limit 1
+	</select>
+	<select id="countSellerGroupBuyProductList" resultType="java.lang.Integer">
+		select count(1)
+			from ec_group_buying as egb
+			left join ec_product as ep ON egb.product_id = ep.id
+			left join ec_product_item as epi on egb.product_item_id = epi.id
+			left join ec_shop_product as esp on esp.product_id = ep.id
+			and esp.shop_id = #{shopId}
+		where egb.status = 1
+		and now() >= egb.start_date and egb.end_date > now()
+			and esp.del_flag = 0
+			and esp.archived = 0
+			and epi.product_item_type = 1
+			and ep.archived = 0
+			and ep.del_flag = 0
+			and epi.del_flag = 0
+	</select>
+	<select id="getSellerGroupBuyProductList" resultType="com.vcat.module.ec.dto.GroupBuyProductDto">
+		SELECT
+		  ep.id                                  AS 'productId',
+		  epi.id                                 AS 'productItemId',
+		  egb.id                                 AS 'groupBuyId',
+		  egb.needed_people                      AS "headCount",
+		  egb.single_price                       AS "singlePrice",
+		  epi.retail_price                       AS "groupPrice",
+		  egb.create_date                        AS "createDate",
+		  (epi.sale_earning + epi.bonus_earning) AS "earning",
+		  (case when epi.inventory = 0 then 1 else 0 end) AS "hasChance",
+		  epi.inventory AS "inventory"
+		FROM ec_group_buying AS egb
+		  LEFT JOIN ec_product AS ep ON egb.product_id = ep.id
+		  left join ec_shop_product as esp on esp.product_id = ep.id
+		  and esp.shop_id = #{shopId}
+		  LEFT JOIN ec_product_item AS epi ON ep.id = epi.product_id
+		  JOIN ec_brand brand ON brand.id = ep.brand_id
+		WHERE epi.product_item_type = 1
+			  and esp.del_flag = 0
+			  and esp.archived = 0
+			  AND ep.del_flag = 0
+			  AND ep.archived = 0
+			  AND ep.retail_usable = 1
+			  AND epi.del_flag = 0
+			  AND egb.status = 1
+			  and now() >= egb.start_date and egb.end_date > now()
+		ORDER BY egb.create_date DESC
+		LIMIT #{page.pageOffset},#{page.pageSize}
+	</select>
+</mapper>

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ShopProductDao">
+	<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.ShopProduct">
+		<id column="id" property="id" />
+		<result column="shop_id" property="shop.id" />
+		<result column="product_id" property="product.id" />
+		<result column="start_date" property="startDate" />
+		<result column="end_date" property="endDate" />
+		<result column="del_flag" property="delFlag" />
+		<result column="archived" property="archived" />
+    </resultMap>
+    <sql id="Base_Column_List">
+        id,
+        shop_id,
+        product_id,
+        start_date,
+        end_date,
+        del_flag,
+        archived
+    </sql>
+    <sql id="Base_Where_Clause">
+        <where>
+            1=1
+            <if test="id!=null and id!=''">
+                AND id = #{id}
+            </if>
+            <if test="shop.id!=null and shop.id!=''">
+                AND shop_id = #{shop.id}
+            </if>
+            <if test="product.id!=null and product.id!=''">
+                AND product_id = #{product.id}
+            </if>
+        </where>
+    </sql>
+    <select id="get" resultMap="BaseResultMap" parameterType="com.vcat.module.ec.entity.ShopProduct">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM ec_shop_product
+        <include refid="Base_Where_Clause" />
+    </select>
+    <insert id="insert" parameterType="com.vcat.module.ec.entity.ShopProduct">
+        INSERT INTO ec_shop_product(
+        id,
+        shop_id,
+        product_id,
+        start_date,
+        end_date,
+        del_flag,
+        archived,
+        inventory
+        ) VALUES (
+        #{id},
+        #{shop.id},
+        #{product.id},
+        #{startDate},
+        #{endDate},
+        0,
+        #{archived},
+        #{inventory}
+        )
+    </insert>
+    <update id="delete" parameterType="com.vcat.module.ec.entity.ShopProduct">
+        UPDATE ec_shop_product
+        SET del_flag=#{delFlag},
+        is_recommend = 0,
+        archived=1
+        <include refid="Base_Where_Clause" />
+    </update>
+    <update id="upOrDownProduct" parameterType="com.vcat.module.ec.entity.ShopProduct">
+        UPDATE ec_shop_product
+        SET archived=#{archived},
+        del_flag=0
+        <include refid="Base_Where_Clause" />
+    </update>
+    <update id="upProduct" parameterType="com.vcat.module.ec.entity.ShopProduct">
+        UPDATE ec_shop_product
+        SET archived=#{archived},
+        start_date = NOW(),
+        end_date = #{endDate}
+        <include refid="Base_Where_Clause" />
+        AND del_flag=0
+    </update>
+    <insert id="insertProduct" parameterType="com.vcat.module.ec.entity.ShopProduct">
+        INSERT INTO ec_shop_product(
+        id,
+        shop_id,
+        product_id,
+        start_date,
+        end_date,
+        del_flag,
+        archived
+        ) VALUES (
+        #{id},
+        #{shop.id},
+        #{product.id},
+         NOW(),
+        #{endDate},
+        0,
+        #{archived}
+        )
+    </insert>
+    <insert id="addBrandProduct" >
+        INSERT INTO ec_shop_product (id, product_id, shop_id,del_flag,archived) SELECT
+            REPLACE(CAST(UUID() as char character set utf8), '-', ''),
+            id,
+            #{shopId},
+            0,
+            0
+        FROM
+            ec_product AS p
+            WHERE p.archived=0
+            AND p.brand_id=#{brandId}
+    </insert>
+    <update id="updateBrandProduct">
+		UPDATE  ec_shop_product AS sp1
+		LEFT JOIN ec_product AS p ON p.id=sp1.product_id
+		SET sp1.del_flag=0,
+		sp1.archived=0
+		WHERE sp1.shop_id=#{shopId}
+		AND p.brand_id=#{brandId}
+    </update>
+    <select id="findAutoTakeList" resultMap="BaseResultMap">
+        SELECT
+          <include refid="Base_Column_List" />
+        FROM ec_shop_product
+        WHERE product_id = #{id}
+        AND archived = 0
+    </select>
+    <select id="findCancelTakeList" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM ec_shop_product
+        WHERE product_id = #{id}
+    </select>
+    <select id="getInventory" resultType="java.lang.Integer">
+        select inventory
+        from ec_shop_product
+        where shop_id = #{shopId}
+        and   product_id = #{productId}
+    </select>
+    <update id="cancelTake">
+        UPDATE ec_shop_product
+        SET start_date = NULL
+        ,end_date = NULL
+        WHERE id = #{id}
+    </update>
+    
+     <update id="batchDelete" parameterType="String">
+        UPDATE ec_shop_product
+        SET archived=1
+        WHERE shop_id = #{_parameter}
+    </update>
+    <update id="updateQuantiy">
+        UPDATE ec_shop_product
+        SET inventory = inventory - #{quantity}
+        WHERE del_flag = 0
+        AND product_id = (select product_id from ec_product_item where id = #{productItemId})
+        AND shop_id = #{shopId}
+    </update>
+</mapper>

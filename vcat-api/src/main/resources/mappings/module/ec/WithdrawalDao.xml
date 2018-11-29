@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.WithdrawalDao">
+    <sql id="withdrawalColumns">
+        a.id AS "id",
+        a.amount AS "amount",
+        a.withdrawal_status AS "withdrawalStatus",
+        a.create_date AS "createDate",
+        a.confirm_date AS "confirmDate",
+        a.note AS "note",
+        shop.id AS "shopId",
+        shop.id AS "shop.id",
+        customer.user_name AS "shop.name",
+        customer.phone_number AS "shop.customer.phoneNumber",
+        account.account_number AS "account.accountNumber",
+        account.account_name AS "account.accountName",
+        account.province AS "account.province",
+        account.city AS "account.city",
+        account.branch_name AS "account.branchName",
+        bank.id AS "account.bank.id",
+        bank.name AS "account.bank.name",
+        bank.code AS "account.bank.code",
+        gateway.id AS "account.gateWay.id",
+        gateway.name AS "account.gateWay.name",
+        gateway.code AS "account.gateWay.code"
+    </sql>
+    <sql id="withdrawalJoins">
+        LEFT JOIN ec_shop shop on shop.id = a.shop_id
+        LEFT JOIN ec_shop_account account on account.id = a.shop_account_id
+        LEFT JOIN ec_bank bank on bank.id = account.bank_id
+        LEFT JOIN ec_gateway_type gateway on gateway.id = account.gateway_type_id
+        LEFT JOIN ec_customer customer on customer.id = a.shop_id
+    </sql>
+    <resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.Withdrawal">
+        <id column="id" property="id" />
+        <result column="shop_id"  property="shopId" />
+        <result column="withdrawal_status"  property="withdrawalStatus" />
+        <result column="create_date"  property="createDate" />
+        <result column="confirm_date"  property="confirmDate" />
+        <result column="amount"  property="amount" />
+        <result column="note"  property="note" />
+        <result column="oper_by"  property="createBy.id" />
+    </resultMap>
+    <sql id="Base_Column_List">
+        id,
+        shop_id,
+        withdrawal_status,
+        create_date,
+        confirm_date,
+        amount,
+        note,
+        oper_by
+    </sql>
+    <sql id="Base_Where_Clause">
+        <where>
+            1=1
+            <if test="id!=null and id!=''">
+                AND id = #{id}
+            </if>
+            <if test="shopId!=null and shopId!=''">
+                AND shop_id = #{shopId}
+            </if>
+            <if test="withdrawalStatus!=null ">
+                AND withdrawal_status = #{withdrawalStatus}
+            </if>
+        </where>
+    </sql>
+    <select id="getWithdrawalLogList" resultType="com.vcat.module.ec.dto.WithdrawDto" parameterType="java.util.Map">
+	SELECT w.create_date AS 'createDate',w.amount AS 'amount',w.withdrawal_status AS 'withdrawalStatus',
+	(CASE WHEN gt.code='bankpay' THEN '银行卡提现'
+	      WHEN gt.code='alipay' THEN '支付宝提现'
+	 END) AS "payTypeName"
+	FROM ec_withdrawal AS w
+	LEFT JOIN ec_shop_account AS sa ON sa.id=w.shop_account_id
+	LEFT JOIN ec_gateway_type AS gt ON gt.id=sa.gateway_type_id
+	WHERE w.shop_id=#{shopId}
+	AND DATE_FORMAT(w.create_date,'%Y-%m')=#{month}
+	AND w.withdrawal_status IN(0,1,2)
+	ORDER BY w.create_date DESC
+	LIMIT #{page.pageOffset},#{page.pageSize}
+    </select>
+    <select id="getWithdrawalLogList2" resultType="com.vcat.module.ec.dto.WithdrawDto" parameterType="java.util.Map">
+	SELECT w.create_date AS 'createDate',w.amount AS 'amount',
+	(CASE WHEN gt.code='bankpay' THEN '银行卡提现'
+	      WHEN gt.code='alipay' THEN '支付宝提现'
+	 END) AS "payTypeName",
+	 (CASE WHEN w.withdrawal_status='0' THEN '正在提现'
+	       WHEN w.withdrawal_status='1' THEN '提现成功'
+	       WHEN w.withdrawal_status='2' THEN '提现失败'
+	 END) AS "WithdrawalStatusName"
+	FROM ec_withdrawal AS w
+	LEFT JOIN ec_shop_account AS sa ON sa.id=w.shop_account_id
+	LEFT JOIN ec_gateway_type AS gt ON gt.id=sa.gateway_type_id
+	WHERE w.shop_id=#{shopId}
+	AND DATE_FORMAT(w.create_date,'%Y-%m')=#{month}
+	AND w.withdrawal_status IN(0,1,2)
+	ORDER BY w.create_date DESC
+	LIMIT #{page.pageOffset},#{page.pageSize}
+    </select>
+    <select id="get" resultMap="BaseResultMap" parameterType="com.vcat.module.ec.entity.Withdrawal">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM ec_withdrawal
+        <include refid="Base_Where_Clause" />
+    </select>
+    <select id="getById" resultType="Withdrawal">
+        SELECT
+        <include refid="withdrawalColumns"></include>
+        FROM ec_withdrawal a
+        <include refid="withdrawalJoins"></include>
+        WHERE a.id = #{id}
+    </select>
+    <select id="findList" resultType="Withdrawal">
+        SELECT
+        <include refid="withdrawalColumns"></include>
+        FROM ec_withdrawal a
+        <include refid="withdrawalJoins"></include>
+        WHERE 1=1
+        <if test="sqlMap.keyword != null and sqlMap.keyword != ''"><!-- 查询财务提现申请列表 -->
+            AND (customer.user_name LIKE '%${sqlMap.keyword}%'
+            OR bank.name LIKE '%${sqlMap.keyword}%'
+            OR account.account_number LIKE '%${sqlMap.keyword}%'
+            OR account.account_name LIKE '%${sqlMap.keyword}%'
+            OR account.province LIKE '%${sqlMap.keyword}%'
+            OR account.city LIKE '%${sqlMap.keyword}%'
+            OR account.branch_name LIKE '%${sqlMap.keyword}%'
+            )
+        </if>
+        <if test="withdrawalStatus != null and withdrawalStatus != ''">
+            AND a.withdrawal_status = #{withdrawalStatus}
+        </if>
+        <if test="sqlMap.minAmount != null and sqlMap.minAmount != ''">
+            AND a.amount >= #{sqlMap.minAmount}
+        </if>
+        <if test="sqlMap.maxAmount != null and sqlMap.maxAmount != ''">
+            AND a.amount &lt;= #{sqlMap.maxAmount}
+        </if>
+        <if test="sqlMap.gatewayType != null and sqlMap.gatewayType != ''">
+            AND gateway.id = #{sqlMap.gatewayType}
+        </if>
+        <if test="sqlMap.type != null and sqlMap.type == 'financeWithdrawalList'"><!-- 查询财务提现申请列表 -->
+            AND a.withdrawal_status = #{WITHDRAWAL_STATUS_UNTREATED}
+        </if>
+        <if test="sqlMap.type != null and sqlMap.type == 'historyWithdrawalList'"><!-- 查询财务提现历史列表 -->
+            AND (a.withdrawal_status = #{WITHDRAWAL_STATUS_SUCCESS} OR a.withdrawal_status = #{WITHDRAWAL_STATUS_FAILURE})
+        </if>
+        <if test="shop != null and shop.id != null and shop.id != ''">
+            AND shop.id = #{shop.id}
+        </if>
+        <if test="sqlMap.type != null and sqlMap.type == 'historyWithdrawalList'"><!-- 查询财务提现历史列表 -->
+            ORDER BY a.create_date DESC
+        </if>
+        <if test="sqlMap.type != null and sqlMap.type != 'historyWithdrawalList'"><!-- 查询财务提现历史列表 -->
+            ORDER BY a.create_date
+        </if>
+    </select>
+    <select id="exprotList" resultType="WithdrawalExcel">
+        SELECT
+            customer.user_name AS "shopName",
+            a.amount AS "amount",
+            a.create_date AS "date",
+            gateway.name AS "type",
+            account.account_number AS "accountNumber",
+            account.account_name AS "accountName",
+            bank.name AS "accountBankName",
+            a.withdrawal_status AS "status"
+        FROM ec_withdrawal a
+        <include refid="withdrawalJoins"></include>
+        WHERE 1=1
+        <if test="sqlMap.keyword != null and sqlMap.keyword != ''"><!-- 查询财务提现申请列表 -->
+            AND (customer.user_name LIKE '%${sqlMap.keyword}%'
+            OR bank.name LIKE '%${sqlMap.keyword}%'
+            OR account.account_number LIKE '%${sqlMap.keyword}%'
+            OR account.account_name LIKE '%${sqlMap.keyword}%'
+            )
+        </if>
+        <if test="sqlMap.minAmount != null and sqlMap.minAmount != ''">
+            AND a.amount >= #{sqlMap.minAmount}
+        </if>
+        <if test="sqlMap.maxAmount != null and sqlMap.maxAmount != ''">
+            AND a.amount &lt;= #{sqlMap.maxAmount}
+        </if>
+        <if test="sqlMap.gatewayType != null and sqlMap.gatewayType != ''">
+            AND gateway.id = #{sqlMap.gatewayType}
+        </if>
+        <if test="sqlMap.type != null and sqlMap.type == 'financeWithdrawalList'"><!-- 查询财务提现申请列表 -->
+            AND a.withdrawal_status = #{WITHDRAWAL_STATUS_UNTREATED}
+        </if>
+        <if test="sqlMap.type != null and sqlMap.type == 'historyWithdrawalList'"><!-- 查询财务提现历史列表 -->
+            AND (a.withdrawal_status = #{WITHDRAWAL_STATUS_SUCCESS} OR a.withdrawal_status = #{WITHDRAWAL_STATUS_FAILURE})
+        </if>
+        <if test="shop != null and shop.id != null and shop.id != ''">
+            AND shop.id = #{shop.id}
+        </if>
+        ORDER BY a.create_date DESC
+    </select>
+
+    <select id="count" resultType="Integer">
+        SELECT count(id) FROM ec_withdrawal
+        WHERE shop_id=#{shopId}
+        AND DATE_FORMAT(create_date,'%Y-%m')=#{month}
+        AND withdrawal_status IN(0,1,2)
+    </select>
+    <insert id="insert" parameterType="com.vcat.module.ec.entity.CustomerRole">
+        INSERT INTO ec_withdrawal(
+        id,
+        shop_id,
+        withdrawal_status,
+        amount,
+        create_date,
+        confirm_date,
+        note,
+        oper_by,
+        shop_account_id
+        ) VALUES (
+        #{id},
+        #{shopId},
+        #{withdrawalStatus},
+        #{amount},
+        NOW(),
+        #{confirmDate},
+        #{note},
+        #{createBy.id},
+        #{shopAccountId}
+        )
+
+    </insert>
+    <update id="handler">
+        UPDATE ec_withdrawal
+        SET
+            withdrawal_status = #{withdrawalStatus}
+            ,note = #{sqlMap.note}
+            ,confirm_date = now()
+        WHERE
+            withdrawal_status = #{WITHDRAWAL_STATUS_UNTREATED}
+        AND id = #{id}
+    </update>
+</mapper>

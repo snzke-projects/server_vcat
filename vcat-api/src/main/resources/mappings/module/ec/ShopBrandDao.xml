@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ShopBrandDao">
+<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.ShopBrand">
+		<id column="id" property="id" />
+		<result column="shop_id" property="shop.id" />
+		<result column="brand_id" property="brand.id" />
+</resultMap>
+<sql id="Base_Column_List">
+	id,
+	shop_id,
+	brand_id
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="shop.id!=null and shop.id!=''">
+			AND shop_id = #{shop.id}
+		</if>
+		<if test="brand.id!=null and brand.id!=''">
+			AND brand_id = #{brand.id}
+		</if>
+	</where>
+</sql>
+<select id="get" resultMap="BaseResultMap" parameterType="com.vcat.module.ec.entity.ShopBrand">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_shop_brand
+	<include refid="Base_Where_Clause" />
+	LIMIT 1
+</select>
+<insert id="insert" parameterType="com.vcat.module.ec.entity.ShopBrand">
+	INSERT INTO ec_shop_brand(
+	id,
+	shop_id,
+	brand_id,
+	del_flag
+	) VALUES (
+	#{id},
+	#{shop.id},
+	#{brand.id},
+	0
+	)
+</insert>
+<update id="deleteBrand">
+UPDATE ec_shop_brand
+SET del_flag=1
+WHERE shop_id = #{shopId}
+AND brand_id = #{brandId}
+</update>
+<update id="batchDelete">
+UPDATE ec_shop_brand
+SET del_flag=1
+WHERE shop_id = #{shopId}
+</update>
+<update id="updateBrand">
+UPDATE ec_shop_brand
+SET del_flag=0
+WHERE shop_id = #{shopId}
+AND brand_id = #{brandId}
+</update>
+</mapper>

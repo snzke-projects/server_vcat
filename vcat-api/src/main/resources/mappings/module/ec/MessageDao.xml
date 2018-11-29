@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.MessageDao">
+	<select id="findList" resultType="com.vcat.module.ec.entity.Message">
+		SELECT
+			message.id AS "id",
+			flag.shop_id AS "shop.id",
+			flag.is_read AS "isRead",
+			flag.read_date AS "readDate",
+			flag.create_date AS "createDate",
+			message.intro AS "intro",
+			message.thumb AS "thumb",
+			message.title AS "title",
+			message.public_date AS "publicDate",
+			article.id AS "article.id",
+			article.title AS "article.title"
+		FROM ec_message message
+		LEFT JOIN ec_message_flag flag ON flag.message_id = message.id
+		LEFT JOIN cms_article article ON article.id = message.article_id
+		WHERE flag.shop_id = #{shop.id}
+	</select>
+	<select id="findMessageList" resultType="Map">
+		SELECT
+		message.id AS "id",
+		flag.shop_id AS "shopId",
+		flag.is_read AS "isRead",
+		flag.read_date AS "readDate",
+		flag.create_date AS "createDate",
+		message.intro AS "intro",
+		article.image AS "thumb",
+		message.public_date AS "publicDate",
+		article.id AS "articleId",
+		article.title AS "articleTitle"
+		FROM ec_message message
+		LEFT JOIN ec_message_flag flag ON flag.message_id = message.id
+		LEFT JOIN cms_article article ON article.id = message.article_id
+		WHERE flag.shop_id = #{shop.id}
+		ORDER BY flag.create_date DESC
+	</select>
+    <select id="findMessageListV2" resultType="Map">
+        SELECT
+        message.id AS "id",
+        flag.shop_id AS "shopId",
+        flag.is_read AS "isRead",
+        flag.read_date AS "readDate",
+        flag.create_date AS "createDate",
+        message.intro AS "desc",
+        article.image AS "thumb",
+        message.public_date AS "publicDate",
+        article.id AS "articleId",
+        article.title AS "title"
+        FROM ec_message message
+        LEFT JOIN ec_message_flag flag ON flag.message_id = message.id
+        LEFT JOIN cms_article article ON article.id = message.article_id
+        WHERE flag.shop_id = #{shop.id}
+        ORDER BY flag.create_date DESC
+    </select>
+	<select id="getNewestMessage" resultType="Map">
+		SELECT
+			sys.title   AS "systemTitle",
+			sys.date    AS "systemDate",
+			ord.title   AS "orderTitle",
+			ord.date    AS "orderDate",
+			earn.title  AS "earnTitle",
+			earn.date   AS "earnDate",
+			share.title AS "shareTitle",
+			share.date  AS "shareDate",
+			remind.title AS "remindTitle",
+			remind.date AS "remindDate"
+		FROM ec_customer customer
+		LEFT JOIN (SELECT
+                article.title    AS "title",
+                flag.create_date AS "date",
+                flag.shop_id     AS "shopId"
+			  FROM ec_message message
+			  LEFT JOIN ec_message_flag flag ON flag.message_id = message.id
+			  LEFT JOIN cms_article article ON article.id = message.article_id
+			  WHERE flag.shop_id = #{shopId}
+			  ORDER BY flag.create_date DESC
+			  LIMIT 1) sys ON customer.id = sys.shopId
+		LEFT JOIN (SELECT
+					   (CASE WHEN m.type = '1'
+						 THEN '喵，顾客付款下单啦！'
+						WHEN m.type = '2'
+						  THEN '喵，顾客购买的商品已经发货啦！'
+						WHEN m.type = '3'
+						  THEN '喵，顾客已经确认收货啦！' END) AS "title",
+					   m.create_date                  AS "date",
+					   m.shop_id                      AS "shopId"
+					 FROM ec_message_order m
+                     LEFT JOIN ec_order o ON o.order_number = m.order_number
+					 WHERE m.shop_id = #{shopId}
+					 AND o.seller_del = 0
+					 ORDER BY m.create_date DESC
+					 LIMIT 1) ord ON customer.id = ord.shopId
+		LEFT JOIN (SELECT
+					   (CASE WHEN type = '1'
+						 THEN CONCAT('喵，您有', CONVERT(earning,CHAR), '元代理奖励到账！')
+						WHEN type = '2'
+						  THEN CONCAT('喵，您有', CONVERT(earning,CHAR), '元销售收入到账！')
+						WHEN type = '3'
+						  THEN CONCAT('喵，您有', CONVERT(earning,CHAR), '元分享奖励到账！')
+						WHEN type = '4'
+						  THEN CONCAT('喵，您有', CONVERT(earning,CHAR), '元提现申请已成功转账！')
+						WHEN type = '5'
+						  THEN CONCAT('喵，您有', CONVERT(earning,CHAR), '元销售分红到账！')
+						WHEN type = '6'
+						THEN CONCAT('喵，您有', CONVERT(earning,CHAR), '元猫币奖励到账！')
+						WHEN type = '7'
+						THEN CONCAT('喵，您有', CONVERT(earning,CHAR), '元猫币奖励到账！')
+						WHEN type = '8'
+							THEN CONCAT('喵，您有', CONVERT(earning,CHAR), '元销售分红到账！')
+						WHEN type = '9'
+							THEN CONCAT('喵，您有', CONVERT(earning,CHAR), '元伯乐奖励到账！')
+						WHEN type = '10'
+							THEN CONCAT('喵，您有', CONVERT(earning,CHAR), '元团队分红到账！')
+						END) AS "title",
+					   create_date                                          AS "date",
+					   shop_id                                              AS "shopId"
+					 FROM ec_message_earning
+					 WHERE shop_id = #{shopId}
+					 ORDER BY create_date DESC
+					 LIMIT 1) earn ON customer.id = earn.shopId
+		LEFT JOIN (SELECT
+                        a.title AS "title",
+                        a.activate_time AS "date"
+                    FROM ec_share_earning a
+                    LEFT JOIN ec_category_product cp ON cp.product_id = a.product_id
+                    LEFT JOIN ec_category c ON cp.category_id = c.id
+                    WHERE a.del_flag = 0
+                    AND a.is_activate = 1
+                    ORDER BY a.activate_time DESC
+					 LIMIT 1) share ON 1 = 1
+		LEFT JOIN (SELECT
+					   remind.title as "title",
+					   remind.create_date as "date",
+                       remind.shop_id     AS "shopId"
+			  		FROM ec_message_remind as remind
+                    WHERE remind.shop_id = #{shopId}
+                    ORDER BY remind.create_date DESC
+                    LIMIT 1
+                  ) as remind on remind.shopId = customer.id
+		WHERE id = #{shopId}
+	</select>
+	<update id="read">
+		UPDATE ec_message_flag
+		SET is_read = 1,read_date = now()
+		WHERE shop_id = #{id}
+		AND is_read = 0
+	</update>
+	<insert id="insertFlag" parameterType="Message">
+		INSERT INTO ec_message_flag(
+			id,
+			shop_id,
+			message_id,
+			is_read,
+			create_date
+		) VALUES (
+			#{sqlMap.flagId},
+			#{shop.id},
+			#{id},
+			0,
+			now()
+		)
+	</insert>
+    <insert id="insertFlags">
+        INSERT INTO ec_message_flag(
+        id,
+        shop_id,
+        message_id,
+        is_read,
+        create_date
+        )
+        SELECT
+		REPLACE(CAST(UUID() as char character set utf8), '-', ''),
+        customer.id,
+        #{messageId},
+        0,
+        CURRENT_TIMESTAMP
+        FROM ec_customer customer
+        LEFT JOIN ec_shop shop ON customer.id = shop.id
+        LEFT JOIN ec_level lv ON lv.id = shop.level_id
+        WHERE 1=1
+        <if test="levels != null">
+            <foreach collection="levels" open="AND(" close=")" item="level" separator=" OR ">
+                lv.id = #{level}
+            </foreach>
+        </if>
+    </insert>
+
+	<insert id="insert" parameterType="Message">
+		INSERT INTO ec_message(
+			id,
+			title,
+			thumb,
+			intro,
+			public_date,
+			article_id,
+			type
+		) VALUES (
+			#{id},
+			#{title},
+			#{thumb},
+			#{intro},
+			now(),
+			#{article.id},
+			#{type}
+		)
+	</insert>
+</mapper>

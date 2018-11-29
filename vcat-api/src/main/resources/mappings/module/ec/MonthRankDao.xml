@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.MonthRankDao">
+<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.Rank">
+		<id column="id" property="id" />
+		<result column="rank"  property="rank" />
+		<result column="shop_name"  property="name" />
+		<result column="shop_level"  property="level" />
+		<result column="fund"  property="totalFund" />
+</resultMap>
+<sql id="Base_Column_List">
+	id,
+	rank,
+	shop_name,
+	shop_level,
+	fund,
+	shop_id
+</sql>
+<select id="count" resultType="Integer" >
+	SELECT count(id) FROM ec_month_rank
+</select>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="shopId!=null and shopId!=''">
+			AND shop_Id = #{shopId}
+		</if>
+	</where>
+</sql>
+<select id="getMonthFundRankList" resultMap="BaseResultMap" parameterType="java.util.Map">
+	SELECT * FROM ec_month_rank
+	ORDER BY fund DESC,shop_name ASC
+	LIMIT #{page.pageOffset},#{page.pageSize}
+</select>
+
+<select id="getMyMonthRank" resultType="Integer" parameterType="String">	
+	SELECT mr.rank
+	FROM ec_month_rank AS mr
+	WHERE mr.shop_id=#{_parameter}
+</select>
+
+<insert id="insert" parameterType="com.vcat.module.ec.entity.Rank">
+	INSERT INTO ec_month_rank(
+	id,
+	rank,
+	shop_name,
+	shop_level,
+	fund,
+	shop_id
+	) VALUES (
+	#{id},
+	#{rank},
+	#{name},
+	#{level},
+	#{totalFund},
+	#{shopId}
+	)
+</insert>
+	
+	<update id="truncate" >
+		TRUNCATE TABLE ec_month_rank
+	</update>
+</mapper>

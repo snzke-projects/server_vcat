@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ReconciliationDetailDao">
+    <select id="findList" resultType="ReconciliationDetail">
+        SELECT
+            a.id AS "id",
+            a.note AS "note",
+            a.create_by AS "operator.id",
+            createBy.name AS "operator.name",
+            a.create_date AS "createDate",
+            product.name AS "orderItem.productItem.product.name",
+            productItem.name AS "orderItem.productItem.name",
+            item.id AS "orderItem.id",
+            item.order_id AS "order.id",
+            item.quantity AS "orderItem.quantity",
+            item.item_price AS "orderItem.itemPrice",
+            item.purchase_price AS "orderItem.purchasePrice",
+            item.sale_earning AS "orderItem.saleEarning",
+            item.bonus_earning AS "orderItem.bonusEarning",
+            item.first_bonus_earning AS "orderItem.firstBonusEarning",
+            item.second_bonus_earning AS "orderItem.secondBonusEarning",
+            item.point AS "orderItem.point"
+        FROM ec_order_item item
+        LEFT JOIN ec_reconciliation_detail a ON a.order_item_id = item.id
+        LEFT JOIN ec_product_item productItem ON item.product_item_id = productItem.id
+        LEFT JOIN ec_product product ON product.id = productItem.product_id
+        LEFT JOIN sys_user createBy ON a.create_by = createBy.id
+        WHERE 1=1
+        <if test="order != null and order.id != null and order.id != ''">
+            AND item.order_id = #{order.id}
+        </if>
+    </select>
+    <insert id="insert">
+        INSERT INTO ec_reconciliation_detail(
+        id,
+        order_id,
+        order_item_id,
+        note,
+        create_by,
+        create_date
+        ) VALUES (
+        #{id},
+        #{order.id},
+        #{orderItem.id},
+        #{note},
+        #{currentUser.id},
+        CURRENT_TIMESTAMP
+        )
+    </insert>
+    <insert id="insertByOrder">
+        INSERT INTO ec_reconciliation_detail(
+        id,
+        order_id,
+        order_item_id,
+        note,
+        create_by,
+        create_date
+        )
+        SELECT
+        REPLACE(CAST(UUID() as char character set utf8), '-', '')
+        ,item.order_id
+        ,item.id
+        ,CONCAT('${currentUser.name}','手动结算订单[',ord.order_number,']成功，所属商品[',product.name,']','，所属规格[',productItem.name,']')
+        ,#{currentUser.id}
+        ,CURRENT_TIMESTAMP
+        FROM ec_order_item item
+        LEFT JOIN ec_order ord ON ord.id = item.order_id
+        LEFT JOIN ec_reconciliation_detail rd ON rd.order_item_id = item.id
+        LEFT JOIN ec_product_item productItem ON productItem.id = item.product_item_id
+        LEFT JOIN ec_product product ON product.id = productItem.product_id
+        WHERE item.order_id = #{order.id}
+        AND rd.id IS NULL
+    </insert>
+    <insert id="insertByOrderArray">
+        INSERT INTO ec_reconciliation_detail(
+        id,
+        order_id,
+        order_item_id,
+        note,
+        create_by,
+        create_date
+        )
+        SELECT
+        REPLACE(CAST(UUID() as char character set utf8), '-', '')
+        ,item.order_id
+        ,item.id
+        ,CONCAT('${currentUser.name}','批量结算订单[',ord.order_number,']成功，所属商品[',product.name,']','，所属规格[',productItem.name,']')
+        ,#{currentUser.id}
+        ,CURRENT_TIMESTAMP
+        FROM ec_order_item item
+        LEFT JOIN ec_order ord ON ord.id = item.order_id
+        LEFT JOIN ec_reconciliation_detail rd ON rd.order_item_id = item.id
+        LEFT JOIN ec_product_item productItem ON productItem.id = item.product_item_id
+        LEFT JOIN ec_product product ON product.id = productItem.product_id
+        WHERE item.order_id IN (''<foreach collection="orderIdArray" item="orderId" separator=",">#{orderId}</foreach>)
+        AND rd.id IS NULL
+    </insert>
+    <insert id="insertByQueryConditions">
+        INSERT INTO ec_reconciliation_detail(
+        id,
+        order_id,
+        order_item_id,
+        note,
+        create_by,
+        create_date
+        )
+        SELECT
+        REPLACE(CAST(UUID() as char character set utf8), '-', '')
+        ,item.order_id
+        ,item.id
+        ,CONCAT('${currentUser.name}','根据查询条件批量结算订单[',ord.order_number,']成功，所属商品[',product.name,']','，所属规格[',productItem.name,']')
+        ,#{currentUser.id}
+        ,CURRENT_TIMESTAMP
+        FROM ec_order_item item
+        LEFT JOIN ec_order ord ON ord.id = item.order_id
+        LEFT JOIN ec_reconciliation_detail rd ON rd.order_item_id = item.id
+        LEFT JOIN ec_product_item productItem ON productItem.id = item.product_item_id
+        LEFT JOIN ec_product product ON product.id = productItem.product_id
+        WHERE item.order_id IN (
+            SELECT ord.id
+            FROM ec_order_item orderItem
+            LEFT JOIN ec_product_item productItem ON orderItem.product_item_id = productItem.id
+            LEFT JOIN ec_product product ON productItem.product_id = product.id
+            LEFT JOIN ec_brand brand ON  product.brand_id = brand.id
+            LEFT JOIN ec_order ord ON orderItem.order_id = ord.id
+            LEFT JOIN ec_payment payment ON payment.id = ord.payment_id
+            LEFT JOIN ec_gateway_type gateway ON payment.gateway_type_id = gateway.id
+            WHERE ord.payment_status = 1
+            <if test="null != sqlMap and null != sqlMap.orderStatus and 'succ' == sqlMap.orderStatus">
+                AND ord.order_status = 2 AND ord.shipping_status = 2
+            </if>
+            <if test="null != id and '' != id">
+                AND brand.supplier_id = #{id}
+            </if>
+            <if test="null != sqlMap and null != sqlMap.st and '' != sqlMap.st">
+                AND payment.payment_date >= STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d %H:%i:%s")
+            </if>
+            <if test="null != sqlMap and null != sqlMap.et and '' != sqlMap.et">
+                AND ADDDATE(STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d %H:%i:%s"),INTERVAL 1 DAY) >= payment.payment_date
+            </if>
+            <if test="null != sqlMap and null != sqlMap.orderType and '' != sqlMap.orderType">
+                AND orderItem.order_item_type = #{sqlMap.orderType}
+            </if>
+            <if test="null != sqlMap and null != sqlMap.gateway and '' != sqlMap.gateway">
+                AND gateway.id = #{sqlMap.gateway}
+            </if>
+            <if test="null != sqlMap and null != sqlMap.keyword and '' != sqlMap.keyword">
+                AND (ord.order_number like '%${sqlMap.keyword}%' OR payment.payment_no like '%${sqlMap.keyword}%')
+            </if>
+            <if test="null != sqlMap and null != sqlMap.reconciliationStatus and '' != sqlMap.reconciliationStatus">
+                AND ord.reconciliation_status = #{sqlMap.reconciliationStatus}
+            </if>
+            GROUP BY ord.id
+        )
+        AND rd.id IS NULL
+    </insert>
+    <insert id="insertByOrderItem">
+        INSERT INTO ec_reconciliation_detail(
+        id,
+        order_id,
+        order_item_id,
+        note,
+        create_by,
+        create_date
+        )
+        SELECT
+        REPLACE(CAST(UUID() as char character set utf8), '-', '')
+        ,item.order_id
+        ,item.id
+        ,CONCAT('${currentUser.name}','手动结算订单项成功，所属订单[',ord.order_number,']，所属商品[',product.name,']','，所属规格[',productItem.name,']')
+        ,#{currentUser.id}
+        ,CURRENT_TIMESTAMP
+        FROM ec_order_item item
+        LEFT JOIN ec_order ord ON ord.id = item.order_id
+        LEFT JOIN ec_reconciliation_detail rd ON rd.order_item_id = item.id
+        LEFT JOIN ec_product_item productItem ON productItem.id = item.product_item_id
+        LEFT JOIN ec_product product ON product.id = productItem.product_id
+        WHERE item.id = #{orderItem.id}
+        AND rd.id IS NULL
+    </insert>
+    <insert id="insertByCheckOrder">
+        INSERT INTO ec_reconciliation_detail(
+        id,
+        order_id,
+        order_item_id,
+        note,
+        create_by,
+        create_date
+        )
+        SELECT
+        REPLACE(CAST(UUID() as char character set utf8), '-', '')
+        ,item.order_id
+        ,item.id
+        ,CONCAT('系统自动提前结算订单项成功，所属订单[',ord.order_number,']，所属商品[',product.name,']','，所属规格[',productItem.name,']')
+        ,NULL
+        ,CURRENT_TIMESTAMP
+        FROM ec_order_item item
+        LEFT JOIN ec_order ord ON ord.id = item.order_id
+        LEFT JOIN ec_reconciliation_detail rd ON rd.order_item_id = item.id
+        LEFT JOIN ec_product_item productItem ON productItem.id = item.product_item_id
+        LEFT JOIN ec_product product ON product.id = productItem.product_id
+        WHERE item.id = #{id}
+        AND rd.id IS NULL
+    </insert>
+    <update id="updateReconciliationStatus">
+        UPDATE ec_order ord
+        LEFT JOIN (SELECT
+            ord.id AS 'id'
+            ,count(item.id) AS 'itemCount'
+            ,count(rd.id) AS 'rCount'
+        FROM ec_order ord
+        LEFT JOIN ec_order_item item ON item.order_id = ord.id
+        LEFT JOIN ec_reconciliation_detail rd ON rd.order_item_id = item.id
+        GROUP BY ord.id) ordCount ON ord.id = ordCount.id
+        SET reconciliation_status =
+        (CASE
+        WHEN ordCount.rCount = 0 THEN 0
+        WHEN ordCount.rCount &lt; ordCount.itemCount THEN 1
+        WHEN ordCount.rCount = ordCount.itemCount THEN 2
+        END)
+        WHERE ord.id IN (''<foreach collection="orderIdArray" item="orderId">,#{orderId}</foreach>)
+    </update>
+    <update id="updateReconciliationStatusByQueryConditions">
+        UPDATE ec_order orde
+        LEFT JOIN (SELECT
+        ord.id AS 'id'
+        ,count(item.id) AS 'itemCount'
+        ,count(rd.id) AS 'rCount'
+        FROM ec_order ord
+        LEFT JOIN ec_order_item item ON item.order_id = ord.id
+        LEFT JOIN ec_reconciliation_detail rd ON rd.order_item_id = item.id
+        GROUP BY ord.id) ordCount ON orde.id = ordCount.id
+        SET reconciliation_status =
+        (CASE
+        WHEN ordCount.rCount = 0 THEN 0
+        WHEN ordCount.rCount &lt; ordCount.itemCount THEN 1
+        WHEN ordCount.rCount = ordCount.itemCount THEN 2
+        END)
+        WHERE orde.id IN (SELECT a.id FROM (
+            SELECT ord.id AS 'id'
+            FROM ec_order_item orderItem
+            LEFT JOIN ec_product_item productItem ON orderItem.product_item_id = productItem.id
+            LEFT JOIN ec_product product ON productItem.product_id = product.id
+            LEFT JOIN ec_brand brand ON  product.brand_id = brand.id
+            LEFT JOIN ec_order ord ON orderItem.order_id = ord.id
+            LEFT JOIN ec_payment payment ON payment.id = ord.payment_id
+            LEFT JOIN ec_gateway_type gateway ON payment.gateway_type_id = gateway.id
+            WHERE ord.payment_status = 1
+            <if test="null != sqlMap and null != sqlMap.orderStatus and 'succ' == sqlMap.orderStatus">
+                AND ord.order_status = 2 AND ord.shipping_status = 2
+            </if>
+            <if test="null != id and '' != id">
+                AND brand.supplier_id = #{id}
+            </if>
+            <if test="null != sqlMap and null != sqlMap.st and '' != sqlMap.st">
+                AND payment.payment_date >= STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d %H:%i:%s")
+            </if>
+            <if test="null != sqlMap and null != sqlMap.et and '' != sqlMap.et">
+                AND ADDDATE(STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d %H:%i:%s"),INTERVAL 1 DAY) >= payment.payment_date
+            </if>
+            <if test="null != sqlMap and null != sqlMap.orderType and '' != sqlMap.orderType">
+                AND orderItem.order_item_type = #{sqlMap.orderType}
+            </if>
+            <if test="null != sqlMap and null != sqlMap.gateway and '' != sqlMap.gateway">
+                AND gateway.id = #{sqlMap.gateway}
+            </if>
+            <if test="null != sqlMap and null != sqlMap.keyword and '' != sqlMap.keyword">
+                AND (ord.order_number like '%${sqlMap.keyword}%' OR payment.payment_no like '%${sqlMap.keyword}%')
+            </if>
+            <if test="null != sqlMap and null != sqlMap.reconciliationStatus and '' != sqlMap.reconciliationStatus">
+                AND ord.reconciliation_status = #{sqlMap.reconciliationStatus}
+            </if>
+            GROUP BY ord.id) a
+        )
+    </update>
+</mapper>

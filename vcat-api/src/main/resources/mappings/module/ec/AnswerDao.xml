@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.AnswerDao">
+    <sql id="answerColumns">
+        a.id AS "id",
+        a.answer_sheet_id AS "answerSheet.id",
+        a.questionnaire_question_id AS "question.id",
+        a.answer AS "answer",
+        sheet.answer_time AS "answerSheet.answerTime",
+        question.title AS "question.title",
+        question.type AS "question.type",
+        question.option_value AS "question.optionValue",
+        question.display_order AS "question.displayOrder"
+    </sql>
+    <sql id="answerSheetJoins">
+        LEFT JOIN ec_answer_sheet sheet ON sheet.id = a.answer_sheet_id
+        LEFT JOIN ec_activity_answer_sheet activitySheet ON activitySheet.answer_sheet_id = sheet.id
+        LEFT JOIN ec_questionnaire_questions question ON question.id = a.questionnaire_question_id
+    </sql>
+    <select id="get" resultType="Answer">
+        SELECT
+        <include refid="answerColumns"></include>
+        FROM ec_answer a
+        <include refid="answerSheetJoins"></include>
+        WHERE a.id = #{id}
+    </select>
+    <select id="select" resultType="Answer">
+        SELECT
+        <include refid="answerColumns"></include>
+        FROM ec_answer a
+        <include refid="answerSheetJoins"></include>
+        WHERE a.id = #{id}
+    </select>
+    <select id="findList" resultType="Answer">
+        SELECT
+          <include refid="answerColumns"></include>
+        FROM ec_answer a
+        <include refid="answerSheetJoins"></include>
+        WHERE 1=1
+        <if test="sqlMap.customerId != null and '' != sqlMap.customerId">
+            AND sheet.customer_id = #{sqlMap.customerId}
+        </if>
+        <if test="sqlMap.activityId != null and '' != sqlMap.activityId">
+            AND activitySheet.activity_id =  #{sqlMap.activityId}
+        </if>
+    </select>
+    <insert id="insert">
+        INSERT INTO ec_answer(
+        id,
+        answer_sheet_id,
+        questionnaire_question_id,
+        answer
+        ) VALUES (
+        #{id},
+        #{answerSheet.id},
+        #{question.id},
+        #{answer}
+        )
+    </insert>
+</mapper>

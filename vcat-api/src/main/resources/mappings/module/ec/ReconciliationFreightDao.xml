@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ReconciliationFreightDao">
+    <insert id="insert">
+        INSERT INTO ec_reconciliation_freight(
+        id,
+        order_id,
+        create_by,
+        create_date
+        ) VALUES (
+        #{id},
+        #{order.id},
+        #{currentUser.id},
+        CURRENT_TIMESTAMP
+        )
+    </insert>
+    <insert id="insertByOrder">
+        INSERT INTO ec_reconciliation_freight(
+        id,
+        order_id,
+        create_by,
+        create_date
+        )
+        SELECT
+        REPLACE(CAST(UUID() as char character set utf8), '-', '')
+        ,ord.id
+        ,#{currentUser.id}
+        ,CURRENT_TIMESTAMP
+        FROM ec_order ord
+        LEFT JOIN ec_reconciliation_freight reconciliationFreight ON reconciliationFreight.order_id = ord.id
+        WHERE ord.id = #{order.id}
+        AND reconciliationFreight.id IS NULL
+    </insert>
+    <insert id="insertByOrderArray">
+        INSERT INTO ec_reconciliation_freight(
+        id,
+        order_id,
+        create_by,
+        create_date
+        )
+        SELECT
+        REPLACE(CAST(UUID() as char character set utf8), '-', '')
+        ,ord.id
+        ,#{currentUser.id}
+        ,CURRENT_TIMESTAMP
+        FROM ec_order ord
+        LEFT JOIN ec_reconciliation_freight reconciliationFreight ON reconciliationFreight.order_id = ord.id
+        WHERE ord.id IN (''<foreach collection="orderIdArray" item="orderId" separator=",">#{orderId}</foreach>)
+        AND reconciliationFreight.id IS NULL
+    </insert>
+    <insert id="insertByQueryConditions">
+        INSERT INTO ec_reconciliation_freight(
+        id,
+        order_id,
+        create_by,
+        create_date
+        )
+        SELECT
+        REPLACE(CAST(UUID() as char character set utf8), '-', '')
+        ,ord.id
+        ,#{currentUser.id}
+        ,CURRENT_TIMESTAMP
+        FROM ec_order ord
+        LEFT JOIN ec_reconciliation_freight reconciliationFreight ON reconciliationFreight.order_id = ord.id
+        WHERE ord.id IN (
+            SELECT DISTINCT ord.id
+            FROM ec_order_item orderItem
+            LEFT JOIN ec_product_item productItem ON orderItem.product_item_id = productItem.id
+            LEFT JOIN ec_product product ON productItem.product_id = product.id
+            LEFT JOIN ec_brand brand ON  product.brand_id = brand.id
+            LEFT JOIN ec_order ord ON orderItem.order_id = ord.id
+            LEFT JOIN ec_payment payment ON payment.id = ord.payment_id
+            LEFT JOIN ec_gateway_type gateway ON payment.gateway_type_id = gateway.id
+            WHERE ord.payment_status = 1
+            <if test="null != sqlMap and null != sqlMap.orderStatus and 'succ' == sqlMap.orderStatus">
+                AND ord.order_status = 2 AND ord.shipping_status = 2
+            </if>
+            <if test="null != id and '' != id">
+                AND brand.supplier_id = #{id}
+            </if>
+            <if test="null != sqlMap and null != sqlMap.st and '' != sqlMap.st">
+                AND payment.payment_date >= STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d %H:%i:%s")
+            </if>
+            <if test="null != sqlMap and null != sqlMap.et and '' != sqlMap.et">
+                AND ADDDATE(STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d %H:%i:%s"),INTERVAL 1 DAY) >= payment.payment_date
+            </if>
+            <if test="null != sqlMap and null != sqlMap.orderType and '' != sqlMap.orderType">
+                AND orderItem.order_item_type = #{sqlMap.orderType}
+            </if>
+            <if test="null != sqlMap and null != sqlMap.gateway and '' != sqlMap.gateway">
+                AND gateway.id = #{sqlMap.gateway}
+            </if>
+            <if test="null != sqlMap and null != sqlMap.keyword and '' != sqlMap.keyword">
+                AND (ord.order_number like '%${sqlMap.keyword}%' OR payment.payment_no like '%${sqlMap.keyword}%')
+            </if>
+            <if test="null != sqlMap and null != sqlMap.reconciliationStatus and '' != sqlMap.reconciliationStatus">
+                AND ord.reconciliation_status = #{sqlMap.reconciliationStatus}
+            </if>
+            GROUP BY ord.id
+        )
+        AND reconciliationFreight.id IS NULL
+    </insert>
+</mapper>

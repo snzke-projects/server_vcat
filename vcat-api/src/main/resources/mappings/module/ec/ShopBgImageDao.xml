@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ShopBgImageDao">
+
+<sql id="Base_Column_List">
+	id,
+	shop_id,
+	bg_image_id,
+	display_order
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="shop.id!=null and shop.id!=''">
+			AND shop_id = #{shop.id}
+		</if>
+		<if test="bgImage.id!=null and bgImage.id!=''">
+			AND bg_image_id = #{bgImage.id}
+		</if>
+	</where>
+</sql>
+<select id="get" resultType="com.vcat.module.ec.entity.ShopBgImage" parameterType="com.vcat.module.ec.entity.ShopBgImage">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_shop_bg_image
+	<include refid="Base_Where_Clause" />
+</select>
+<select id="findAllBackgroundPicList" resultType="com.vcat.module.ec.dto.ShopBgImageDto">
+    SELECT
+        bi.url AS "bgUrl",
+        bi.id AS "imageId",
+        (CASE WHEN sbi.id IS NULL THEN "0" ELSE "1" END) AS "bindStatus"
+    FROM ec_bg_image AS bi
+        LEFT JOIN ec_shop_bg_image AS sbi ON bi.id=sbi.bg_image_id
+                                             AND sbi.shop_id = #{shopId}
+    WHERE bi.is_activate = 1 AND del_flag = 0
+    limit 12
+</select>
+<select id="findBindBackgroundPicList" resultType="com.vcat.module.ec.dto.ShopBgImageDto">
+		select * from (SELECT
+						   bi.url AS "bgUrl",
+						   bi.id AS "imageId",
+						   (CASE WHEN sbi.id IS NULL THEN "0" ELSE "1" END) AS "bindStatus"
+					   FROM ec_bg_image AS bi
+						   LEFT JOIN ec_shop_bg_image AS sbi ON bi.id=sbi.bg_image_id
+																AND sbi.shop_id = #{shopId}
+					   WHERE bi.is_activate = 1 AND del_flag = 0 ) as aa
+		where aa.bindStatus = 1
+		limit 1
+	</select>
+<insert id="insert" parameterType="com.vcat.module.ec.entity.ShopBgImage">
+	INSERT INTO ec_shop_bg_image(
+	id,
+	shop_id,
+	bg_image_id,
+	display_order
+	) VALUES (
+	#{id},
+	#{shop.id},
+	#{bgImage.id},
+	#{displayOrder}
+	)
+ 
+</insert>
+<delete id="deleteList" parameterType="String">
+DELETE FROM ec_shop_bg_image
+WHERE shop_id=#{shopId}
+</delete>
+
+
+<!--<select id="getList" resultType="java.lang.String">-->
+    <!--select shop_id from ec_shop_bg_image-->
+    <!--GROUP BY shop_id having count(shop_id)>1-->
+<!--</select>-->
+</mapper>

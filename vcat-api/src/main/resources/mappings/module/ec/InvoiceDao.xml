@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.InvoiceDao">
+    <select id="get" resultType="com.vcat.module.ec.entity.Invoice">
+        SELECT
+          id,
+          title,
+          type,
+          order_time AS "orderTime"
+        FROM ec_invoice invoice
+        WHERE invoice.id = #{id}
+    </select>
+    <insert id="insert" parameterType="com.vcat.module.ec.entity.Invoice">
+        INSERT INTO ec_invoice(
+        id,
+        title,
+        order_time,
+        type
+        ) VALUES (
+        #{id},
+        #{title},
+        NOW(),
+        #{type}
+        )
+  </insert>
+</mapper>

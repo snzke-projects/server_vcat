@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.PaymentDao">
+<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.Payment">
+		<id column="id" property="id" />
+		<result column="gateway_type_id"  property="gateway.id" />
+		<result column="payment_date"  property="paymentDate" />
+		<result column="amount"  property="amount" />
+		<result column="transaction_no"  property="transactionNo" />
+		<result column="payment_no"  property="paymentNo" />
+</resultMap>
+<sql id="Base_Column_List">
+	id,
+	gateway_type_id,
+	payment_date,
+	amount,
+	transaction_no,
+	payment_no
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="transactionNo!=null and transactionNo!=''">
+			AND transaction_no = #{transactionNo}
+		</if>
+	</where>
+</sql>
+<select id="select" resultMap="BaseResultMap" parameterType="String">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_payment
+	where 1=1 AND id = #{_parameter}
+</select>
+<select id="get" resultMap="BaseResultMap" parameterType="com.vcat.module.ec.entity.Payment">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_payment
+	<include refid="Base_Where_Clause" />
+</select>
+
+<select id="getPayment" resultMap="BaseResultMap" parameterType="String">
+    SELECT
+    <include refid="Base_Column_List" />
+    FROM ec_payment
+    where 1=1 AND id = #{paymentId}
+</select>
+
+<select id="getByOrderId" resultType="com.vcat.module.ec.entity.Payment" parameterType="String">
+ SELECT p.id as id, p.transaction_no AS "transactionNo",p.payment_no AS "paymentNo"
+ FROM ec_payment AS p
+ LEFT JOIN ec_order  AS o ON o.payment_id=p.id
+ WHERE o.id=#{_parameter}
+</select>		
+<insert id="insert" parameterType="com.vcat.module.ec.entity.Payment"
+	keyProperty="id">
+	INSERT INTO ec_payment(
+	id,
+	gateway_type_id,
+	payment_date,
+	amount,
+	transaction_no,
+	payment_no
+	) VALUES (
+	#{id},
+	#{gateway.id},
+	#{paymentDate},
+	#{amount},
+	#{transactionNo},
+	#{paymentNo}
+	)
+</insert>
+<insert id="insertAll" parameterType="com.vcat.module.ec.entity.Payment"
+	keyProperty="id">
+	INSERT INTO ec_payment(
+	id,
+	gateway_type_id,
+	payment_date,
+	amount,
+	transaction_no
+	) VALUES (
+	#{id},
+	(SELECT id FROM ec_gateway_type WHERE code=#{gateway.code}),
+	NOW(),
+	(SELECT SUM(total_price) FROM ec_order WHERE payment_id=#{id}),
+	#{transactionNo}
+	)
+	</insert>
+<update id="update" parameterType="com.vcat.module.ec.entity.Payment">
+	UPDATE ec_payment SET
+	payment_date = NOW(),
+	gateway_type_id = (SELECT id FROM ec_gateway_type WHERE code=#{gateway.code}),
+	amount = (SELECT SUM(total_price-total_coupon+freight_price) FROM ec_order WHERE payment_id=#{id}),
+	transaction_no = #{transactionNo}
+	WHERE id=#{id}
+</update>
+<delete id="deleteById" parameterType="String">
+DELETE FROM
+ec_payment
+WHERE id=#{_parameter}
+</delete>
+<select id="getPaymentIdByPaymentNum" resultType="String" parameterType="String">
+SELECT id
+FROM ec_payment
+WHERE payment_no=#{_parameter}
+</select>
+<select id="getOrderIds" resultType="String" parameterType="String">
+SELECT id
+FROM ec_order
+WHERE payment_id=#{_parameter}
+AND payment_status=0
+</select>
+<select id="getSellerId" resultType="string" parameterType="String">
+	SELECT oi.shop_id
+	FROM ec_order o, ec_order_item oi,ec_payment p
+	WHERE o.id = oi.order_id and o.payment_id = p.id and p.payment_no = #{paymentNum}
+</select>
+
+</mapper>

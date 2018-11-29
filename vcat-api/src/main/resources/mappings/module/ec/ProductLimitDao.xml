@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ProductLimitDao">
+	<select id="get" resultType="ProductLimit">
+        SELECT
+        a.id,
+        a.interval + 1 AS "interval",
+        a.times,
+        a.start_time AS "startTime",
+        a.end_time AS "endTime",
+        a.product_type AS "productType",
+        a.user_type AS "userType",
+        pi.id AS "productItem.id",
+        pi.name AS "productItem.name"
+        FROM ec_product_limit a
+        LEFT JOIN ec_product_item pi ON a.product_item_id = pi.id
+        WHERE a.id = #{id}
+	</select>
+	
+	<select id="findList" resultType="ProductLimit">
+		SELECT
+        a.id,
+        a.interval + 1 AS "interval",
+        a.times,
+        a.start_time AS "startTime",
+        a.end_time AS "endTime",
+        a.product_type AS "productType",
+        a.user_type AS "userType",
+        pi.id AS "productItem.id",
+        pi.name AS "productItem.name",
+        p.id AS "productItem.product.id",
+        p.name AS "productItem.product.name"
+		FROM ec_product_limit a
+        LEFT JOIN ec_product_item pi ON a.product_item_id = pi.id
+        LEFT JOIN ec_product p ON pi.product_id = p.id
+		WHERE a.del_flag = #{DEL_FLAG_NORMAL}
+		<if test="sqlMap.keyWord != null and sqlMap.keyWord != ''">
+			AND (
+				pi.name like '%${sqlMap.keyWord}%'
+			OR
+				p.name like '%${sqlMap.keyWord}%'
+			)
+		</if>
+		<if test="productType != null and productType != ''">
+			AND a.product_type = #{productType}
+		</if>
+        <if test="userType != null and userType != ''">
+            AND a.user_type = #{userType}
+        </if>
+		<if test="sqlMap.st != null and sqlMap.st != ''">
+			AND a.start_time > STR_TO_DATE(#{sqlMap.st},"%Y-%m-%d %H:%i:%s")
+		</if>
+		<if test="sqlMap.et != null and sqlMap.et != ''">
+			AND STR_TO_DATE(#{sqlMap.et},"%Y-%m-%d %H:%i:%s") > a.end_time
+		</if>
+		ORDER BY pi.name
+	</select>
+
+	<insert id="insert">
+		INSERT INTO ec_product_limit(
+			id,
+			product_item_id,
+			`interval`,
+			times,
+			start_time,
+			end_time,
+			product_type,
+            user_type,
+			del_flag
+		) VALUES (
+			#{id},
+			#{productItem.id},
+			#{interval} - 1,
+			#{times},
+			#{startTime},
+			#{endTime},
+			#{productType},
+            #{userType},
+			#{DEL_FLAG_NORMAL}
+		)
+	</insert>
+	<update id="update">
+		UPDATE ec_product_limit SET
+			product_item_id = #{productItem.id},
+			`interval` = #{interval} - 1,
+			times = #{times},
+			start_time = #{startTime},
+			end_time = #{endTime},
+			product_type = #{productType},
+            user_type = #{userType}
+		WHERE id = #{id}
+	</update>
+	<update id="delete">
+		UPDATE ec_product_limit SET del_flag = #{DEL_FLAG_DELETE} WHERE id = #{id}
+	</update>
+
+    <select id="hasSameLimit" resultType="Boolean">
+        SELECT IFNULL((
+          SELECT 'true'
+          FROM ec_product_limit
+          WHERE del_flag = 0
+          AND product_type = #{productType}
+          AND product_item_id = #{productItem.id}
+          AND id != #{id}
+        ),'false')
+    </select>
+</mapper>

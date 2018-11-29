@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.EcRoleDao">
+<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.EcRole">
+		<id column="id" property="id" />
+		<result column="role_name"  property="roleName" />
+</resultMap>
+<sql id="Base_Column_List">
+	id,
+	role_name
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="roleName!=null and roleName!=''">
+			AND role_name = #{roleName}
+		</if>
+	</where>
+</sql>
+<select id="select" resultMap="BaseResultMap" parameterType="String">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_role
+	where 1=1 AND id = #{_parameter}
+</select>
+<select id="get" resultMap="BaseResultMap" parameterType="com.vcat.module.ec.entity.Customer">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_role
+	<include refid="Base_Where_Clause" />
+</select>		
+<insert id="insert" parameterType="com.vcat.module.ec.entity.Customer"
+	keyProperty="id">
+	INSERT INTO ec_role(
+	id,
+	role_name
+	) VALUES (
+	#{id},
+	#{roleName}
+	)
+</insert>
+	
+
+	
+</mapper>

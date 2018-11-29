@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+    <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    <mapper namespace="com.vcat.module.ec.dao.UpgradeRequestDao">
+        <select id="get" resultType="com.vcat.module.ec.entity.UpgradeRequest">
+            <!--获取最新的状态-->
+            SELECT
+            request.id,
+            request.shop_id AS "shop.id",
+            shop.user_name AS "shop.customer.userName",
+            shop.phone_number AS "shop.customer.phoneNumber",
+            request.original_parent_id AS "originalParent.id",
+            originalParent.user_name AS "originalParent.customer.userName",
+            originalParent.phone_number AS "originalParent.customer.phoneNumber",
+            request.status as "status"
+            FROM ec_upgrade_request request
+            LEFT JOIN ec_customer shop ON request.shop_id = shop.id
+            LEFT JOIN ec_customer originalParent ON request.original_parent_id = originalParent.id
+            WHERE shop_id = #{shop.id}
+        </select>
+        <select id="findLog" resultType="com.vcat.module.ec.entity.UpgradeRequestLog">
+            SELECT
+                (case when log.status = 0 then '小店升级申请已提交。V猫工作人员会与您的注册手机号联系，请保持手机畅通！'
+                    when log.status = 1 then '恭喜您，您的升级申请已通过审核，重新登录后可自动升级为白金小店！'
+                        else log.note  end) as "note",
+                   log.oper_date as "operDate",
+                log.status as "status"
+            FROM ec_upgrade_request as r  join ec_upgrade_request_log as log
+                    ON r.id = log.request_id
+            where r.shop_id = #{shopId}
+            ORDER BY log.oper_date DESC;
+        </select>
+        <insert id="insert">
+            INSERT INTO ec_upgrade_request (
+                id,
+                shop_id,
+                original_parent_id,
+                status,
+                create_date
+            ) VALUES (
+                #{id},
+                #{shop.id},
+                #{originalParent.id},
+                #{status},
+                NOW()
+            )
+        </insert>
+    <update id="update" >
+        update ec_upgrade_request set status = #{status}
+        where shop_id = #{shop.id}
+    </update>
+    </mapper>

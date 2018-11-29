@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.GroupBuySponsorDao">
+    <insert id="insertGroupBuySponsor" parameterType="com.vcat.module.ec.dto.GroupBuySponsorDto">
+        INSERT INTO ec_group_buying_sponsor (
+          id,
+          group_buying_id,
+          customer_id,
+          is_locked,
+          status,
+          start_date,
+          end_date,
+          type
+        )
+        VALUES (
+          #{id},
+          #{groupBuyDto.id},
+          #{sponsorId},
+          #{isLocked},
+          #{status},
+          #{startDate},
+          #{endDate},
+          #{type}
+        )
+    </insert>
+    <update id="updateGroupBuySponsor">
+        update ec_group_buying_sponsor set
+          is_locked = #{isLocked},
+          status = #{status},
+          start_date = #{startDate},
+          end_date = #{endDate}
+        where id = #{id}
+    </update>
+    <update id="closeSponsor">
+        update ec_group_buying_sponsor set
+        status = 4
+        where id = #{id}
+    </update>
+    <update id="lockGroupBuy">
+        update ec_group_buying_sponsor SET
+        is_locked = #{lockType}
+        where id = #{groupBuySponsorId}
+    </update>
+    <update id="updateGroupBuyActivity">
+        update ec_group_buying_sponsor
+        set del_flag = 1
+        where id = #{groupBuySponsorId}
+        and del_flag = 0
+    </update>
+    <select id="getGroupBuySponsor" resultType="com.vcat.module.ec.dto.GroupBuySponsorDto">
+        SELECT
+          egbs.id                                                   AS "id",
+          egbs.customer_id                                          AS "sponsorId",
+          egbs.is_locked                                            AS "isLocked",
+          egbs.status                                               AS "status",
+          egbs.start_date                                           AS "startDate",
+          egbs.end_date                                             AS "endDate",
+          egbs.type                                                 AS "type",
+          egb.id                                                    AS "groupBuyDto.id",
+          epi.inventory                                             AS "groupBuyDto.inventory",
+          egb.name                                                  AS "groupBuyDto.groupBuyName",
+          egb.status                                                AS "groupBuyDto.status",
+          egb.start_date                                            AS "groupBuyDto.startDate",
+          egb.end_date                                              AS "groupBuyDto.endDate",
+          egb.single_price                                          AS "groupBuyDto.singlePrice",
+          egb.needed_people                                         AS "groupBuyDto.neededPeople",
+          egb.period                                                AS "groupBuyDto.period",
+          egb.product_id                                            AS "groupBuyDto.productId",
+          egb.product_item_id                                       AS "groupBuyDto.productItemId",
+          epi.retail_price                                          AS "groupBuyDto.groupBuyPrice",
+          ep.name                                                   AS "groupBuyDto.productName",
+          ep.archived                                               AS "groupBuyDto.archived",
+          (SELECT times
+           FROM ec_product_limit AS l
+           WHERE product_type = 7
+                 AND product_item_id = epi.id
+                 AND now() >= l.start_time AND l.end_time >= now()) AS "groupBuyDto.limitCount",
+          (SELECT count(1)
+           FROM ec_group_buying_customer
+           WHERE status = 1
+                 AND ec_group_buying_customer.group_buying_sponsor_id = egbs.id
+          )                                                         AS "joinedCount",
+          (CASE WHEN egbs.type = 0
+            THEN (SELECT count(1) + 1
+                  FROM ec_group_buying_customer
+                    LEFT JOIN ec_order AS eo ON ec_group_buying_customer.order_id = eo.id
+                  WHERE ec_group_buying_customer.group_buying_sponsor_id = egbs.id
+                        AND eo.order_status != 3
+            )
+           ELSE (SELECT count(1)
+                 FROM ec_group_buying_customer
+                   LEFT JOIN ec_order AS eo ON ec_group_buying_customer.order_id = eo.id
+                 WHERE ec_group_buying_customer.group_buying_sponsor_id = egbs.id
+                       AND eo.order_status != 3
+           ) END)                                                   AS "applyedCount"
+        FROM ec_group_buying_sponsor AS egbs
+          LEFT JOIN ec_group_buying AS egb ON egbs.group_buying_id = egb.id
+          LEFT JOIN ec_product_item AS epi ON egb.product_item_id = epi.id AND epi.product_item_type = 1
+          LEFT JOIN ec_product AS ep ON egb.product_id = ep.id
+        WHERE egbs.id = #{id}
+    </select>
+    <select id="getMyGroupBuyActivityList" resultType="java.util.Map">
+        SELECT *
+        FROM (SELECT
+        ep.name AS "productName",
+        egb.needed_people AS "neededPeople",
+        epi.name AS "itemName",
+        epi.retail_price AS "groupBuyPrice",
+        es.user_name AS "sponsorName",
+        egbs.id AS "groupBuySponsorId",
+        egbc.customer_id,
+        egbc.is_sponsor,
+        concat(egbs.status, '') AS "status",
+        egbs.del_flag,
+        (CASE WHEN egbs.type = 0
+        THEN "0元开团"
+        WHEN egbs.type = 1 OR egbs.type = 2
+        THEN "普通开团" END) AS "groupBuyType",
+        (SELECT i.url
+        FROM ec_product_image AS pi2
+        LEFT JOIN ec_image AS i ON pi2.image_id = i.id
+        WHERE pi2.product_id = ep.id
+        ORDER BY pi2.display_order DESC
+        LIMIT 1)
+        AS "mainUrl",
+        (CASE
+        WHEN egbs.status = 1
+        THEN "拼团进行中"
+        WHEN egbs.status = 2
+        THEN "拼团成功"
+        WHEN egbs.status = 4
+        THEN "拼团失败" END) AS "groupBuyStatus"
+        FROM ec_group_buying_sponsor AS egbs
+        LEFT JOIN ec_group_buying_customer AS egbc ON egbs.id = egbc.group_buying_sponsor_id
+        LEFT JOIN ec_customer AS es ON egbs.customer_id = es.id
+        LEFT JOIN ec_group_buying AS egb ON egbs.group_buying_id = egb.id
+        LEFT JOIN ec_product_item AS epi ON egb.product_item_id = epi.id
+        LEFT JOIN ec_product AS ep ON egb.product_id = ep.id
+        LEFT JOIN ec_order AS eo ON egbc.order_id = eo.id
+        LEFT JOIN ec_order_item AS eoi ON egbc.order_item_id = eoi.id
+        WHERE
+        (egbs.customer_id = #{shopId}
+        )
+        OR (eoi.shop_id = #{shopId})
+        GROUP BY egbs.id
+        ORDER BY egbs.start_date DESC) as result
+        where 1=1
+        AND result.del_flag = 0
+        <if test="type == 0">
+            AND result.status in (1,2,4)
+        </if>
+        <if test="type == 1">
+            AND result.status = 1
+        </if>
+        <if test="type == 2">
+            AND result.status = 2
+        </if>
+        <if test="type == 3">
+            AND result.status = 4
+        </if>
+        LIMIT #{page.pageOffset},#{page.pageSize}
+
+    </select>
+    <select id="getGroupBuyActivityCount" resultType="java.lang.Integer">
+        SELECT count(1)
+        FROM ( SELECT egbs.id ,egbs.status,egbs.del_flag
+        FROM ec_group_buying_sponsor AS egbs
+        LEFT JOIN ec_group_buying_customer AS egbc ON egbs.id = egbc.group_buying_sponsor_id
+        LEFT JOIN ec_customer AS es ON egbs.customer_id = es.id
+        LEFT JOIN ec_group_buying AS egb ON egbs.group_buying_id = egb.id
+        LEFT JOIN ec_product_item AS epi ON egb.product_item_id = epi.id
+        LEFT JOIN ec_product AS ep ON egb.product_id = ep.id
+        LEFT JOIN ec_order AS eo ON egbc.order_id = eo.id
+        LEFT JOIN ec_order_item AS eoi ON egbc.order_item_id = eoi.id
+        WHERE (egbs.customer_id = #{shopId}) OR (eoi.shop_id = #{shopId})
+        GROUP BY egbs.id
+        ) as result
+        where 1=1
+        AND result.del_flag = 0
+        <if test="type == 0">
+            AND result.status in (1,2,4)
+        </if>
+        <if test="type == 1">
+            AND result.status = 1
+        </if>
+        <if test="type == 2">
+            AND result.status = 2
+        </if>
+        <if test="type == 3">
+            AND result.status = 4
+        </if>
+    </select>
+    <select id="select" resultType="com.vcat.module.ec.entity.GroupBuySponsor">
+        SELECT
+            s.id             AS "id",
+            s.customer_id    AS "sponsorId",
+            s.is_locked      AS "isLocked",
+            s.status         AS "status",
+            s.start_date     AS "startDate",
+            s.end_date       AS "endDate",
+            s.type           AS "type",
+            (SELECT COUNT(c.id) FROM ec_group_buying_customer c WHERE c.group_buying_sponsor_id = s.id AND c.status = 1) AS "count",
+            b.id             AS "groupBuy.id",
+            b.needed_people  AS "groupBuy.neededPeople"
+        FROM ec_group_buying_sponsor s
+        LEFT JOIN ec_group_buying b ON s.group_buying_id = b.id
+        WHERE s.id = #{id}
+    </select>
+    <select id="gotoPageByStatus" resultType="java.util.Map">
+        SELECT
+          concat(egbs.status,'')                                                       AS "groupBuyStatus",
+          egbs.is_locked                                                               AS "isLocked",
+          egbs.customer_id                                                             AS "sponsorId",
+          (SELECT egbc.status
+           FROM ec_group_buying_customer AS egbc
+             left join ec_order as eo on egbc.order_id = eo.id
+             LEFT JOIN ec_group_buying_sponsor AS egbs ON egbc.group_buying_sponsor_id = egbs.id
+           WHERE egbc.customer_id = #{customerId}
+                 AND egbc.group_buying_sponsor_id = #{groupBuySponsorId}
+                 and (eo.order_status != 3  or eo.id is null)
+          limit 1)                                                                     AS "isJoined"
+        FROM ec_group_buying_sponsor AS egbs
+        WHERE egbs.id = #{groupBuySponsorId}
+    </select>
+</mapper>

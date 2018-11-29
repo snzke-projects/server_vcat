@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.AddressDao">
+<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.Address">
+		<id column="id" property="id" />
+		<result column="nation_id"  property="nation" />
+		<result column="province_id"  property="province" />
+		<result column="city_id"  property="city" />
+		<result column="district_id"  property="district" />
+		<result column="detail_address"  property="detailAddress" />
+		<result column="delivery_phone"  property="deliveryPhone" />
+		<result column="delivery_name"  property="deliveryName" />
+</resultMap>
+<sql id="Base_Column_List">
+	id,
+	nation_id,
+	province_id,
+	city_id,
+	district_id,
+	detail_address,
+	delivery_phone,
+	delivery_name
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="deliveryPhone!=null and deliveryPhone!=''">
+			AND delivery_phone = #{deliveryPhone}
+		</if>
+	</where>
+</sql>
+<select id="select" resultMap="BaseResultMap" parameterType="String">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_address
+	where 1=1 AND id = #{_parameter}
+</select>
+<select id="get" resultMap="BaseResultMap" parameterType="com.vcat.module.ec.entity.Address">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_address
+	<include refid="Base_Where_Clause" />
+</select>
+<select id="getOrderAddress" resultType="com.vcat.module.ec.entity.Address">
+	SELECT
+	  eoa.detail_address as "detailAddress",
+	  eoa.delivery_name as "deliveryName",
+	  eoa.delivery_phone as "deliveryPhone",
+	  eoa.province AS "province",
+	  eoa.province_id AS "provinceId",
+	  eoa.city AS "city",
+	  eoa.city_id AS "cityId",
+	  eoa.district AS "district",
+	  eoa.district_id AS "districtId",
+	  eca.address_id as "id",
+	  eca.is_default as "def"
+	FROM ec_order AS eo
+	  left join ec_order_address as eoa on eo.id = eoa.id
+	  LEFT JOIN ec_customer_address AS eca ON eo.customer_address_id = eca.id
+	  LEFT JOIN ec_address AS a ON a.id = eca.address_id
+	WHERE eo.id = #{orderId}
+	AND eo.buyer_id = #{buyerId}
+	LIMIT 1
+</select>
+<insert id="insert" parameterType="com.vcat.module.ec.entity.Address"
+	keyProperty="id">
+	INSERT INTO ec_address(
+	id,
+	nation_id,
+	province_id,
+	city_id,
+	district_id,
+	detail_address,
+	delivery_phone,
+	delivery_name
+	) VALUES (
+	#{id},
+	'100000',
+	#{provinceId},
+	#{cityId},
+	#{districtId},
+	#{detailAddress},
+	#{deliveryPhone},
+	#{deliveryName}
+	)
+</insert>
+<update id="update" parameterType="com.vcat.module.ec.entity.Address">
+	UPDATE ec_address SET
+	province_id = #{provinceId},
+	city_id = #{cityId},
+	district_id = #{districtId},
+	detail_address = #{detailAddress},
+	delivery_phone = #{deliveryPhone},
+	delivery_name = #{deliveryName}
+	WHERE id = #{id}
+</update>
+<delete id="deleteById" parameterType="String">
+DELETE FROM
+ec_address
+WHERE id=#{_parameter}
+</delete>
+</mapper>

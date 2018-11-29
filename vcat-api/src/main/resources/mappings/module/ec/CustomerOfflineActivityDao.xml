@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.CustomerOfflineActivityDao">
+    <resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.CustomerOfflineActivity">
+        <id column="id" property="id" />
+        <result column="customer_id"  property="customer.id" />
+        <result column="activity_offine_id"  property="activityOffline.id" />
+        <result column="create_date"  property="createDate" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,
+        customer_id,
+        activity_offline_id,
+        create_date,
+        real_name,
+        phone_number AS 'phoneNum',
+        qq,
+        email,
+        address_id AS 'addressId'
+    </sql>
+
+    <sql id="Base_Where_Clause">
+        <where>
+            1=1
+            <if test="id!=null and id!=''">
+                AND id = #{id}
+            </if>
+            <if test="customer!=null and customer.id!=null and customer.id!=''">
+                AND customer_id = #{customer.id}
+            </if>
+            <if test="activityOffline!=null and activityOffline.id!=null and activityOffline.id!=''">
+                AND activity_offline_id = #{activityOffline.id}
+            </if>
+        </where>
+    </sql>
+    <select id="get" resultMap="BaseResultMap" parameterType="com.vcat.module.ec.entity.CustomerOfflineActivity">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM ec_activity_offline_customer
+        <include refid="Base_Where_Clause" />
+    </select>
+    <insert id="insert" parameterType="com.vcat.module.ec.entity.CustomerOfflineActivity">
+        INSERT INTO ec_activity_offline_customer(
+        id,
+        customer_id,
+        activity_offline_id,
+        create_date,
+        real_name,
+        phone_number,
+        qq,
+        email,
+        address_id
+        ) VALUES (
+        #{id},
+        #{customer.id},
+        #{activityOffline.id},
+        NOW(),
+        null,
+        #{customer.phoneNumber},
+        null,
+        null,
+        null
+        )
+    </insert>
+</mapper>

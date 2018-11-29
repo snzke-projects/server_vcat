@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.AccountDao">
+
+
+<sql id="Base_Column_List">
+	a.id,
+	a.shop_id,
+	a.gateway_type_id,
+	a.account_number,
+	a.account_name,
+	a.bank_id,
+	a.branch_name,
+	a.is_active AS "active",
+	a.city,
+	a.province
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND a.id = #{id}
+		</if>
+		<if test="shopId!=null and shopId!=''">
+			AND a.shop_id = #{shopId}
+		</if>
+		<if test="active!=null and active!=''">
+			AND a.is_active= #{active}
+		</if>
+	</where>
+</sql>
+<select id="get" resultType="com.vcat.module.ec.entity.Account" parameterType="com.vcat.module.ec.entity.Account">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_shop_account AS a
+	LEFT JOIN ec_gateway_type AS gt ON gt.id=a.gateway_type_id
+	<include refid="Base_Where_Clause" />
+	<if test="gateWay!=null and gateWay.code!=null and gateWay.code!=''">
+		AND gt.code= #{gateWay.code}
+	</if>
+</select>
+<select id="selectByShopId" resultType="com.vcat.module.ec.dto.AccountDto" parameterType="String">
+	SELECT
+	sa.id,
+	sa.account_name AS "name",
+	gt.name AS "accountTypeName",
+	gt.code AS "accountType",
+	sa.account_number AS "accountNum",
+	sa.is_default AS "isDefault",
+	sa.branch_name AS "branchName",
+	sa.city AS "city",
+	sa.province AS "province",
+	b.name AS "bankName",
+	b.min_logo AS "minLogo",
+	b.max_logo AS "maxLogo"
+	FROM ec_shop_account AS sa
+	LEFT JOIN ec_bank AS b ON b.id=sa.bank_id
+	LEFT JOIN ec_gateway_type AS gt ON gt.id=sa.gateway_type_id
+	WHERE 1=1 AND shop_Id=#{shopId} AND is_active=1
+	ORDER BY gt.code
+</select>
+<insert id="insert" parameterType="com.vcat.module.ec.entity.Account">
+	INSERT INTO ec_shop_account(
+	id,
+	shop_id,
+	gateway_type_id,
+	account_number,
+	account_name,
+	bank_id,
+	branch_name,
+	is_active,
+	city,
+	province,
+	is_default
+	) VALUES (
+	#{id},
+	#{shopId},
+	(SELECT s.id  FROM ec_gateway_type AS s WHERE s.code=#{gateWay.code} LIMIT 1),
+	#{accountNumber},
+	#{accountName},
+	(SELECT s.id  FROM ec_bank AS s WHERE s.name=#{bank.name} LIMIT 1),
+	#{branchName},
+	#{active},
+	#{city},
+	#{province},
+	#{isDefault}
+	)
+ 
+</insert>
+<update id="update" parameterType="com.vcat.module.ec.entity.Account">
+	UPDATE ec_shop_account SET
+	account_number = #{accountNumber},
+	account_name = #{accountName},
+	bank_id=(SELECT s.id FROM ec_bank AS s WHERE s.name=#{bank.name} LIMIT 1),
+	branch_name = #{branchName},
+	city = #{city},
+	province = #{province},
+	is_default = #{isDefault}
+	WHERE id = #{id}
+</update>
+<update id="updateDefault" parameterType="String">
+UPDATE ec_shop_account
+SET is_default =0
+WHERE is_default =1
+AND shop_id=#{_parameter}
+</update>
+</mapper>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.CouponFundDao">
+<sql id="Base_Column_List">
+	id,
+	shop_id,
+	available_fund,
+	used_fund
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="shop!=null and shop.id!=null and shop.id!=''">
+			AND shop_id = #{shop.id}
+		</if>
+	</where>
+</sql>
+<insert id="insert" parameterType="com.vcat.module.ec.entity.CouponFund">
+	INSERT INTO ec_coupon_fund(
+	id,
+	shop_id,
+	available_fund,
+	used_fund
+	) VALUES (
+	#{id},
+	#{shop.id},
+	#{availableFund},
+	#{usedFund}
+	)
+</insert>
+<update id="addCoupon" >
+	UPDATE ec_coupon_fund
+	SET available_fund=available_fund+#{fund}
+	WHERE shop_id=#{shopId}
+</update>
+<update id="subCoupon">
+	UPDATE ec_coupon_fund
+	SET available_fund=available_fund+#{fund},
+		used_fund=used_fund-#{fund}
+	WHERE shop_id=#{shopId}
+</update>
+<select id="get" resultType="com.vcat.module.ec.entity.CouponFund" parameterType="com.vcat.module.ec.entity.CouponFund">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_coupon_fund
+	<include refid="Base_Where_Clause" />
+</select>
+</mapper>

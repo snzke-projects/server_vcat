@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.LevelDao">
+<resultMap id="BaseResultMap" type="com.vcat.module.ec.entity.Level">
+		<id column="id" property="id" />
+		<result column="name"  property="name" />
+		<result column="max_exp"  property="maxExp" />
+		<result column="min_exp"  property="minExp" />
+		<result column="url"  property="url" />
+</resultMap>
+<sql id="Base_Column_List">
+	id,
+	name,
+	max_exp,
+	min_exp,
+	url
+</sql>
+<sql id="Base_Where_Clause">
+	<where>
+		1=1
+		<if test="id!=null and id!=''">
+			AND id = #{id}
+		</if>
+		<if test="name!=null and name!=''">
+			AND name = #{name}
+		</if>
+	</where>
+</sql>
+<select id="get" resultMap="BaseResultMap" parameterType="com.vcat.module.ec.entity.Customer">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_level
+	<include refid="Base_Where_Clause" />
+</select>
+<select id="findList" resultType="Level">
+	SELECT
+		id AS "id",
+		name AS "name",
+		max_exp AS "maxExp",
+		min_exp AS "minExp",
+		url AS "url"
+	FROM ec_level
+	ORDER BY min_exp ASC
+</select>
+<select id="select" resultMap="BaseResultMap" parameterType="String">
+	SELECT
+	<include refid="Base_Column_List" />
+	FROM ec_level
+	where  1=1 AND id = #{_parameter}
+</select>
+<insert id="insert" parameterType="com.vcat.module.ec.entity.Customer">
+	INSERT INTO ec_level(
+        id,
+        name,
+        max_exp,
+        min_exp,
+        url
+	) VALUES (
+        #{id},
+        #{name},
+        #{maxExp},
+        #{minExp},
+        #{url}
+	)
+</insert>
+<update id="update" parameterType="com.vcat.module.ec.entity.Customer">
+	UPDATE ec_level
+	SET
+	  name = #{name}
+	  ,url = #{url}
+      ,min_exp = #{minExp}
+	  ,max_exp = #{maxExp}
+	WHERE id = #{id}
+</update>
+<delete id="delete">
+    DELETE FROM ec_level WHERE id = #{id}
+</delete>
+</mapper>

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.ShopInfoDao">
+    <update id="updateShopInfo">
+        update ec_shop_info set
+            is_activate = 1
+        where shop_id = #{shopId}
+        and product_Id = #{productId}
+    </update>
+    <select id="get" resultType="com.vcat.module.ec.entity.ShopInfo" parameterType="com.vcat.module.ec.entity.ShopInfo">
+        select real_name as "realName",
+        farm_name as "farmName",
+        wechat_name as "wechatName"
+        from ec_shop_info
+        where product_id = #{product.id}
+        and shop_id = #{shop.id}
+    </select>
+    <select id="getAllFarmInfoByShopId" resultType="com.vcat.module.ec.entity.ShopInfo">
+        select real_name as "realName",
+               farm_name as "farmName",
+               wechat_name as "wechatName"
+        from ec_shop_info
+        where shop_id = #{shopId}
+        order by create_date desc
+    </select>
+    <select id="getShopInfo" resultType="com.vcat.module.ec.dto.ShopInfoDto" parameterType="com.vcat.module.ec.dto.ShopInfoDto">
+        select id as "id",
+            real_name as "realName",
+            farm_name as "farmName",
+            qr_code_url as "QRcode",
+            shop_id as "shopId",
+            product_id as "productId",
+            wechat_name as "wechatName"
+        from ec_shop_info
+        where 1=1
+            <if test="productId != null and productId != ''">
+              and  product_id = #{productId}
+            </if>
+            <if test="shopId != null and shopId != ''">
+              and  shop_id = #{shopId}
+            </if>
+            <if test="id != null and id != ''">
+              and id = #{id}
+            </if>
+            <if test="isActivate != null and isActivate != ''">
+                and is_activate = #{isActivate}
+            </if>
+        order by create_date desc
+    </select>
+    <insert id="insert" parameterType="com.vcat.module.ec.entity.ShopInfo">
+        INSERT INTO ec_shop_info(
+        id,
+        shop_id,
+        product_id,
+        farm_name,
+        real_name,
+        is_default,
+        qr_code_url,
+        create_date,
+        is_activate,
+        wechat_name
+        ) VALUES (
+          #{id},
+          #{shop.id},
+          #{product.id},
+          #{farmName},
+          #{realName},
+          #{isDefault},
+          #{QRCode},
+          now(),
+          0,
+          #{wechatName}
+        )
+    </insert>
+    <insert id="addLeroyerInfo" parameterType="com.vcat.module.ec.dto.ShopInfoDto">
+        INSERT INTO ec_shop_info(
+        id,
+        shop_id,
+        product_id,
+        farm_name,
+        real_name,
+        is_default,
+        qr_code_url,
+        create_date,
+        is_activate,
+        wechat_name
+        ) VALUES (
+        #{id},
+        #{shopId},
+        #{productId},
+        #{farmName},
+        #{realName},
+        #{isDefault},
+        #{QRCode},
+        now(),
+        0,
+        #{wechatName}
+        )
+    </insert>
+
+</mapper>

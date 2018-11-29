@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.MessageEarningDao">
+	<select id="findList" resultType="MessageEarning">
+		SELECT
+			message.id AS "id",
+			message.shop_id AS "shop.id",
+			message.is_read AS "isRead",
+			message.read_date AS "readDate",
+			message.earning AS "earning",
+			message.product_name AS "productName",
+			message.consumer AS "consumer",
+			message.quantity AS "quantity",
+			message.create_date AS "createDate",
+			message.order_number AS "orderNumber",
+			(CASE
+				WHEN message.type = 5  THEN '一级分红'
+				WHEN message.type = 10 or message.type = 8 THEN '二级分红'
+			END) AS "bonusLevel",
+			(CASE
+				WHEN message.type = 5 OR message.type = 8 or message.type = 10  THEN 5
+				ELSE message.type
+			END) AS "type",
+			message.share_name AS "shareName"
+		FROM ec_message_earning message
+		WHERE message.shop_id = #{shop.id}
+		ORDER BY create_date DESC
+	</select>
+	<select id="queryNotReadMessageCount" resultType="Map">
+		SELECT
+			(SELECT count(1) FROM ec_message_flag WHERE shop_id = #{shopId} AND is_read = 0)AS "MSG_SYSTEM_NOT_READ",
+			(SELECT count(1) FROM ec_message_earning WHERE shop_id = #{shopId} AND is_read = 0)AS "MSG_FUND_NOT_READ",
+			(SELECT count(1) FROM ec_message_order WHERE shop_id = #{shopId} AND is_read = 0)AS "MSG_ORDER_NOT_READ",
+			(SELECT count(1) FROM ec_message_remind WHERE shop_id = #{shopId} AND is_read = 0)AS "MSG_REMIND_NOT_READ"
+	</select>
+	<update id="read">
+		UPDATE ec_message_earning
+		SET is_read = 1,read_date = now()
+		WHERE shop_id = #{id}
+	</update>
+	<insert id="insert" parameterType="MessageEarning">
+		INSERT INTO ec_message_earning(
+			id,
+			shop_id,
+			is_read,
+			create_date,
+			consumer,
+			earning,
+			product_name,
+			quantity,
+			order_number,
+			type,
+			share_name
+		) VALUES (
+			#{id},
+			#{shop.id},
+			0,
+			now(),
+			#{consumer},
+			#{earning},
+			#{productName},
+			#{quantity},
+			#{orderNumber},
+			#{type},
+			#{shareName}
+		)
+	</insert>
+</mapper>

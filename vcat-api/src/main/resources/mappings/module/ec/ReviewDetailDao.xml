@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ReviewDetailDao">
+    <select id="findList" resultType="com.vcat.module.ec.entity.ReviewDetail">
+        SELECT
+            a.id,
+            a.review_text AS "reviewText",
+            a.is_display AS "isDisplay",
+            a.submit_date AS "submitDate",
+            a.from,
+            pi.name AS "itemName",
+            product.name AS "product.name",
+            buyer.user_name AS "buyer.userName",
+            rating.rating AS "rating.rating"
+        FROM ec_review_detail a
+        LEFT JOIN ec_order_item item ON a.order_item_id = item.id
+        LEFT JOIN ec_product_item pi ON item.product_item_id = pi.id
+        LEFT JOIN ec_rating_detail rating ON rating.id = a.id
+        LEFT JOIN ec_customer buyer ON a.buyer_id = buyer.id
+        LEFT JOIN ec_product product ON rating.rating_summary_id = product.id
+        WHERE 1=1
+        <if test="product != null and product.name != ''">
+            AND product.name LIKE '%${product.name}%'
+        </if>
+        <if test="from != null and from != ''"><!-- 评论来源：用户 -->
+            AND a.from = #{from}
+        </if>
+        ORDER BY a.submit_date DESC
+    </select>
+    <update id="display">
+        UPDATE ec_review_detail
+        SET is_display = #{isDisplay}
+        WHERE id = #{id}
+    </update>
+    <insert id="insert" parameterType="com.vcat.module.ec.entity.ReviewDetail">
+        INSERT INTO ec_review_detail(
+        id,
+        buyer_id,
+        submit_date,
+        review_text,
+        rating_summary_id,
+        order_item_id,
+        item_name
+        ) VALUES (
+        #{id},
+        #{buyerId},
+        NOW(),
+        #{reviewText},
+        #{ratingSummaryId},
+        #{orderItemId},
+        (SELECT pi1.name FROM ec_product_item AS pi1
+        LEFT JOIN ec_order_item AS oi ON oi.product_item_id = pi1.id
+        WHERE oi.id = #{orderItemId})
+        )
+    </insert>
+    <insert id="addReview">
+        INSERT INTO ec_review_detail(
+        id,
+        rating_summary_id,
+        buyer_id,
+        review_text,
+        item_name,
+        order_item_id,
+        is_display,
+        `from`,
+        submit_date
+        )SELECT
+        #{id}
+        ,item.product_id
+        ,#{customerId}
+        ,lib.review_text
+        ,item.name
+        ,NULL
+        ,1<!-- 默认显示评论 -->
+        ,2<!-- 默认来源系统 -->
+        ,date_add(CONCAT(DATE_FORMAT(p.add_date,'%Y%m%d'),LPAD(FLOOR(7 + (RAND() * 16)),2,0),LPAD(FLOOR(0 + (RAND() * 59)),2,0),LPAD(FLOOR(0 + (RAND() * 59)),2,0)), interval (RAND() * DATEDIFF(NOW(), p.add_date)) day)
+        <!-- 默认商品添加当天到插入时间内随机 -->
+        FROM ec_product_item item
+        LEFT JOIN ec_category_product cp ON cp.product_id = item.product_id
+        LEFT JOIN ec_category c ON cp.category_id = c.id
+        LEFT JOIN ec_category parentC ON c.parent_category_id = parentC.id
+        LEFT JOIN ec_product p ON cp.product_id = p.id
+        LEFT JOIN ec_review_library lib ON 1=1
+        LEFT JOIN ec_category libc ON lib.category_id = libc.id
+        WHERE item.product_id = #{productId}
+        AND libc.lft BETWEEN parentC.lft AND parentC.rgt
+        AND lib.review_text IS NOT NULL
+        ORDER BY RAND() LIMIT 1
+    </insert>
+    <select id="getReviewByProduct" resultType="com.vcat.module.ec.entity.ReviewDetail">
+    SELECT * FROM ec_review_detail
+	WHERE buyer_id = #{buyerId}
+	AND rating_summary_id = #{productId}
+	AND order_item_id = #{orderItemId}
+    </select>
+    <select id="getReviewCount" resultType="java.lang.Integer">
+        SELECT COUNT(1) FROM ec_review_detail WHERE order_item_id = #{id}
+    </select>
+    <insert id="addRandomReviewByItemId">
+        INSERT INTO ec_review_detail(
+        id,
+        rating_summary_id,
+        buyer_id,
+        review_text,
+        item_name,
+        order_item_id,
+        is_display,
+        `from`,
+        submit_date
+        )SELECT
+        #{id}
+        ,item.product_id
+        ,o.buyer_id
+        ,IFNULL((SELECT lib.review_text
+        FROM ec_review_library lib
+        LEFT JOIN ec_category libc ON lib.category_id = libc.id
+        WHERE libc.lft BETWEEN parentC.lft AND parentC.rgt
+        AND lib.review_text IS NOT NULL
+        ORDER BY RAND() LIMIT 1),IFNULL((SELECT value FROM sys_dict WHERE type = 'ec_default_review' LIMIT 1),'宝贝不错，好评！'))
+        ,item.name
+        ,oi.id
+        ,1
+        ,2
+        ,CURRENT_TIMESTAMP
+        FROM ec_order_item oi
+        LEFT JOIN ec_review_detail rd ON oi.id = rd.order_item_id
+        LEFT JOIN ec_order o ON oi.order_id = o.id
+        LEFT JOIN ec_product_item item ON oi.product_item_id = item.id
+        LEFT JOIN ec_category_product cp ON cp.product_id = oi.product_id
+        LEFT JOIN ec_category c ON cp.category_id = c.id
+        LEFT JOIN ec_category parentC ON c.parent_category_id = parentC.id
+        WHERE oi.id = #{itemId}
+        AND rd.id IS NULL
+    </insert>
+</mapper>

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.BrandDao">
+	<sql id="brandColumns">
+		a.id AS "id",
+		a.name AS "name",
+		a.description AS "description",
+		a.logo_url AS "logoUrl",
+		a.supplier_id AS "supplierId",
+		a.freight_charge AS "freightCharge",
+		a.intro AS "intro",
+		supplier.id AS "supplier.id",
+		supplier.name AS "supplier.name"
+	</sql>
+	<select id="get" resultType="Brand">
+		SELECT 
+			<include refid="brandColumns"></include>
+		FROM ec_brand a
+        LEFT JOIN ec_supplier supplier ON supplier.id = a.supplier_id
+		WHERE a.id = #{id}
+	</select>
+	<select id="select" resultType="Brand" parameterType="String">
+		SELECT 
+			<include refid="brandColumns"></include>
+		FROM ec_brand a
+        LEFT JOIN ec_supplier supplier ON supplier.id = a.supplier_id
+		WHERE a.id = #{_parameter}
+	</select>
+	<select id="findList" resultType="Brand">
+		SELECT
+			<include refid="brandColumns"></include>
+		FROM ec_brand a
+        LEFT JOIN ec_supplier supplier ON supplier.id = a.supplier_id
+        WHERE 1=1
+        <if test="name != null and name != ''">
+            AND (a.name LIKE CONCAT('%', #{name}, '%') OR supplier.name LIKE CONCAT('%', #{name}, '%'))
+        </if>
+        <if test="supplier != null and supplier.id != null and supplier.id != ''">
+            AND a.supplier_id = #{supplier.id}
+        </if>
+		ORDER BY a.id ASC
+	</select>
+
+	<insert id="insert">
+		INSERT INTO ec_brand(
+			id,
+			name,
+			description,
+			logo_url,
+			supplier_id,
+            freight_charge,
+			intro
+		) VALUES (
+			#{id},
+			#{name},
+			#{description},
+			#{logoUrl},
+			#{supplier.id},
+			#{freightCharge},
+			#{intro}
+		)
+	</insert>
+    <update id="update">
+        UPDATE ec_brand
+        SET name = #{name}
+        ,description = #{description}
+        ,logo_url = #{logoUrl}
+        ,supplier_id = #{supplier.id}
+        ,freight_charge = #{freightCharge}
+        ,intro = #{intro}
+        WHERE id = #{id}
+    </update>
+	<!-- 获取达人下面的品牌列表-->
+	<select id="getBrandList" resultType="java.util.Map" parameterType="String">
+	SELECT DISTINCT 
+	  s.id AS "id",
+	  s.name AS "name",
+	  s.intro AS "intro",
+	  s.logo_url AS "logoImg",
+	  IF(
+	    (SELECT 
+	      id 
+	    FROM
+	      ec_shop_brand
+	    WHERE brand_id = s.id 
+	      AND shop_id = #{shopId}
+	      AND del_flag = 0) IS NULL,
+	    '0',
+	    '1'
+	  ) AS "isBind" 
+	FROM
+	  ec_category_brand AS cs 
+	  LEFT JOIN ec_category AS c 
+	    ON c.id = cs.category_id 
+	    AND c.del_flag = 0 
+	  LEFT JOIN ec_brand AS s 
+	    ON s.id = cs.brand_id 
+	  LEFT JOIN ec_guru_category AS gc 
+	    ON gc.category_id = c.parent_category_id 
+	  LEFT JOIN ec_shop_brand AS ss 
+	    ON s.id = ss.brand_id 
+	WHERE gc.guru_id = #{guruId}
+	</select>
+</mapper>

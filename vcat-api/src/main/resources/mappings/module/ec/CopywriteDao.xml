@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.CopywriteDao">
+    <select id="getCopywrites" resultType="com.vcat.module.ec.dto.CopywriteDto">
+        select
+            ec.id as "id",
+            ec.title as "title",
+            ec.content as "content",
+            ec.product_id as "productId",
+            brand.logo_url AS "logo",
+            # 时间显示
+            (case when date_format(ec.activate_time,'%Y-%m-%d') = date_format(now(),'%Y-%m-%d')  then '今天'
+            when date_add(date_format(ec.activate_time,'%Y-%m-%d'),interval 1 day) = date_format(now(),'%Y-%m-%d')  then '昨天'
+            else date_format(ec.activate_time,'%Y-%m-%d')
+            end
+            ) as "activateTimeToString",
+            ec.activate_time,
+            # 默认文案图片
+            (select
+            group_concat(url)
+            from
+            (select image_url as url, copywrite_id as coi
+            from
+            ec_copywrite_image
+            order by display_order desc
+            ) t
+            where t.coi = ec.id
+            ) as "imageList",
+            # 是否为默认素材
+            (case when ecd.shop_id is not null then 1
+            else 0
+            end) as "defaultCopywrite"
+        from ec_copywrite as ec
+            left join ec_product as ep on ep.id = ec.product_id
+            left join ec_brand as brand on brand.id = ep.brand_id
+            left join ec_copywrite_default as ecd on ec.id = ecd.copywrite_id
+            and ecd.product_id = ec.product_id
+        <if test=" 'shopId' != null and 'shopId' != '' ">
+            and ecd.shop_id = #{shopId}
+        </if>
+        where ec.product_id = #{productId}
+            and ec.is_activate = 1
+        <if test="sortType == 1">
+            order by  activate_time desc
+        </if>
+        <if test="sortType == 2">
+            order by  (case when defaultCopywrite = 1 then 1
+            else 0
+            end) desc, activate_time desc
+        </if>
+        limit #{page.pageOffset},#{page.pageSize}
+    </select>
+    <select id="getDefaultCopywrite" resultType="com.vcat.module.ec.dto.CopywriteDto">
+        select
+            ec.title as "title",
+            ec.content as "content",
+            brand.logo_url AS "logo",
+            # 时间显示
+            (case when date_format(ec.activate_time,'%Y-%m-%d') = date_format(now(),'%Y-%m-%d')  then '今天'
+             when date_add(date_format(ec.activate_time,'%Y-%m-%d'),interval 1 day) = date_format(now(),'%Y-%m-%d')  then '昨天'
+             else date_format(ec.activate_time,'%Y-%m-%d')
+             end
+            ) as "updateTime",
+            # 文案图片
+            (select
+            group_concat(url)
+             from
+                 (select image_url as url, copywrite_id as coi
+                  from
+                      ec_copywrite_image
+                  order by display_order desc
+                 ) t
+             where t.coi = ec.id
+            ) as "imageList"
+        from ec_copywrite as ec
+            left join ec_brand brand on brand.id = ec.product_id
+            left join ec_copywrite_default as ecd on ec.id = ecd.copywrite_id
+                 and ecd.product_id = ec.product_id
+        where ec.product_id = #{productId}
+              and ecd.shop_id = #{shopId}
+              and ec.activate_time = 1
+              and ecd.shop_id is not null
+    </select>
+    <select id="countGetCopywriteList" resultType="java.lang.Integer">
+        select count(1)
+        from ec_copywrite as ec
+        where product_id = #{productId}
+              and ec.is_activate = 1
+    </select>
+    <select id="getShopCopywriteImages" resultType="java.util.Map">
+        select ec.product_id as "productId",(select
+               group_concat(url)
+                from
+                    (select image_url as url, copywrite_id as coi
+                     from
+                         ec_copywrite_shop_image
+                        where shop_id = #{shopId}
+                     order by display_order
+                    ) t
+                where t.coi = ec.id
+               ) as "imageList"
+        from ec_copywrite as ec
+        where ec.id = #{copywriteId}
+    </select>
+
+</mapper>

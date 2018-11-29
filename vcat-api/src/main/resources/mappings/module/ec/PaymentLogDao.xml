@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.PaymentLogDao">
+	<sql id="paymentLogColumns">
+		a.id AS "id",
+		a.payment_id AS "payment.id",
+		a.customer_id AS "customer.id",
+		customer.user_name AS "customer.userName",
+		a.device_token AS "deviceToken",
+		a.amount AS "amount",
+		a.transaction_no AS "transactionNo",
+		a.transaction_success AS "transactionSuccess",
+		a.transaction_date AS "transactionDate",
+		type.name AS "gateway"
+	</sql>
+	<sql id="paymentLogJoins">
+		LEFT JOIN ec_payment payment ON payment.id = a.payment_id
+		LEFT JOIN ec_gateway_type type ON type.id = a.gateway_type_id
+		LEFT JOIN ec_customer customer ON customer.id = a.customer_id
+	</sql>
+	<select id="get" resultType="PaymentLog">
+		SELECT 
+			<include refid="paymentLogColumns"></include>
+		FROM ec_payment_log a
+		<include refid="paymentLogJoins"></include>
+		WHERE a.id = #{id}
+	</select>
+	
+	<select id="findList" resultType="PaymentLog">
+		SELECT
+			<include refid="paymentLogColumns"></include>
+		FROM ec_payment_log a
+		<include refid="paymentLogJoins"></include>
+		WHERE 1=1
+		<if test="payment != null and '' != payment.id">
+			AND a.payment_id = #{payment.id}
+		</if>
+		ORDER BY a.transaction_date DESC
+	</select>
+	<insert id="insertBypayment" parameterType="com.vcat.module.ec.entity.PaymentLog">
+		INSERT INTO ec_payment_log(
+			id,
+			payment_id,
+			customer_id,
+			device_token,
+			amount,
+			transaction_no,
+			transaction_success,
+			transaction_date,
+			note,
+			gateway_type_id
+		)VALUES (
+			#{id},
+			#{payment.id},
+			(SELECT o.buyer_id FROM ec_order AS o WHERE o.payment_id=#{payment.id} LIMIT 1),
+			#{deviceToken},
+			(SELECT SUM(o.total_price-o.total_coupon+o.freight_price) FROM ec_order AS o WHERE o.payment_id=#{payment.id}),
+			#{payment.transactionNo},
+			#{transactionSuccess},
+			NOW(),
+			#{note},
+			(SELECT id FROM ec_gateway_type WHERE code=#{gatewayCode})
+		)
+	</insert>
+	<select id="getPaymentLog" resultType="com.vcat.module.ec.entity.PaymentLog" parameterType="com.vcat.module.ec.entity.PaymentLog">
+	SELECT pl.* FROM ec_payment_log AS pl
+	LEFT JOIN ec_gateway_type AS gt ON gt.id=pl.gateway_type_id
+	WHERE pl.payment_id=#{payment.id}
+	AND gt.code=#{gatewayCode}
+	AND pl.transaction_success=#{transactionSuccess}
+	</select>
+</mapper>

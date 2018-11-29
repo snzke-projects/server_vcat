@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ProductTopicDao">
+	<insert id="insertOrderTopic">
+		INSERT INTO ec_order_topic(id,topic_id,order_item_id ) VALUES (#{id},#{topicId},#{orderItemId})
+	</insert>
+	<select id="findTopicById" resultType="com.vcat.module.ec.entity.ProductTopic">
+		SELECT id, parent_id parentId, title,
+		title_img_url titleImgUrl, list_img_url listImgUrl,
+		start_time startTime, end_time endTime,
+		display_order displayOrder
+		FROM ec_topic
+		WHERE id = #{id} AND is_activate = 1 AND del_flag = 0
+		ORDER BY displayOrder ASC
+	</select>
+	<select id="findTopicByPid" resultType="com.vcat.module.ec.entity.ProductTopic">
+		SELECT id, parent_id parentId, title,
+		title_img_url titleImgUrl, list_img_url listImgUrl,
+		start_time startTime, end_time endTime,
+		display_order displayOrder
+		FROM ec_topic
+		WHERE parent_id = #{pid} AND is_activate = 1 AND del_flag = 0
+		ORDER BY displayOrder ASC
+	</select>
+	<select id="findProductByTopic" resultType="com.vcat.module.ec.dto.ProductDto">
+		SELECT distinct p.id AS "id",p.name AS "name",(
+		SELECT SUM(inventory)
+		FROM
+		ec_product_item
+		WHERE product_id = p.id
+		AND del_flag = 0
+		) AS "inventory",
+		p.external_price externalPrice,
+		p.free_shipping freeShipping,
+		p.sales AS "saledNum",
+		(SELECT
+		MIN(retail_price)
+		FROM ec_product_item
+		WHERE product_id = p.id
+		AND del_flag = 0
+		) AS "price",
+		(SELECT i.url
+		FROM ec_product_image AS pi1
+		LEFT JOIN ec_image AS i ON pi1.image_id=i.id
+		WHERE pi1.product_id=p.id
+		ORDER BY pi1.display_order DESC LIMIT 1)
+		AS "mainUrl" ,
+		(SELECT MAX(sale_earning)
+		FROM ec_product_item
+		WHERE product_id = p.id
+		AND del_flag = 0
+		) AS "saleEarningFund",
+		CASE WHEN hot.id IS NULL THEN '0' ELSE '1' END AS "isHot",
+		CASE WHEN reserve.id IS NULL THEN '0' ELSE '1' END AS "isReserve",
+		reserve.startTime AS "reserveStartTime",
+		reserve.endTime AS
+		"reserveEndTime"
+		FROM ec_topic_product tp
+		LEFT JOIN ec_product AS p ON tp.product_id = p.id
+		LEFT JOIN ec_load_earning AS le ON
+		p.id = le.product_id
+		AND le.is_activate = 1
+		LEFT JOIN ec_share_earning AS ee ON p.id = ee.product_id
+		AND ee.is_activate = 1
+		AND NOW() BETWEEN ee.start_time AND ee.end_time
+		AND ee.del_flag = 0
+		LEFT JOIN view_all_recommend AS hot ON p.id =
+		hot.productId
+		AND hot.typeCode = 'HOT'
+		LEFT JOIN view_all_recommend AS
+		reserve ON p.id = reserve.productId
+		AND reserve.typeCode = 'RESERVE'
+		<![CDATA[ AND NOW()<reserve.endTime]]>
+		AND p.archived=0
+		AND p.retail_usable=1
+		AND p.del_flag=0
+		WHERE tp.topic_id IN
+		<foreach item="item" index="index" collection="topicId" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		ORDER BY tp.display_order ASC, p.display_order ASC
+		LIMIT
+		#{page.pageOffset},#{page.pageSize}
+	</select>
+	
+	<select id="countProductByTopic" resultType="int">
+		SELECT count(distinct p.id)
+		FROM ec_topic_product tp
+		LEFT JOIN ec_product AS p ON tp.product_id = p.id
+		LEFT JOIN ec_load_earning AS le ON
+		p.id = le.product_id
+		AND le.is_activate = 1
+		LEFT JOIN ec_share_earning AS ee ON p.id = ee.product_id
+		AND ee.is_activate = 1
+		AND NOW() BETWEEN ee.start_time AND ee.end_time
+		AND ee.del_flag = 0
+		LEFT JOIN view_all_recommend AS hot ON p.id =
+		hot.productId
+		AND hot.typeCode = 'HOT'
+		LEFT JOIN view_all_recommend AS
+		reserve ON p.id = reserve.productId
+		AND reserve.typeCode = 'RESERVE'
+		<![CDATA[ AND NOW()<reserve.endTime]]>
+		AND p.archived=0
+		AND p.retail_usable=1
+		AND p.del_flag=0
+		WHERE tp.topic_id IN
+		<foreach item="item" index="index" collection="topicId" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+	</select>
+
+	<select id="isProductInTopic" resultType="boolean">
+		SELECT COUNT(1)>0  FROM ec_topic_product tp LEFT JOIN ec_topic t ON tp.topic_id = t.id AND t.del_flag = 0 AND t.is_activate = 1
+		WHERE tp.product_id = (SELECT product_id FROM ec_product_item WHERE id = #{productItemId});
+	</select>
+</mapper>

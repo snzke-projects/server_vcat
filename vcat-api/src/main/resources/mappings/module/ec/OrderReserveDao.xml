@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.OrderReserveDao">
+
+    <insert id="insertReserve">
+        INSERT INTO ec_order_reserve(
+          id,
+          order_id,
+          order_item_id,
+          recommend_id,
+          product_id
+        )
+        VALUES (
+          #{id},
+          #{orderId},
+          #{orderItemId},
+          #{recommendId},
+          #{productId}
+        )
+    </insert>
+    <select id="getOrderReserve" resultType="com.vcat.module.ec.entity.OrderReserve">
+        SELECT
+            eor.id as "id",
+            eor.order_id as "order.id",
+            eor.order_item_id as "orderItem.id",
+            eoi.shop_id as "orderItem.shop.id",
+            eoi.quantity as "orderItem.quantity",
+            var.typeCode  as "recommendEntity.typeCode"
+        from ec_order_reserve as eor
+        LEFT JOIN ec_order as eo ON eor.order_id = eo.id
+        LEFT JOIN ec_order_item as eoi ON eo.id = eoi.order_id
+        LEFT JOIN view_all_recommend as var on var.id = eor.recommend_id
+        WHERE eo.payment_id =
+    </select>
+</mapper>

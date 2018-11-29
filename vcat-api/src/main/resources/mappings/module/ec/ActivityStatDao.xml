@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ActivityStatDao">
+<resultMap id="BaseResultMap" type="com.vcat.module.ec.dto.QuestionDto">
+		<id column="id" property="id" />
+		<result column="title"  property="title" />
+		<result column="option_value"  property="optionValue" />
+		<result column="type"  property="type" />
+		<collection property="statAnswerList" select="com.vcat.module.ec.dao.ActivityStatAnswerDao.getStatAnswerList"
+		column="activityStatId" ofType="com.vcat.module.ec.entity.ActivityStatAnswer">
+		</collection>
+</resultMap>
+
+
+	<select id="getQuestionList" resultMap="BaseResultMap">
+	SELECT qq.id,qq.title,qq.option_value,qq.type,ass.id AS "activityStatId"
+	FROM ec_activity_stat AS ass
+	LEFT JOIN ec_questionnaire_questions AS qq ON qq.id = ass.question_id
+	WHERE ass.feedback_id=#{_parameter}
+	ORDER BY qq.display_order ASC
+	</select>
+</mapper>

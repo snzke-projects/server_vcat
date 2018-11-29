@@ -1,0 +1,520 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcat.module.ec.dao.ProductItemDao">
+	<select id="get" resultType="ProductItem">
+		SELECT
+        a.id AS "id",
+        a.product_id AS "product.id",
+        a.item_sn AS "itemSn",
+        a.name AS "name",
+        a.purchase_price AS "purchasePrice",
+        a.retail_price AS "retailPrice",
+        a.sale_earning AS "saleEarning",
+        a.bonus_earning AS "bonusEarning",
+        a.first_bonus_earning AS "firstBonusEarning",
+        a.second_bonus_earning AS "secondBonusEarning",
+        a.point AS "point",
+        a.coupon_value AS "couponValue",
+        a.inventory AS "inventory",
+        a.coupon_all_inventory AS "couponAllInventory",
+        a.coupon_part_inventory AS "couponPartInventory",
+        a.weight AS "weight",
+        p.name AS "product.name",
+        p.is_virtual_product as "product.virtualProduct"
+		FROM ec_product_item a
+		LEFT JOIN ec_product p ON a.product_id = p.id
+		WHERE a.id = #{id}
+	</select>
+	<select id="getProductItemsByPayment" resultType="com.vcat.module.ec.entity.ProductItem">
+		SELECT
+		a.id AS "id",
+		a.product_id AS "product.id",
+		a.item_sn AS "itemSn",
+		a.name AS "name",
+		a.purchase_price AS "purchasePrice",
+		a.retail_price AS "retailPrice",
+		a.sale_earning AS "saleEarning",
+		a.bonus_earning AS "bonusEarning",
+		a.first_bonus_earning AS "firstBonusEarning",
+		a.second_bonus_earning AS "secondBonusEarning",
+		a.point AS "point",
+		a.coupon_value AS "couponValue",
+		a.inventory AS "inventory",
+		a.coupon_all_inventory AS "couponAllInventory",
+		a.coupon_part_inventory AS "couponPartInventory",
+		a.weight AS "weight",
+		p.name AS "product.name"
+		FROM ec_product_item a
+		left join ec_order_item as eoi on a.id = eoi.product_item_id
+		left join ec_order as eo on eoi.order_id = eo.id
+		LEFT JOIN ec_product p ON a.product_id = p.id
+		WHERE eo.payment_id = #{paymentId}
+	</select>
+    <select id="findListByIds" resultType="ProductItem">
+        SELECT
+        a.id AS "id",
+        a.product_id AS "product.id",
+        a.item_sn AS "itemSn",
+        a.name AS "name",
+        a.purchase_price AS "purchasePrice",
+        a.retail_price AS "retailPrice",
+        a.sale_earning AS "saleEarning",
+        a.bonus_earning AS "bonusEarning",
+		a.first_bonus_earning AS "firstBonusEarning",
+        a.second_bonus_earning AS "secondBonusEarning",
+        a.point AS "point",
+        a.coupon_value AS "couponValue",
+        a.inventory AS "inventory",
+        a.coupon_all_inventory AS "couponAllInventory",
+        a.coupon_part_inventory AS "couponPartInventory",
+        a.weight AS "weight",
+        p.name AS "product.name"
+        FROM ec_product_item a
+        LEFT JOIN ec_product p ON a.product_id = p.id
+        WHERE a.id IN (''
+        <if test="idArray != null">
+            <foreach collection="idArray" item="id">
+                ,#{id}
+            </foreach>
+        </if>
+        )
+    </select>
+	<select id="select" resultType="ProductItem">
+		SELECT
+        a.id AS "id",
+        a.product_id AS "product.id",
+        a.item_sn AS "itemSn",
+        a.name AS "name",
+        a.purchase_price AS "purchasePrice",
+        a.retail_price AS "retailPrice",
+        a.sale_earning AS "saleEarning",
+        a.bonus_earning AS "bonusEarning",
+        a.first_bonus_earning AS "firstBonusEarning",
+        a.second_bonus_earning AS "secondBonusEarning",
+        a.point AS "point",
+        a.coupon_value AS "couponValue",
+        a.inventory AS "inventory",
+        a.coupon_all_inventory AS "couponAllInventory",
+        a.coupon_part_inventory AS "couponPartInventory",
+        a.weight AS "weight",
+        p.retail_usable AS "product.retailUsable",
+        p.coupon_all_usable AS "product.couponAllUsable",
+        p.coupon_part_usable AS "product.couponPartUsable",
+        p.name AS "product.name",
+        p.is_virtual_product as "product.virtualProduct"
+		FROM ec_product_item a
+		LEFT JOIN ec_product AS p ON p.id=a.product_id
+		WHERE a.id = #{id}
+		AND p.archived=0
+	</select>
+	<select id="getItem" resultType="com.vcat.module.ec.entity.ProductItem">
+		SELECT
+            a.id AS "id",
+            a.product_id AS "product.id",
+            a.item_sn AS "itemSn",
+            a.name AS "name",
+            a.purchase_price AS "purchasePrice",
+            a.retail_price AS "retailPrice",
+            a.sale_earning AS "saleEarning",
+            a.bonus_earning AS "bonusEarning",
+			a.first_bonus_earning AS "firstBonusEarning",
+            a.second_bonus_earning AS "secondBonusEarning",
+            a.point AS "point",
+            a.coupon_value AS "couponValue",
+            a.inventory AS "inventory",
+            a.coupon_all_inventory AS "couponAllInventory",
+            a.coupon_part_inventory AS "couponPartInventory",
+            a.weight AS "weight",
+			sp.archived AS "isSellerLoad",
+			p.retail_usable AS "product.retailUsable",
+			p.name AS "product.name"
+		FROM ec_product_item a
+		LEFT JOIN ec_product AS p ON p.id=a.product_id
+		LEFT JOIN ec_shop_product AS sp ON sp.product_id=p.id
+		AND sp.shop_id=#{shopId}
+		WHERE a.id = #{productItemId}
+		AND p.archived=0
+		AND p.retail_usable=1
+	</select>
+
+	<select id="findList" resultType="ProductItem">
+		SELECT
+            a.id AS "id",
+            a.product_id AS "product.id",
+            a.item_sn AS "itemSn",
+            a.name AS "name",
+            a.purchase_price AS "purchasePrice",
+            a.retail_price AS "retailPrice",
+            a.sale_earning AS "saleEarning",
+            a.bonus_earning AS "bonusEarning",
+		a.first_bonus_earning AS "firstBonusEarning",
+            a.second_bonus_earning AS "secondBonusEarning",
+            a.point AS "point",
+            a.coupon_value AS "couponValue",
+            a.inventory AS "inventory",
+            a.coupon_all_inventory AS "couponAllInventory",
+            a.coupon_part_inventory AS "couponPartInventory",
+            a.weight AS "weight",
+            p.name AS "product.name",
+            b.id AS "product.brand.id",
+            b.name AS "product.brand.name",
+            c.id AS "product.category.id",
+            c.name AS "product.category.name"
+		FROM ec_product_item a
+		LEFT JOIN ec_product p ON p.id = a.product_id
+        LEFT JOIN ec_category_product cp ON p.id = cp.product_id
+        LEFT JOIN ec_category c ON c.id = cp.category_id
+		LEFT JOIN ec_brand b ON b.id = p.brand_id
+        WHERE a.del_flag = 0
+        AND p.del_flag = 0
+        AND p.archived = 0
+		<if test="product != null and product.category != null and product.category.id != ''">
+            AND c.lft BETWEEN (SELECT lft FROM ec_category where id = #{product.category.id}) AND (SELECT rgt FROM ec_category where id = #{product.category.id})
+        </if>
+        <if test="product != null and product.brand != null and product.brand.id != ''">
+            AND b.id = #{product.brand.id}
+        </if>
+        <if test="sqlMap != null and sqlMap.keyWord != ''">
+            AND (a.name LIKE '%${sqlMap.keyWord}%' OR p.name LIKE '%${sqlMap.keyWord}%')
+        </if>
+        <if test="sqlMap != null and sqlMap.noReconciliation == 'true'">
+            AND a.id NOT IN (SELECT DISTINCT id FROM ec_product_reconciliation)
+        </if>
+        <if test="sqlMap != null and sqlMap.onlyTopic != null and sqlMap.onlyTopic == 'true'">
+            AND a.product_id IN (SELECT DISTINCT product_id FROM ec_topic_product)
+        </if>
+		ORDER BY a.item_sn ASC
+	</select>
+	<insert id="insert">
+		INSERT INTO ec_product_item(
+			id,
+			product_id,
+			item_sn,
+			name,
+			purchase_price,
+			retail_price,
+			sale_earning,
+			bonus_earning,
+			first_bonus_earning ,
+			second_bonus_earning,
+			point,
+			coupon_value,
+			inventory,
+			coupon_all_inventory,
+			coupon_part_inventory,
+			weight,
+			del_flag
+		) VALUES (
+			#{id},
+			#{sqlMap.productId},
+			#{itemSn},
+			#{name},
+			#{purchasePrice},
+			#{retailPrice},
+			#{saleEarning},
+			#{bonusEarning},
+			#{firstBonusEarning},
+			#{secondBonusEarning},
+			#{point},
+			#{couponValue},
+			#{inventory},
+			#{couponAllInventory},
+			#{couponPartInventory},
+			#{weight},
+			#{DEL_FLAG_NORMAL}
+		)
+	</insert>
+
+	<update id="update">
+		UPDATE ec_product_item SET
+		item_sn = #{itemSn},
+		purchase_price = #{purchasePrice},
+		retail_price = #{retailPrice},
+		sale_earning = #{saleEarning},
+		bonus_earning = #{bonusEarning},
+		first_bonus_earning = #{firstBonusEarning},
+		second_bonus_earning = #{secondBonusEarning},
+		point = #{point},
+		coupon_value = #{couponValue},
+		inventory = #{inventory},
+		coupon_all_inventory = #{couponAllInventory},
+		coupon_part_inventory = #{couponPartInventory},
+		weight = #{weight}
+		WHERE id = #{id}
+	</update>
+
+	<select id="findListByProduct" resultType="ProductItem">
+		SELECT
+            a.id AS "id",
+            a.product_id AS "product.id",
+            a.item_sn AS "itemSn",
+            a.name AS "name",
+            a.purchase_price AS "purchasePrice",
+            a.retail_price AS "retailPrice",
+            a.sale_earning AS "saleEarning",
+            a.bonus_earning AS "bonusEarning",
+            a.first_bonus_earning AS "firstBonusEarning",
+            a.second_bonus_earning AS "secondBonusEarning",
+            a.point AS "point",
+            a.coupon_value AS "couponValue",
+            a.inventory AS "inventory",
+            a.coupon_all_inventory AS "couponAllInventory",
+            a.coupon_part_inventory AS "couponPartInventory",
+            a.weight AS "weight",
+			product.id AS "product.id",
+			product.name AS "product.name"
+			,(SELECT GROUP_CONCAT(CONCAT(val.name,':',val.value)) FROM ec_spec_value val WHERE val.product_item_id = a.id) AS "remarks"
+		FROM ec_product_item a
+		LEFT JOIN ec_product product on a.product_id = product.id
+		WHERE a.product_id = #{id}
+		AND a.del_flag = #{DEL_FLAG_NORMAL}
+		ORDER BY a.item_sn ASC
+	</select>
+
+	<select id="findListByProductForBuyer" resultType="ProductItem" parameterType="com.vcat.module.ec.entity.Product">
+		SELECT
+		id AS "id",
+		item_sn AS "itemSn",
+		name AS "name",
+		retail_price AS "retailPrice",
+		sale_earning AS "saleEarning",
+		inventory AS "inventory",
+		FROM ec_product_item a
+		WHERE a.product_id = #{id}
+		AND a.del_flag = #{DEL_FLAG_NORMAL}
+		ORDER BY a.item_sn ASC
+	</select>
+	<update id="updateQuantiy">
+        UPDATE ec_product_item
+        <if test="checkOrderType == 1 or checkOrderType == 2
+        or checkOrderType == 5 or checkOrderType == 6
+        or checkOrderType == 7 or checkOrderType == 8
+        or checkOrderType == 9">
+            SET inventory = inventory - #{quantity}
+        </if>
+        <if test="checkOrderType == 3">
+            SET coupon_all_inventory = coupon_all_inventory - #{quantity}
+        </if>
+        <if test="checkOrderType == 4">
+            SET coupon_part_inventory = coupon_part_inventory - #{quantity}
+        </if>
+        WHERE del_flag = 0
+        AND id = #{productItemId}
+	</update>
+	<update id="updateCouponTime">
+		UPDATE ec_product_item
+		SET coupon_time = coupon_time-#{quantity}
+		WHERE del_flag = 0
+		AND id = #{productItemId}
+	</update>
+	<select id="getSupplierId" resultType="String" parameterType="String">
+		SELECT brand.supplier_id AS "supplierId"
+		FROM ec_product_item AS pi1
+		LEFT JOIN ec_product AS p ON pi1.product_id=p.id
+        LEFT JOIN ec_brand AS brand ON brand.id = p.brand_id
+		WHERE pi1.id=#{_parameter}
+	</select>
+	<select id="getDistributionId" resultType="String" parameterType="String">
+		SELECT p.distribution_id AS "distributionId" FROM ec_product AS p
+		LEFT JOIN ec_product_item AS pi1 ON pi1.product_id = p.id
+		WHERE pi1.id=#{_parameter}
+	</select>
+	<update id="delete">
+		UPDATE ec_product_item SET
+		del_flag = #{DEL_FLAG_DELETE}
+		WHERE id = #{id}
+	</update>
+	<update id="deleteByProduct">
+		UPDATE ec_product_item SET
+		del_flag = #{DEL_FLAG_DELETE}
+		WHERE product_id = #{id}
+		AND del_flag = #{DEL_FLAG_NORMAL}
+	</update>
+	<select id="getProductItemList" resultType="Map">
+		SELECT
+			i.id AS "id",
+			i.name AS "name",
+			<if test="type == 1 or type ==2">
+			i.inventory AS "inventory",
+			</if>
+			# 零售价(如果是团购商品则为团购价)
+			i.retail_price AS "retailPrice",
+			# 销售返佣
+			i.sale_earning AS "saleEarning",
+			# 销售分红
+			i.bonus_earning AS "bonusEarning",
+			(SELECT GROUP_CONCAT(s.value ORDER BY s.name,s.value) FROM ec_spec_value s WHERE s.product_item_id = i.id) AS "key"
+		FROM ec_spec_value s
+		LEFT JOIN ec_product_item i ON s.product_item_id = i.id
+		WHERE i.product_id = #{productId}
+        AND i.del_flag = 0
+		GROUP BY i.id
+		ORDER BY i.sale_earning, i.item_sn
+	</select>
+	<select id="getProductItemTitleList" resultType="Map">
+		SELECT
+			s.name AS "name",i.id as "productItemId",
+			GROUP_CONCAT(DISTINCT(s.value) ORDER BY s.value) AS "title",
+			GROUP_CONCAT(DISTINCT(s.value) ORDER BY s.value) AS "value"
+		FROM ec_spec_value s
+		LEFT JOIN ec_product_item i ON s.product_item_id = i.id
+		WHERE i.product_id = #{_parameter}
+        AND i.del_flag = 0
+		GROUP BY s.name
+		ORDER BY s.name
+	</select>
+	<select id="getWeight" resultType="long">
+	SELECT
+	(CASE
+	WHEN p.free_shipping =1 THEN 0
+	ELSE pi1.weight
+	END) AS "weight"
+	FROM ec_product_item AS pi1 
+	LEFT JOIN ec_product AS p ON p.id=pi1.product_id
+	WHERE pi1.id=#{_parameter}
+	</select>
+	<select id="getRuleByProductItemId" resultType="java.util.Map">
+        SELECT ept.name as 'name', ept.buy_count as 'buyCount',ept.free_count as 'freeCount'
+        FROM ec_promotion_product as epp left join ec_product as ep on epp.product_id = ep.id
+            left JOIN ec_promotion as ept ON epp.promotion_id = ept.id
+            left join ec_product_item as epit  on ep.id = epit.product_id
+        where epit.id = #{productItemId}
+              and ept.is_activate = 1 ;
+	</select>
+	<select id="getProductRecommendType" resultType="java.util.Map">
+		SELECT var.id as recommendId,var.productId,
+			   (case when var.endTime is not null then 'RESERVE'
+				else 'HOT'
+				end)  as type
+		FROM view_all_recommend as var LEFT JOIN ec_product as ep ON var.productId = ep.id
+			LEFT JOIN ec_product_item as epi on ep.id = epi.product_id
+        where epi.id = #{productItemId}
+	</select>
+	<select id="getGroupBuyProductItemInfo" resultType="java.util.Map">
+        select * from (
+				 SELECT
+            egb.id                                                    AS "groupBuyId",
+            epi.id                                                    AS "productItemId",
+            ep.id                                                     AS "productId",
+            epi.name                                                  AS "itemName",
+            epi.inventory                                             AS "inventory",
+            epi.retail_price                                          AS "singlePrice",
+            0                                                         AS "groupPrice",
+            epi.sale_earning                                          AS "saleEarning",
+            epi.bonus_earning                                         AS "bonusEarning",
+            egb.needed_people                                         AS "headCount",
+            egb.start_date                                            AS "startDate",
+            egb.end_date                                              AS "endDate",
+            0                                                         AS "isGroupBuyProduct",
+            ep.name                                                   AS "productName",
+            s.value                                                   AS "value",
+            s.name                                                    AS "name",
+            NULL AS "limitCount",
+            (SELECT i.url
+             FROM
+                 ec_product_image AS pi1
+                 LEFT JOIN ec_image AS i
+                     ON pi1.image_id = i.id
+             WHERE pi1.product_id = ep.id
+             ORDER BY pi1.display_order DESC
+             LIMIT 1)                                                 AS "mainUrl",
+             (select ec.title from ec_copywrite as ec where ec.product_id = ep.id and ec.is_activate = 1
+		      order by  activate_time desc
+		    limit 1)             AS "title"
+        FROM ec_product AS ep
+            LEFT JOIN ec_group_buying AS egb ON ep.id = egb.product_id
+            LEFT JOIN ec_product_item AS epi ON (epi.product_id = ep.id AND epi.product_item_type = 0)
+            LEFT JOIN ec_spec_value AS s ON epi.id = s.product_item_id
+        WHERE egb.id = #{groupBuyId}
+              AND epi.del_flag = 0
+              AND ep.del_flag = 0
+        UNION
+        SELECT
+            egb.id                                                    AS "groupBuyId",
+            epi.id                                                    AS "productItemId",
+            ep.id                                                     AS "productId",
+            epi.name                                                  AS "itemName",
+            epi.inventory                                             AS "inventory",
+            0                                                         AS "singlePrice",
+            epi.retail_price                                          AS "groupPrice",
+            epi.sale_earning                                          AS "saleEarning",
+            epi.bonus_earning                                         AS "bonusEarning",
+            egb.needed_people                                         AS "headCount",
+            egb.start_date                                            AS "startDate",
+            egb.end_date                                              AS "endDate",
+            1                                                         AS "isGroupBuyProduct",
+            ep.name                                                   AS "productName",
+            s.value                                                   AS "value",
+            s.name                                                    AS "name",
+            (SELECT times
+             FROM ec_product_limit AS l
+             WHERE l.product_type = 7
+                   AND l.product_item_id = epi.id
+                   AND now() >= l.start_time AND l.end_time >= now()) AS "limitCount",
+            (SELECT i.url
+             FROM
+                 ec_product_image AS pi1
+                 LEFT JOIN ec_image AS i
+                     ON pi1.image_id = i.id
+             WHERE pi1.product_id = ep.id
+             ORDER BY pi1.display_order DESC
+             LIMIT 1)                                                 AS "mainUrl",
+             (select ec.title from ec_copywrite as ec where ec.product_id = ep.id and ec.is_activate = 1
+		      order by  activate_time desc
+		    limit 1)             AS "title"
+        FROM ec_group_buying AS egb
+            LEFT JOIN ec_product_item AS epi ON epi.id =  egb.product_item_id
+            LEFT JOIN ec_product AS ep ON ep.id = epi.product_id
+            LEFT JOIN ec_spec_value AS s ON epi.id = s.product_item_id
+        WHERE egb.id = #{groupBuyId}
+              AND epi.del_flag = 0
+              AND ep.del_flag = 0
+			 )  as result
+		order by result.isGroupBuyProduct desc
+    </select>
+    <select id="getProductItemDto" resultType="com.vcat.module.ec.dto.ProductItemDto">
+        SELECT
+          p1.id                   AS "productId",
+          (CASE WHEN egb.id IS NULL
+            THEN ""
+           ELSE egb.id END)       AS "groupBuyId",
+          oi.id                   AS "orderItemId",
+          p1.name                 AS "productName",
+          pi1.id                  AS "productItemId",
+          pi1.name                AS "itemName",
+          oi.item_price           AS "itemPrice",
+          oi.quantity,
+          oi.promotion_quantity   AS "promotionQuantity",
+          ss.id                   AS "shopId",
+          oi.parent_id            AS "parentShopId",
+          oi.grandfather_id       AS "parentParentShopId",
+          ss.shop_num             AS "shopNum",
+          oi.order_item_type      AS "productType",
+          (CASE WHEN oi.order_item_type = 8 OR oi.order_item_type = 9
+            THEN 1
+           ELSE 0 END)            AS "isGroupBuyProduct",
+          oi.sale_earning         AS "itemSaleEarning",
+          oi.bonus_earning        AS "itemBonusEarning",
+          oi.first_bonus_earning  AS "itemFirstBonusEarning",
+          oi.second_bonus_earning AS "itemSecondBonusEarning",
+          oi.can_refund           AS "canRefund",
+          (CASE
+           WHEN oi.order_item_type = 2 OR oi.order_item_type = 3 OR oi.order_item_type = 4 OR oi.order_item_type = 6 OR
+                oi.order_item_type = 7 OR oi.order_item_type = 8
+             THEN 'V猫商场'
+           WHEN oi.order_item_type = 1 OR oi.order_item_type = 9
+             THEN CONCAT(cc.user_name, "的V猫小店")
+           END)                   AS "shopName"
+        FROM ec_order_item AS oi
+          LEFT JOIN ec_order AS o ON o.id = oi.order_id
+          LEFT JOIN ec_group_buying_customer AS egbc ON egbc.order_item_id = oi.id
+          LEFT JOIN ec_group_buying_sponsor AS egbs ON egbs.id = egbc.group_buying_sponsor_id
+          LEFT JOIN ec_group_buying AS egb ON egb.id = egbs.group_buying_id
+          LEFT JOIN ec_product_item AS pi1 ON oi.product_item_id = pi1.id
+          LEFT JOIN ec_product AS p1 ON p1.id = pi1.product_id
+          LEFT JOIN ec_shop AS ss ON ss.id = oi.shop_id
+          LEFT JOIN ec_level AS ll ON ll.id = ss.level_id
+          LEFT JOIN ec_customer AS cc ON cc.id = oi.shop_id
+        WHERE oi.id = #{orderItemId}
+    </select>
+</mapper>

@@ -1,0 +1,26 @@
+.specItem{width: 100%;height: 320px;padding: 20px;}
+.specItemLeft,.specItemRight{float: left;width: 200px;display: inline-block;}
+.specItemRight{width: 400px;margin-left: 15px;}
+.specItemTitle{height: 30px;margin: 0;color: #808083;}
+.specItemList li{font-size: 12px;padding:0 5px;width: 150px;border: 1px dashed #ccc;margin-top: 8px;height: 30px;line-height: 30px;cursor: pointer;}
+.specItemList li a{color: #636363;}
+.specItemList li.live{border-color: #2c689f}
+.specItemList li:hover{border-color: #0387ba}
+.specItemList li .icon-trash{float: right;margin: 8px 3px 0 0;}
+.specCheckAllBox{height: 40px;line-height: 30px;background: #eff7ff;border-bottom: 1px solid #d9e9f7;margin: 0;padding-left: 10px;}
+.specCheckAll input{vertical-align: middle;}
+.addSpecValueLabel #newSpecValueLabelText{margin-top: 5px;width: 300px;}
+.addSpecValueLabel #newSpecValueBtn{margin-top: 5px;}
+.specItemList,.specItemValue{margin: 0;border: 1px solid #d9e9f7;padding-left: 10px;height: 300px;overflow-y: auto;list-style:none; }
+.specItemValue{padding-left: 0;}
+.specItemValueList{padding: 10px;margin: 0;height: 180px;overflow-y: auto;}
+.specItemValueList li{float:left;margin:0 10px 10px 0;cursor:pointer;display: inline-block;border:1px solid #ccc;text-align: center;padding:0 10px;line-height: 30px;font-size: 14px;color: #636363;}
+.specItemValueList li.live{background: url("../images/spec_cur.png") no-repeat scroll right bottom rgba(0, 0, 0, 0);border: 1px solid #ff5a00;background-color: #fffbea;}
+.specItemValueList li:hover{border: 1px solid #ff5a00;}
+.specNum{padding:0 2px;color: #ff5d06}
+.specAddInputLi{list-style: none;}
+.specAddInputLi .input{float: left;padding: 5px 10px;width: 325px;line-height: 25px;border: 1px solid #ddd;font-family: "微软雅黑";margin-top: 10px;}
+.specAddInputLi .btn{float: left;margin-top: 10px;width: 120px;border: none;line-height: 20px;color: #fff;font-size: 14px;font-family: "微软雅黑";}
+
+
+

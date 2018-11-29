@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.vcat.module.ec.dao.GroupBuyCustomerDao">
+    <insert id="insertGroupBuyCustomer" parameterType="com.vcat.module.ec.dto.GroupBuyCustomerDto">
+        INSERT INTO ec_group_buying_customer (
+          id,
+          group_buying_sponsor_id,
+          order_id,
+          order_item_id,
+          joined_date,
+          customer_id,
+          is_sponsor,
+          status
+        )
+        VALUES (
+          #{id},
+          #{groupBuySponsorId},
+          #{orderId},
+          #{orderItemId},
+          #{joinedDate},
+          #{customerId},
+          #{isSponsor},
+          #{status}
+        )
+    </insert>
+    <select id="getJoinedCustomers" resultType="java.util.Map">
+          SELECT
+              ec.user_name             AS "name",
+              (CASE WHEN ec.avatar_url IS NULL
+                THEN ""
+              ELSE ec.avatar_url END) AS "headUrl",
+              (case when egbc.order_id is null and egbc.order_item_id is null then egbs.start_date
+              else ep.payment_date end) AS "paymentDate",
+              egbc.is_sponsor          AS "isSponsor",
+              ec.phone_number          AS "phone",
+              egbs.type,
+              epp.name                   AS "productName",
+              egbc.order_id            AS "orderId",
+              eo.payment_id            AS "paymentId",
+              egbc.customer_id as "buyerId",
+              egbc.joined_date as "joinTime"
+            FROM ec_group_buying_customer AS egbc
+              LEFT JOIN ec_group_buying_sponsor AS egbs ON egbc.group_buying_sponsor_id = egbs.id
+              LEFT JOIN ec_group_buying AS egb ON egbs.group_buying_id = egb.id
+              left join ec_product as epp on egb.product_id = epp.id
+              LEFT JOIN ec_order AS eo ON egbc.order_id = eo.id
+              LEFT JOIN ec_payment AS ep ON ep.id = eo.payment_id
+              LEFT JOIN ec_customer AS ec ON egbc.customer_id = ec.id
+            WHERE egbs.id = #{groupBuySponsorId}
+                  AND egbc.status = 1
+        order by egbc.is_sponsor desc, ep.payment_date
+    </select>
+    <select id="getGroupBuyInfo" resultType="java.util.Map">
+        SELECT
+          egbc.id             AS "groupBuyCustomerId",
+          egbs.id             AS "groupBuySponsorId",
+          egb.period          AS "period",
+          CONCAT(eoi.order_item_type,'') AS "orderItemType",
+          egbc.is_sponsor     AS "isSponsor"
+        FROM ec_order AS eo
+          LEFT JOIN ec_order_item AS eoi ON eo.id = eoi.order_id
+          LEFT JOIN ec_group_buying_customer AS egbc ON eo.id = egbc.order_id
+          LEFT JOIN ec_group_buying_sponsor AS egbs ON egbc.group_buying_sponsor_id = egbs.id
+          LEFT JOIN ec_group_buying AS egb ON egbs.group_buying_id = egb.id
+                where eo.payment_id = #{paymentId}
+    </select>
+    <select id="getGroupBuyCustomer" resultType="com.vcat.module.ec.dto.GroupBuyCustomerDto">  
+        SELECT
+          egbc.id AS                   "id",
+          egbc.group_buying_sponsor_id "groupBuySponsorId",
+          egbc.order_id                "orderId",
+          egbc.order_item_id           "orderItemId",
+          egbc.joined_date             "joinedDate",
+          egbc.customer_id             "customerId",
+          egbc.is_sponsor              "isSponsor",
+          egbc.status                  "status"
+        FROM ec_group_buying_customer AS egbc
+          LEFT JOIN ec_group_buying_sponsor AS egbs ON egbc.group_buying_sponsor_id = egbs.id
+        where egbc.id = #{id}
+    </select>
+
+    <select id="updateGroupBuyCustomer">
+        update ec_group_buying_customer set
+        status = #{status}
+        where id = #{id}
+    </select>
+
+    <select id="findListBySponsorId" resultType="com.vcat.module.ec.entity.GroupBuyCustomer">
+        SELECT
+            egbc.id AS                   "id",
+            egbc.group_buying_sponsor_id "groupBuySponsor.id",
+            egbc.order_id                "order.id",
+            egbc.order_item_id           "orderItem.id",
+            egbc.joined_date             "joinedDate",
+            egbc.customer_id             "customer.id",
+            egbc.is_sponsor              "isSponsor",
+            egbc.status                  "status"
+        FROM ec_group_buying_customer AS egbc
+        LEFT JOIN ec_group_buying_sponsor AS egbs ON egbc.group_buying_sponsor_id = egbs.id
+        where egbs.id = #{id}
+    </select>
+    <select id="getShopIdByGroupBuySponsorId" resultType="java.lang.String">
+        SELECT eoi.shop_id
+            FROM ec_order_item AS eoi
+              LEFT JOIN ec_group_buying_customer AS egbc ON eoi.id = egbc.order_item_id
+            where egbc.is_sponsor = 1
+            and egbc.group_buying_sponsor_id = #{groupBuySponsorId}
+    </select>
+</mapper>
